@@ -334,7 +334,10 @@ function goTo(step) {
   document.getElementById('btn-next').style.display = step === STEPS.length - 1 ? 'none' : '';
   if (step === 1) renderStep2();
   if (step === 2) renderThemeStep();
-  if (step === 3) { renderSummary(); renderFbRules(); }
+  if (step === 3) {
+    renderSummary(); renderFbRules();
+    if (shareUrlIsStale()) generateShareUrl({ refreshed: true });
+  }
   // Scroll AFTER render so the newly-laid-out panel starts at the top.
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   saveState();
@@ -2417,17 +2420,29 @@ async function downloadZip() {
 // the link → viewer page (legendream.com/v/) decodes and renders.
 // No backend, no accounts. Hash never sent to server per HTTP spec.
 
-async function buildShareUrl() {
-  if (!state.fields['f-title']) {
-    throw new Error('請先在步驟 2 填入旅程名稱');
-  }
+function shareCfgJson() {
+  // 先做步驟二畫面會做的舊格式遷移，免得只是切到步驟二就被判定「行程有修改」
+  ensureExtras();
   const cfg = collectConfig();
   // Strip Firebase — quick-share mode is view-only (no multi-person sync).
   // Keeping firebase keys would let viewers write to the trip creator's project.
   cfg.firebase = {};
   cfg._quickShare = true;
+  return JSON.stringify(cfg);
+}
 
-  const json = JSON.stringify(cfg);
+// 畫面上這條分享連結是用哪一版行程產生的；'' ＝ 還沒產生過
+let sharedCfgJson = '';
+
+function shareUrlIsStale() {
+  return !!sharedCfgJson && shareCfgJson() !== sharedCfgJson;
+}
+
+async function buildShareUrl() {
+  if (!state.fields['f-title']) {
+    throw new Error('請先在步驟 2 填入旅程名稱');
+  }
+  const json = shareCfgJson();
   const bytes = new TextEncoder().encode(json);
   const compressed = await gzipBytes(bytes);
   const encoded = bytesToBase64url(compressed);
@@ -2435,7 +2450,7 @@ async function buildShareUrl() {
   // Use site origin (same domain as generator). If running standalone
   // (generator opened from file://), fall back to current origin anyway.
   const base = location.origin + location.pathname.replace(/generator\/?.*$/, '');
-  return base + 'v/#z=' + encoded;
+  return { url: base + 'v/#z=' + encoded, json };
 }
 
 async function gzipBytes(bytes) {
@@ -2450,14 +2465,15 @@ function bytesToBase64url(bytes) {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function generateShareUrl() {
+async function generateShareUrl({ refreshed = false } = {}) {
   const stat = document.getElementById('share-status');
   const out = document.getElementById('share-url-input');
   const actions = document.getElementById('share-actions');
   stat.innerHTML = '<div class="status-box status-info"><span class="spinner"></span>&nbsp;產生連結中…</div>';
   try {
-    const url = await buildShareUrl();
+    const { url, json } = await buildShareUrl();
     out.value = url;
+    sharedCfgJson = json;
     out.style.display = 'none';           // 連結文字預設收合，靠「顯示連結文字」展開
     actions.style.display = '';
     const toggleBtn = document.getElementById('toggle-url-btn');
@@ -2467,13 +2483,29 @@ async function generateShareUrl() {
     if (url.length > 8000) {
       warn = ' <span style="color:var(--warn);">⚠ 連結較長（' + sizeKb + ' KB），LINE 仍可貼但部分 QR 掃描可能困難。</span>';
     }
-    stat.innerHTML = '<div class="status-box status-ok">✓ 連結已產生。建議直接用 <strong>📱 QR Code</strong>' +
-      (navigator.share ? ' 或 <strong>📤 傳送給旅伴</strong>' : '') +
-      ' 分享，不必貼那一長串網址。<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
+    const via = '<strong>📱 QR Code</strong>' + (navigator.share ? ' 或 <strong>📤 傳送給旅伴</strong>' : '');
+    const lead = refreshed
+      ? '🔄 <strong>行程有修改，連結已自動更新成最新版。</strong>之前傳出去的舊連結不會跟著變，請用 ' + via + ' 把新連結重新傳給旅伴。'
+      : '✓ 連結已產生。建議直接用 ' + via + ' 分享，不必貼那一長串網址。';
+    stat.innerHTML = '<div class="status-box ' + (refreshed ? 'status-warn' : 'status-ok') + '">' + lead +
+      '<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
       '連結包含整份行程的所有資料（' + sizeKb + ' KB）所以較長——這是「不經外部伺服器、兼顧隱私安全」的優點。</span>' + warn + '</div>';
   } catch (e) {
+    // 產生失敗就收掉舊連結，免得按鈕把舊版傳出去
+    out.value = '';
+    out.style.display = 'none';
+    sharedCfgJson = '';
+    actions.style.display = 'none';
     stat.innerHTML = '<div class="status-box status-err">' + e.message + '</div>';
   }
+}
+
+// 分享按鈕一律拿依目前行程產生的連結；回傳空字串代表產生失敗
+async function ensureFreshShareUrl() {
+  const input = document.getElementById('share-url-input');
+  if (input.value && !shareUrlIsStale()) return input.value;
+  await generateShareUrl({ refreshed: !!input.value });
+  return input.value;
 }
 
 // 展開／收合那串長網址（預設收合，避免畫面被醜長網址佔據）
@@ -2489,10 +2521,7 @@ function toggleShareUrlText() {
 
 async function copyShareUrl() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   try {
     await navigator.clipboard.writeText(input.value);
     showToast('已複製分享連結', '貼到 LINE / 訊息給旅伴即可');
@@ -2506,19 +2535,13 @@ async function copyShareUrl() {
 
 async function openShareUrl() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   window.open(input.value, '_blank');
 }
 
 async function shareNative() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   const title = (state.fields['f-title'] || '').trim() || '旅人手帖';
   try {
     await navigator.share({
@@ -2536,10 +2559,7 @@ async function shareNative() {
 
 async function showQrCode() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   const url = input.value;
   const modal = document.getElementById('qr-modal');
   const canvas = document.getElementById('qr-canvas');
