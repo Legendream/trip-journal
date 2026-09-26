@@ -210,12 +210,14 @@
 
   /* 2. 成品展示 Showcase */
   .sample-showcase {
+    padding: 70px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sample-showcase-inner {
     display: grid;
     grid-template-columns: 1fr 320px;
     gap: 48px;
     align-items: center;
-    padding: 70px 0;
-    border-bottom: 1px solid var(--rule);
   }
   .sample-headline {
     font-family: var(--font-serif);
@@ -459,7 +461,7 @@
     .poster-showcase-inner { grid-template-columns: 1fr; }
   }
   @media (max-width: 650px) {
-    .sample-showcase { grid-template-columns: 1fr; }
+    .sample-showcase-inner { grid-template-columns: 1fr; }
     .steps-grid { grid-template-columns: 1fr; }
     .trust-grid { grid-template-columns: 1fr; }
     .hero-title { font-size: 38px; }
@@ -529,7 +531,7 @@
 
 <!-- 2. 成品展示 Showcase -->
 <section class="sample-showcase">
-  <div class="wrapper" style="display: contents;">
+  <div class="wrapper sample-showcase-inner">
     <div>
       <h2 class="sample-headline">每趟旅行，<br>都該有一本順手的隨身手帖</h2>
       <p class="sample-body">
@@ -632,7 +634,7 @@
 <section class="features-section">
   <div class="wrapper">
     <div class="section-header">
-      <div class="section-eyebrow">Features</div>
+      <div class="section-eyebrow">核心特色</div>
       <h2 class="section-title">專為自由行設計的貼心細節</h2>
       <p class="section-desc">解決現場找路、找車位、看天氣與傳群組的各種小麻煩</p>
     </div>
@@ -737,7 +739,7 @@
 <section class="how-section">
   <div class="wrapper">
     <div class="section-header">
-      <div class="section-eyebrow">How It Works</div>
+      <div class="section-eyebrow">製作流程</div>
       <h2 class="section-title">四個步驟，10 分鐘輕鬆完成</h2>
       <p class="section-desc">不用學習複雜工具，把原本排好的筆記直接變成專屬隨身手帖</p>
     </div>
@@ -755,7 +757,6 @@
           </div>
           <div class="step-title-row">
             <span class="step-label">匯入行程</span>
-            <span class="step-en">Import</span>
           </div>
           <p class="step-lead">
             複製預設提示詞交給常用 AI，雜亂筆記與機票訂房截圖自動轉為結構化日程。
@@ -789,7 +790,6 @@
           </div>
           <div class="step-title-row">
             <span class="step-label">補齊資料</span>
-            <span class="step-en">Polish</span>
           </div>
           <p class="step-lead">
             貼入景點的地圖分享連結，自動辨識地點與 16 天氣象；補齊交通航班，隨手自訂防看密碼。
@@ -823,7 +823,6 @@
           </div>
           <div class="step-title-row">
             <span class="step-label">挑選外觀</span>
-            <span class="step-en">Style</span>
           </div>
           <p class="step-lead">
             挑選 7 款風格主題配色。預覽畫面即時套用真實行程與成員名單，所見即所得。
@@ -868,7 +867,6 @@
           </div>
           <div class="step-title-row">
             <span class="step-label">加到手機桌面</span>
-            <span class="step-en">Build / Share</span>
           </div>
           <p class="step-lead">
             在手機瀏覽器點選「加入主畫面」，隨開隨用；一行專屬連結傳到群組，旅伴點開就能看。

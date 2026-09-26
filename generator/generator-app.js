@@ -2470,7 +2470,7 @@ async function generateShareUrl() {
     stat.innerHTML = '<div class="status-box status-ok">✓ 連結已產生。建議直接用 <strong>📱 QR Code</strong>' +
       (navigator.share ? ' 或 <strong>📤 傳送給旅伴</strong>' : '') +
       ' 分享，不必貼那一長串網址。<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
-      '連結把整份行程都壓進網址（' + sizeKb + ' KB）所以較長——這是「資料不經伺服器、不留個資」的代價。</span>' + warn + '</div>';
+      '連結包含整份行程的所有資料（' + sizeKb + ' KB）所以較長——這是「不經外部伺服器、兼顧隱私安全」的優點。</span>' + warn + '</div>';
   } catch (e) {
     stat.innerHTML = '<div class="status-box status-err">' + e.message + '</div>';
   }
