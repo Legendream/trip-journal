@@ -284,9 +284,10 @@ function maybeShowAddToHomeHint() {
   if (!isIOS && !isAndroid) return;
   if (localStorage.getItem(PWA_HINT_KEY)) return;
 
+  // 選單名稱依 Chrome 150／iOS 26 起的官方說明；舊版名稱放括號
   const hint = isIOS
-    ? '按下方分享 <span style="font-size:14px;">⬆</span> →「加入主畫面」，下次點 icon 直接開'
-    : '按右上 ⋮ →「加到主畫面」，下次點 icon 直接開';
+    ? '點「分享」<span style="font-size:14px;">⬆</span> → 往下滑點「加入主畫面」（新版 Safari 要先點選單鈕才看得到分享），下次點 icon 直接開'
+    : '按右上 ⋮ →「安裝並建立捷徑」（舊版 Chrome 叫「加到主畫面」），下次點 icon 直接開';
 
   const banner = document.createElement('div');
   banner.id = 'tk-pwa-hint';
