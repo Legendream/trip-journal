@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover">
 <title>旅人手帖 · 載入中…</title>
+<!-- 靜態 Open Graph 標籤——連結預覽（LINE／縮網址服務等）多半不會執行 JS，
+     沒有這些標籤就會直接抓取畫面上的「載入中」文字甚至 <script> 原始碼當預覽內容。
+     行程資料要 JS 解碼 hash 後才知道，這裡先給通用、不依賴解碼結果的說明。 -->
+<meta property="og:title" content="旅人手帖">
+<meta property="og:description" content="旅伴分享給你的行程頁，點開查看每日行程、地圖導航與住宿資訊。">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
 <!-- PWA / Add-to-home-screen support — actual manifest is generated dynamically
      after the trip loads (so the home-screen name uses the trip title) -->
 <link rel="icon" type="image/svg+xml" href="./icon.svg">
