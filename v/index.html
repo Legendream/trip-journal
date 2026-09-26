@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover">
+<title>旅人手帖 · 載入中…</title>
+<!-- PWA / Add-to-home-screen support — actual manifest is generated dynamically
+     after the trip loads (so the home-screen name uses the trip title) -->
+<link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="apple-touch-icon" href="./icon.svg">
+<meta name="theme-color" content="#a8362f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+                 "PingFang TC", "Noto Sans CJK TC", sans-serif;
+    background: #f6f0e3; color: #1c1815; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .loading { text-align: center; color: #5a5247; font-size: 14px; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid #d8cfb8; border-top-color: #a8362f;
+    border-radius: 50%; animation: spin .8s linear infinite;
+    margin: 0 auto 14px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .err-box {
+    max-width: 480px; text-align: center;
+    background: #fbf6e9; border: 1px solid #d8cfb8;
+    padding: 36px 28px;
+  }
+  .err-box h1 {
+    font-family: "Songti TC", "Source Han Serif TC", serif;
+    font-size: 24px; font-weight: 700; margin-bottom: 14px;
+    color: #1c1815; letter-spacing: .04em;
+  }
+  .err-box p {
+    color: #5a5247; line-height: 1.7; font-size: 14px;
+    margin-bottom: 22px;
+  }
+  .err-box .err-code {
+    font-family: ui-monospace, monospace; font-size: 12px;
+    background: #ede5d2; padding: 8px 12px; margin: 12px 0;
+    color: #8a6a1f; text-align: left; overflow-wrap: anywhere;
+  }
+  .err-box a {
+    display: inline-block;
+    background: #a8362f; color: #faf6ec;
+    padding: 11px 26px; text-decoration: none;
+    font-weight: 600; font-size: 13px;
+    letter-spacing: .12em; border: 1.5px solid #a8362f;
+  }
+  .err-box a:hover { background: #c45a4f; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading">
+  <div class="spinner"></div>
+  <div>載入行程中…</div>
+</div>
+
+<script src="../generator/generator-template.js"></script>
+<script>
+(async function() {
+  const hash = window.location.hash || '';
+  if (!hash.startsWith('#z=')) {
+    showError(
+      '這是檢視網址',
+      '此頁面用於顯示透過「旅人手帖」分享的行程。<br>' +
+      '請使用包含行程資料的完整分享連結，或前往生成器自己製作。',
+      '<a href="../generator/">前往生成器</a>'
+    );
+    return;
+  }
+
+  try {
+    const encoded = hash.slice(3);
+    const compressed = base64urlToBytes(encoded);
+    const json = await decompressGzip(compressed);
+    const cfg = JSON.parse(json);
+
+    if (!cfg || !cfg.meta) throw new Error('資料格式不正確');
+
+    const html = await buildHtml(cfg);
+    await renderTripApp(html);
+    installPwaManifest(cfg);
+    maybeShowAddToHomeHint();
+  } catch (err) {
+    console.error('Failed to load trip:', err);
+    showError(
+      '無法載入行程',
+      '連結資料解析失敗。可能是連結被截斷、複製不完整，或資料格式錯誤。',
+      '<a href="../generator/">前往生成器</a>',
+      err.message
+    );
+  }
+})();
+
+function showError(title, body, action, code) {
+  const codeHtml = code ? '<div class="err-code">' + escapeHtml(code) + '</div>' : '';
+  document.getElementById('loading').outerHTML =
+    '<div class="err-box">' +
+      '<h1>' + title + '</h1>' +
+      '<p>' + body + '</p>' +
+      codeHtml +
+      action +
+    '</div>';
+  document.title = '旅人手帖 · ' + title;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function base64urlToBytes(s) {
+  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b64.length % 4 ? 4 - (b64.length % 4) : 0;
+  const padded = b64 + '='.repeat(pad);
+  const bin = atob(padded);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+async function decompressGzip(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
+
+function decodeTemplate() {
+  if (!window.TRIP_TMPL_B64) throw new Error('Template 未載入');
+  const bytes = Uint8Array.from(atob(window.TRIP_TMPL_B64), c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+// Render the trip app HTML into the current document while keeping the URL.
+// document.write() after page load breaks inline script execution, so we
+// parse + replace DOM manually then re-create each <script> (scripts inserted
+// via innerHTML or DOMParser are inert — only programmatically created ones run).
+async function renderTripApp(html) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  document.title = doc.title;
+  document.head.innerHTML = doc.head.innerHTML;
+  document.body.innerHTML = doc.body.innerHTML;
+
+  // Live scripts now in document but inert. Replace each in document order
+  // (await external scripts so inline scripts that depend on them see globals).
+  const scripts = Array.from(document.querySelectorAll('script'));
+  for (const s of scripts) {
+    await runScript(s);
+  }
+}
+
+// App icon: 旅人手帖 brand mark (same artwork as /icon.svg) centred on the
+// trip's theme colour. Kept identical to the generator's buildTripIconSvg so
+// the quick-share app and the downloaded app share one clean icon — the theme
+// colour distinguishes trips without ever squashing a long title.
+function generateIconSvg(cfg) {
+  const bg = cfg.meta.themeColor || '#a8362f';
+  const fg = cfg.meta.bgPale || cfg.meta.bgColor || '#fdf6ef';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+    <rect width="512" height="512" fill="${bg}"/>
+    <rect x="28" y="28" width="456" height="456" rx="10" fill="none" stroke="${fg}" stroke-width="2" opacity="0.3"/>
+    <g transform="translate(256 256) scale(8.2)" fill="none" stroke="${fg}" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-23" y="-28" width="46" height="49" rx="4" stroke-width="1.7"/>
+      <circle cx="12" cy="-17" r="4.5" fill="${fg}" opacity="0.85" stroke="none"/>
+      <path d="M-20,10 L-6,-6 L2,3 L12,-13 L20,10" stroke-width="1.5"/>
+      <line x1="-17" y1="14" x2="17" y2="14" stroke-width="0.9" stroke-dasharray="2,2.5" opacity="0.6"/>
+      <path d="M-2.5,21 L-2.5,28.5 L0,26 L2.5,28.5 L2.5,21" stroke-width="1.5"/>
+    </g>
+    <text x="256" y="476" font-size="22" font-family="'Songti TC',serif" font-style="italic"
+          fill="${fg}" opacity="0.6" text-anchor="middle" letter-spacing="5">TRIP JOURNAL</text>
+  </svg>`;
+}
+
+function svgToDataUrl(svg) {
+  // encodeURIComponent is safer than base64 for SVG with CJK chars
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+// Rasterise the icon SVG to a PNG data-URL. Android/iOS home-screen icons need
+// raster PNG; SVG manifest icons get ignored → system draws an ugly text tile.
+// Falls back to the SVG data-URL if rasterising fails.
+function svgToPngDataUrl(svg, size) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas');
+        c.width = c.height = size;
+        c.getContext('2d').drawImage(img, 0, 0, size, size);
+        resolve(c.toDataURL('image/png'));
+      } catch (e) { resolve(svgToDataUrl(svg)); }
+    };
+    img.onerror = () => resolve(svgToDataUrl(svg));
+    img.src = svgToDataUrl(svg);
+  });
+}
+
+// Generate a PWA manifest customised with this trip's title/colours and
+// inject it as a blob URL. start_url preserves the hash so the home-screen
+// icon launches into this exact trip on tap.
+async function installPwaManifest(cfg) {
+  const svg = generateIconSvg(cfg);
+  const png192 = await svgToPngDataUrl(svg, 192);
+  const png512 = await svgToPngDataUrl(svg, 512);
+  const png180 = await svgToPngDataUrl(svg, 180);
+
+  const manifest = {
+    name: cfg.meta.title || '旅人手帖',
+    short_name: cfg.meta.shortTitle || (cfg.meta.title || '行程').slice(0, 12),
+    description: cfg.meta.subtitle || '',
+    start_url: location.pathname + location.hash,
+    scope: location.pathname,
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: cfg.meta.bgColor || '#f6f0e3',
+    theme_color: cfg.meta.themeColor || '#a8362f',
+    icons: [
+      { src: png192, sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: png512, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+    ],
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  const url = URL.createObjectURL(blob);
+
+  // Remove any manifest link the trip template may have included
+  document.querySelectorAll('link[rel="manifest"]').forEach(el => el.remove());
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = url;
+  document.head.appendChild(link);
+
+  // Swap apple-touch-icon to the dynamic trip-specific icon so iOS "Add to
+  // Home Screen" picks it up (iOS reads this link at the time of capture).
+  let touchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+  if (!touchIcon) {
+    touchIcon = document.createElement('link');
+    touchIcon.rel = 'apple-touch-icon';
+    document.head.appendChild(touchIcon);
+  }
+  touchIcon.href = png180;
+
+  let favIcon = document.querySelector('link[rel="icon"]');
+  if (favIcon) favIcon.href = png192;
+
+  // Sync theme-color meta to trip's colour so the iOS status bar / Android
+  // task-switcher chrome matches the header
+  let themeMeta = document.querySelector('meta[name="theme-color"]');
+  if (!themeMeta) {
+    themeMeta = document.createElement('meta');
+    themeMeta.name = 'theme-color';
+    document.head.appendChild(themeMeta);
+  }
+  themeMeta.content = cfg.meta.themeColor || '#a8362f';
+}
+
+// Small dismissible banner shown to mobile visitors who aren't already in
+// standalone mode, telling them they can install this trip to their home screen.
+// localStorage-flagged so each viewer sees it at most once.
+const PWA_HINT_KEY = 'tk-pwa-hint-dismissed';
+function maybeShowAddToHomeHint() {
+  // Already running as installed app — skip
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+  if (window.navigator.standalone === true) return;          // iOS legacy
+  // Mobile only
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  if (!isIOS && !isAndroid) return;
+  if (localStorage.getItem(PWA_HINT_KEY)) return;
+
+  const hint = isIOS
+    ? '按下方分享 <span style="font-size:14px;">⬆</span> →「加入主畫面」，下次點 icon 直接開'
+    : '按右上 ⋮ →「加到主畫面」，下次點 icon 直接開';
+
+  const banner = document.createElement('div');
+  banner.id = 'tk-pwa-hint';
+  banner.innerHTML = `
+    <style>
+      #tk-pwa-hint {
+        position: fixed;
+        bottom: calc(80px + env(safe-area-inset-bottom, 0));
+        left: 12px; right: 12px;
+        z-index: 90;
+        background: #faf6ec;
+        color: #1c1815;
+        border: 1.5px solid #1c1815;
+        box-shadow: 4px 4px 0 rgba(168,54,47,0.85);
+        padding: 12px 14px 12px 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans CJK TC", sans-serif;
+        font-size: 13px;
+        line-height: 1.45;
+        display: flex; align-items: center; gap: 12px;
+        animation: tk-hint-in 0.4s ease-out;
+      }
+      @keyframes tk-hint-in {
+        from { transform: translateY(20px); opacity: 0; }
+        to   { transform: translateY(0); opacity: 1; }
+      }
+      #tk-pwa-hint .tk-h-icon { font-size: 18px; flex-shrink: 0; }
+      #tk-pwa-hint .tk-h-body { flex: 1; min-width: 0; }
+      #tk-pwa-hint .tk-h-title { font-weight: 700; margin-bottom: 2px; }
+      #tk-pwa-hint .tk-h-body small { color: #5a5247; }
+      #tk-pwa-hint .tk-h-close {
+        background: none; border: none; cursor: pointer;
+        color: #9a8f7e; font-size: 16px; padding: 0 0 0 6px;
+        line-height: 1; flex-shrink: 0;
+      }
+    </style>
+    <span class="tk-h-icon">💡</span>
+    <div class="tk-h-body">
+      <div class="tk-h-title">把這個行程加到主畫面</div>
+      <small>${hint}</small>
+    </div>
+    <button class="tk-h-close" aria-label="關閉">✕</button>
+  `;
+  document.body.appendChild(banner);
+  banner.querySelector('.tk-h-close').addEventListener('click', () => {
+    banner.remove();
+    try { localStorage.setItem(PWA_HINT_KEY, '1'); } catch (e) {}
+  });
+}
+
+function runScript(oldScript) {
+  return new Promise((resolve) => {
+    const s = document.createElement('script');
+    for (const attr of oldScript.attributes) {
+      s.setAttribute(attr.name, attr.value);
+    }
+    if (oldScript.src) {
+      s.onload = s.onerror = () => resolve();
+      oldScript.parentNode.replaceChild(s, oldScript);
+    } else {
+      s.textContent = oldScript.textContent;
+      oldScript.parentNode.replaceChild(s, oldScript);
+      resolve();
+    }
+  });
+}
+
+async function buildHtml(cfg) {
+  let html = decodeTemplate();
+
+  const replacements = {
+    '__TRIP_TITLE__':    cfg.meta.title || '',
+    '__SHORT_TITLE__':   cfg.meta.shortTitle || '',
+    '__THEME_COLOR__':   cfg.meta.themeColor || '#a8362f',
+    '__THEME_ACCENT__':  cfg.meta.themeAccent || '#c45a4f',
+    '__THEME_LIGHT__':   cfg.meta.themeLight || '#e3a89c',
+    '__BG_COLOR__':      cfg.meta.bgColor || '#faf2ec',
+    '__BG_PALE__':       cfg.meta.bgPale || '#f3e3d8',
+    '__TRIP_HEADING__':  cfg.meta.heading || cfg.meta.title || '',
+    '__TRIP_SUBTITLE__': cfg.meta.subtitle || '',
+    '__DATE_PILL__':     cfg.meta.datePill || '',
+    '__DURATION_PILL__': cfg.meta.durationPill || '',
+    '__PEOPLE_PILL__':   cfg.meta.peoplePill || '',
+    '__TRIP_PIN__':      cfg.meta.pin || '0000',
+  };
+  for (const [k, v] of Object.entries(replacements)) {
+    html = html.split(k).join(v);
+  }
+  // Use function form for __TRIP_CONFIG__ — JSON may contain $ chars that have special meaning in regex replacement strings
+  html = html.split('__TRIP_CONFIG__').join(JSON.stringify(cfg));
+
+  // Strip PWA artefacts — viewer mode should NOT register a service worker
+  // (would cache the viewer URL forever and break subsequent shares).
+  // We swap the `navigator.serviceWorker.register` reference for a no-op stub
+  // instead of editing the surrounding code — this preserves all balanced
+  // parens/braces, including any `.catch(() => {})` chains.
+  html = html.replace(/<link[^>]+rel=["']manifest["'][^>]*>/gi, '');
+  html = html.replace(
+    /navigator\.serviceWorker\.register/g,
+    '({register:()=>Promise.resolve()}).register'
+  );
+
+  return html;
+}
+</script>
+</body>
+</html>

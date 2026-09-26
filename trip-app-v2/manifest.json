@@ -1,0 +1,19 @@
+{
+  "name": "東北賞櫻之旅 2026",
+  "short_name": "東北賞櫻",
+  "description": "仙台・平泉・青森・弘前・松島 8天7夜行程",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#fff5f8",
+  "theme_color": "#c94b72",
+  "orientation": "portrait",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='40' fill='%23c94b72'/%3E%3Ctext y='130' x='96' text-anchor='middle' font-size='110'%3E🌸%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

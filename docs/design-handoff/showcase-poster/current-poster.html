@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>行程海報現況</title>
+<style>
+  /* 這份檔案用 HTML/CSS 1:1 重現 generator/template-src.html 的 drawShowcaseCanvas()
+     目前的排版數值（畫布 720×1280），供 Claude Design 改版參考。
+     正式產品是 Canvas 2D 繪製，不是 HTML。 */
+  :root {
+    --theme-a: #c94b72;  /* 主題色（每趟行程不同） */
+    --theme-b: #e06a8a;  /* 主題色 2 */
+    --font: -apple-system, BlinkMacSystemFont, "PingFang TC", "Hiragino Kaku Gothic ProN", "Noto Sans CJK TC", sans-serif;
+    --scale: 0.5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font); background: #2a2a2a; color: #eee; padding: 16px; }
+  header { max-width: 1200px; margin: 0 auto 16px; }
+  h1 { font-size: 20px; margin-bottom: 6px; }
+  header p { font-size: 14px; color: #bbb; line-height: 1.6; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .controls button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 1px solid #666; background: #3a3a3a; color: #eee; cursor: pointer; }
+  .controls button.on { background: #eee; color: #222; }
+  .grid { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+  figure { display: flex; flex-direction: column; gap: 8px; }
+  figcaption { font-size: 13px; color: #ccc; max-width: calc(720px * var(--scale)); }
+  .frame { width: calc(720px * var(--scale)); height: calc(1280px * var(--scale)); overflow: hidden; border-radius: 6px; }
+
+  /* ───── 海報本體：以下全是畫布 px（720×1280） ───── */
+  .poster {
+    width: 720px; height: 1280px; position: relative; overflow: hidden;
+    transform: scale(var(--scale)); transform-origin: 0 0;
+    background: linear-gradient(to bottom right, var(--theme-a), var(--theme-b));
+    color: #fff; font-family: var(--font);
+  }
+  .photo { position: absolute; left: 0; top: 0; width: 720px; height: 589px; /* H×0.46 */
+    background: repeating-linear-gradient(45deg, #8a8f7a 0 24px, #9aa08a 24px 48px);
+    display: flex; align-items: center; justify-content: center; font-size: 28px; color: #fff; }
+  .body { position: absolute; left: 36px; width: 648px; /* PAD 36 */ }
+  .meta   { font-size: 12px; font-weight: 700; line-height: 17px; color: rgba(255,255,255,.85); margin-bottom: 8px; }
+  .theme  { font-size: 21px; font-weight: 900; line-height: 29px; }
+  .date   { font-size: 12px; font-weight: 400; line-height: 17px; color: rgba(255,255,255,.85); margin-bottom: 18px; }
+  .act    { font-size: 15px; font-weight: 400; line-height: 21px; }
+  .hotel  { font-size: 13px; font-weight: 700; line-height: 18px; color: rgba(255,255,255,.92); margin-top: 8px; }
+  .cap    { font-size: 14px; font-weight: 400; line-height: 20px; margin-top: 10px; }
+  .trip-title { font-size: 18px; font-weight: 900; line-height: 25px; margin-bottom: 6px; }
+  .trip-sub   { font-size: 12px; line-height: 17px; color: rgba(255,255,255,.85); margin-bottom: 16px; }
+  .row { display: flex; align-items: center; white-space: nowrap; overflow: hidden; }
+  .row .d { width: 40px; font-weight: 700; color: rgba(255,255,255,.85); }
+  .row .e { width: 36px; }
+  .row .l { font-weight: 500; overflow: hidden; }
+  .footer { position: absolute; left: 36px; top: 1160px; width: 648px; height: 84px; border-radius: 14px;
+    background: rgba(255,255,255,.16); }
+  .qr { position: absolute; left: 10px; top: 10px; width: 64px; height: 64px; background: #fff;
+    display: flex; align-items: center; justify-content: center; color: #1e0d12; font-size: 11px; font-weight: 700; }
+  .ft1 { position: absolute; left: 88px; top: 18px; font-size: 13px; font-weight: 700; line-height: 18px; }
+  .ft2 { position: absolute; left: 88px; top: 40px; font-size: 11px; line-height: 15px; color: rgba(255,255,255,.85); }
+</style>
+</head>
+<body>
+<header>
+  <h1>行程海報現況（720×1280 畫布）</h1>
+  <p>數值取自 <code>generator/template-src.html</code> 的 <code>drawShowcaseCanvas()</code>。前 3 張是現況，後 3 張是內容極端時的壓力測試。改版需求與限制見同資料夾 <code>brief.md</code>。</p>
+  <div class="controls" id="scale-btns">
+    <button data-s="0.5" class="on">縮小一半瀏覽</button>
+    <button data-s="0.5417">手機全螢幕實際大小（390pt 寬）</button>
+    <button data-s="1">畫布原尺寸 720px</button>
+  </div>
+  <div class="controls" id="theme-btns">
+    <button data-a="#c94b72" data-b="#e06a8a" class="on">粉紅主題</button>
+    <button data-a="#2f6f8f" data-b="#4f9cc0">藍主題</button>
+    <button data-a="#a8362f" data-b="#c9644a">磚紅主題</button>
+    <button data-a="#7a9a5a" data-b="#a9c47f">淺綠主題（對比最差情境）</button>
+  </div>
+</header>
+<main class="grid" id="grid"></main>
+
+<script>
+const TITLE = "東北賞櫻之旅 2026";
+const DAY2 = { day: 2, date: "4/16", wd: "四", theme: "仙台市區賞櫻",
+  acts: ["瑞鳳殿", "榴岡公園", "仙台東照宮", "仙台市區購物"], hotel: "ホテル京阪仙台" };
+const TRIP8 = [
+  ["4/15","三","抵達仙台","✈️"],["4/16","四","仙台市區賞櫻","🌸"],["4/17","五","平泉 & 北上夜櫻","🏛️"],
+  ["4/18","六","青森市區","🐟"],["4/19","日","弘前全日賞櫻","🌸"],["4/20","一","松島溫泉・一之坊","♨️"],
+  ["4/21","二","松島巡禮 & 仙台 Outlet","⛵"],["4/22","三","返家","🏠"]];
+const LONGDAY = { day: 5, date: "10/3", wd: "五", theme: "京都嵐山・嵯峨野一日散策與伏見稻荷夜拜",
+  acts: ["天龍寺（世界遺產・曹源池庭園）","嵐山竹林小徑","野宮神社","常寂光寺","渡月橋","嵐山小火車 Sagano Romantic Train","保津川遊船","% ARABICA Kyoto Arashiyama","伏見稻荷大社 千本鳥居夜間參拜"],
+  hotel: "Hotel The Celestine Kyoto Gion（京都祇園セレスティンホテル）", caption: "竹林的風聲比照片更好看" };
+const EMO = ["✈️","🌸","🏯","⛩️","🍜","🚅","♨️","🗻","🛍️","🏠"];
+const TRIP_N = n => Array.from({length:n}, (_, i) => [`${1 + Math.floor(i/30)}/${(i%30)+1}`, "一二三四五六日"[i%7], i%3===0 ? "大阪環球影城一整天暢玩哈利波特園區" : "市區散步", EMO[i%EMO.length]]);
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const footer = `<div class="footer"><div class="qr">QR</div>
+  <div class="ft1">也來排一趟自己的行程</div><div class="ft2">trips.claire-cheng.com</div></div>`;
+
+function dayPoster(d, total, photo) {
+  const top = photo ? 589 + 26 : 36 + 30;
+  return `<div class="poster">${photo ? '<div class="photo">使用者照片</div>' : ""}
+    <div class="body" style="top:${top}px">
+      <div class="meta">${esc(TITLE)}・DAY ${d.day}／共 ${total} 天</div>
+      <div class="theme">${esc(d.theme)}</div>
+      <div class="date">${d.date}（${d.wd}）</div>
+      ${d.acts.map(a => `<div class="act">・${esc(a)}</div>`).join("")}
+      ${d.hotel ? `<div class="hotel">🏨 ${esc(d.hotel)}</div>` : ""}
+      ${d.caption ? `<div class="cap">「${esc(d.caption)}」</div>` : ""}
+    </div>${footer}</div>`;
+}
+function tripPoster(title, days) {
+  // 與 canvas 相同的算法：listTop=130, footerY=1160, listH=footerY-16-listTop
+  const listH = 1160 - 16 - 130;
+  const rowH = Math.min(54, listH / days.length);
+  const fs = Math.max(9, Math.min(20, Math.round(rowH * 0.42)));
+  const es = Math.max(10, Math.min(22, Math.round(rowH * 0.46)));
+  return `<div class="poster"><div class="body" style="top:66px">
+      <div class="trip-title">${esc(title)}</div>
+      <div class="trip-sub">${days.length} 天</div>
+      ${days.map((d, i) => `<div class="row" style="height:${rowH}px;font-size:${fs}px">
+        <span class="d">D${i+1}</span><span class="e" style="font-size:${es}px">${d[3]}</span>
+        <span class="l">${d[0]}（${d[1]}）${esc(d[2])}</span></div>`).join("")}
+    </div>${footer}</div>`;
+}
+
+const CASES = [
+  ["① 單日・無照片（現況）", dayPoster(DAY2, 8, false)],
+  ["② 單日・有照片（現況）", dayPoster(DAY2, 8, true)],
+  ["③ 整趟 8 天（現況）", tripPoster(TITLE, TRIP8)],
+  ["④ 壓力測試：單日 9 個景點＋長名稱＋長住宿名＋一句話，有照片", dayPoster(LONGDAY, 12, true)],
+  ["⑤ 壓力測試：整趟 20 天、主題名稱長", tripPoster("關西親子自由行 2026", TRIP_N(20))],
+  ["⑥ 壓力測試：整趟 30 天（字級會被自動縮小）", tripPoster("歐洲打工度假第一個月", TRIP_N(30))],
+];
+document.getElementById("grid").innerHTML = CASES.map(([cap, html]) =>
+  `<figure><figcaption>${cap}</figcaption><div class="frame">${html}</div></figure>`).join("");
+
+function wire(id, fn) {
+  const box = document.getElementById(id);
+  box.addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    box.querySelectorAll("button").forEach(x => x.classList.toggle("on", x === b));
+    fn(b.dataset);
+  });
+}
+const root = document.documentElement.style;
+wire("scale-btns", d => root.setProperty("--scale", d.s));
+wire("theme-btns", d => { root.setProperty("--theme-a", d.a); root.setProperty("--theme-b", d.b); });
+</script>
+</body>
+</html>

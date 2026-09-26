@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Paper background -->
+  <rect width="512" height="512" fill="#f6f0e3"/>
+  <!-- Subtle outer border -->
+  <rect x="18" y="18" width="476" height="476" rx="8" fill="none" stroke="#d8cfb8" stroke-width="1.5" opacity="0.7"/>
+  <!-- Icon mark: same design as masthead, scaled 8.2× and centred on (256,258) -->
+  <g transform="translate(256 258) scale(8.2)" fill="none" stroke="#a8362f" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 框架 -->
+    <rect x="-23" y="-28" width="46" height="49" rx="4" stroke-width="1.7"/>
+    <!-- 太陽 -->
+    <circle cx="12" cy="-17" r="4.5" fill="#a8362f" opacity="0.85" stroke="none"/>
+    <!-- 山脈 -->
+    <path d="M-20,10 L-6,-6 L2,3 L12,-13 L20,10" stroke-width="1.5"/>
+    <!-- 虛線路徑 -->
+    <line x1="-17" y1="14" x2="17" y2="14" stroke-width="0.9" stroke-dasharray="2,2.5" opacity="0.6"/>
+    <!-- 書籤尾 -->
+    <path d="M-2.5,21 L-2.5,28.5 L0,26 L2.5,28.5 L2.5,21" stroke-width="1.5"/>
+  </g>
+</svg>

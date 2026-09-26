@@ -1,0 +1,2097 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旅人手帖 · 為旅伴做的小本子</title>
+<link rel="icon" type="image/svg+xml" href="../icon.svg">
+<link rel="apple-touch-icon" href="../icon.svg">
+<script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<script src="generator-template.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    /* Editorial palette — warm paper + terracotta accent */
+    --paper: #f6f0e3;
+    --paper-deep: #ede5d2;
+    --paper-light: #faf6ec;
+    --card: #fbf6e9;
+    --ink: #1c1815;
+    --ink-2: #5a5247;
+    --ink-3: #9a8f7e;
+    --ink-4: #b8b0a0;
+    --rule: #d8cfb8;
+    --rule-soft: #e6dfc9;
+    --line: #d8cfb8;          /* alias for legacy selectors */
+    --line-2: #e6dfc9;        /* alias */
+    --bg: var(--paper);       /* alias */
+    --bg-2: var(--paper-deep);/* alias */
+    --accent: #a8362f;        /* terracotta red */
+    --accent-2: #c75c54;
+    --accent-soft: #faecea;   /* very pale terracotta wash */
+    --accent-line: #e8c8c4;
+    --accent-bg: #faecea;
+    --accent-pale: #f3d8d4;
+    --ok: #4a6b3a;
+    --ok-soft: #ecf0e2;
+    --warn: #8a6a1f;
+    --warn-soft: #f5edd6;
+    --err: #a8362f;
+    --err-soft: #f9e7e4;
+    --radius: 4px;
+    --radius-lg: 6px;
+    --shadow-sm: 0 1px 0 rgba(28,24,21,.04);
+    --shadow: 0 2px 0 rgba(28,24,21,.05);
+    --font-serif: "Noto Serif TC", "Songti TC", "Source Han Serif TC", serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+                 "PingFang TC", "Noto Sans CJK TC", sans-serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+    /* ── Type scale（全站字體階層；功能性閱讀文字一律 ≥ Fine 15px） ── */
+    --fs-h1:   38px;  /* 步驟大標 */
+    --fs-h2:   23px;  /* 卡片／區塊標題 */
+    --fs-h3:   17px;  /* 區段小標／欄位標籤 */
+    --fs-body: 16px;  /* 正文／清單／提示框／按鈕 */
+    --fs-fine: 15px;  /* 輔助提示／結果回饋／註記／code／badge（最小級） */
+  }
+  @media (max-width: 600px) {
+    :root {
+      --fs-h1: 28px; --fs-h2: 21px; --fs-h3: 16px;
+      --fs-body: 15.5px; --fs-fine: 15px;
+    }
+  }
+  body {
+    font-family: var(--font-sans);
+    background: var(--paper); color: var(--ink); min-height: 100vh;
+    -webkit-font-smoothing: antialiased; line-height: 1.55;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(168,54,47,0.022) 0, transparent 320px),
+      radial-gradient(circle at 82% 88%, rgba(28,24,21,0.018) 0, transparent 360px);
+  }
+  /* Manuscript margin rules — vertical lines on left/right */
+  body::before, body::after {
+    content: ""; position: fixed; top: 0; bottom: 0; width: 1px;
+    background: var(--rule); pointer-events: none; z-index: 5;
+  }
+  body::before { left: 28px; }
+  body::after { right: 28px; }
+  @media (max-width: 760px) {
+    body::before, body::after { display: none; }
+  }
+  /* Reusable serif helpers */
+  .serif { font-family: var(--font-serif); }
+  .ital { font-style: italic; }
+  .upper-tk { text-transform: uppercase; letter-spacing: .26em; font-weight: 600; font-size: 10px; }
+
+  /* ── Top bar (Masthead) ────────────────────────────────────── */
+  .topbar {
+    background: var(--paper-light);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 22px 56px 18px;
+    position: sticky; top: 0; z-index: 30;
+  }
+  .topbar-inner {
+    max-width: 1080px; margin: 0 auto;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 14px;
+  }
+  /* Back-to-cover link wraps masthead-left */
+  .masthead-home-link {
+    display: flex; align-items: center; gap: 18px;
+    text-decoration: none; color: inherit;
+  }
+  .masthead-left { display: flex; align-items: center; gap: 18px; }
+  .masthead-mark {
+    width: 48px; height: 48px; flex-shrink: 0; color: var(--accent);
+  }
+  .masthead-titles { line-height: 1; }
+  .masthead-kicker {
+    font-size: 10px; letter-spacing: .26em; color: var(--accent);
+    font-weight: 600; text-transform: uppercase; margin-bottom: 8px;
+    font-style: italic; font-family: var(--font-serif);
+  }
+  .masthead-title {
+    font-family: var(--font-serif);
+    font-size: 30px; font-weight: 700;
+    letter-spacing: .14em; color: var(--ink);
+    line-height: 1;
+  }
+  .masthead-right {
+    text-align: right; line-height: 1;
+    max-width: 280px;
+  }
+  .masthead-edition {
+    font-size: 9px; letter-spacing: .28em; color: var(--ink-3);
+    text-transform: uppercase; margin-bottom: 6px; font-weight: 600;
+  }
+  .masthead-doctitle {
+    font-family: var(--font-serif);
+    font-size: 18px; font-weight: 600; color: var(--ink);
+    letter-spacing: .04em;
+    line-height: 1.15;
+    max-width: 280px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    direction: rtl;        /* keep tail (year) visible, truncate from left */
+  }
+  .masthead-doctitle:dir(ltr), .masthead-doctitle { direction: rtl; }
+  .masthead-doctitle.empty {
+    font-style: italic; font-weight: 400; color: var(--ink-3);
+  }
+  .topbar-actions {
+    display: flex; gap: 10px; align-items: center;
+    margin-top: 6px; justify-content: flex-end;
+  }
+  .save-indicator {
+    font-size: var(--fs-fine); color: var(--ink-3);
+    font-style: italic; font-family: var(--font-serif);
+    letter-spacing: .04em;
+  }
+  .save-indicator.saving { color: var(--accent); }
+  .save-indicator.saved { color: var(--ok); }
+  .masthead-birds {
+    position: absolute; top: 14px; left: 50%;
+    transform: translateX(-50%);
+    opacity: .55; color: var(--ink-2);
+    display: flex; gap: 14px;
+    pointer-events: none;
+  }
+  .masthead-birds .b2 { margin-top: 7px; }
+  .masthead-birds .b3 { margin-top: -3px; }
+  /* Mountain band (decorative under masthead) */
+  .mountain-band {
+    background: var(--paper-light);
+    border-bottom: 1px solid var(--rule);
+    padding: 6px 0 4px;
+    display: flex; justify-content: center;
+    opacity: .42;
+  }
+  .mountain-band svg { display: block; max-width: 560px; width: 78%; height: auto; }
+  /* Sun arcs across the mountain band step 1→5 — set via JS */
+  #mountain-sun {
+    transition:
+      cx 700ms cubic-bezier(.5, 0, .25, 1),
+      cy 700ms cubic-bezier(.5, 0, .25, 1),
+      opacity 500ms ease-out,
+      stroke 500ms ease-out;
+  }
+  /* 桌機操作建議：只在小螢幕顯示 */
+  .desktop-hint { display: none; }
+
+  @media (max-width: 600px) {
+    .desktop-hint {
+      display: block;
+      font-size: var(--fs-fine); color: var(--ink-3);
+      background: var(--bg-pale); border: 1px solid var(--line-2);
+      border-radius: 6px; padding: 8px 12px; margin-bottom: 14px;
+      line-height: 1.5;
+    }
+    .topbar { padding: 14px 36px 10px; }
+    .masthead-mark { width: 36px; height: 36px; }
+    .masthead-title { font-size: 22px; letter-spacing: .08em; }
+    .masthead-doctitle { font-size: 14px; max-width: 160px; }
+    .masthead-birds { display: none; }
+  }
+
+  /* ── Menu (⋯) dropdown ─────────────────────────────────────── */
+  .menu-wrap { position: relative; }
+  .menu-pop {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: var(--paper-light); border: 1px solid var(--ink);
+    border-radius: 0;
+    box-shadow: 4px 4px 0 rgba(28,24,21,.08);
+    min-width: 240px; z-index: 200;
+    padding: 8px 4px; display: none;
+  }
+  .menu-pop.open { display: block; }
+  .menu-item {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 9px 14px; background: transparent; border: none; border-radius: 0;
+    font-size: var(--fs-body); color: var(--ink); cursor: pointer; text-align: left;
+    font-family: var(--font-sans);
+  }
+  .menu-item:hover { background: var(--paper-deep); }
+  .menu-item.danger { color: var(--accent); }
+  .menu-item.danger:hover { background: var(--accent-bg); }
+  .menu-divider { height: 1px; background: var(--rule); margin: 6px 6px; }
+  .menu-section {
+    font-size: var(--fs-fine); text-transform: none;
+    letter-spacing: .04em; color: var(--ink-3);
+    padding: 8px 14px 4px; font-weight: 700;
+    font-family: var(--font-serif);
+  }
+  .menu-icon { width: 16px; text-align: center; flex-shrink: 0; opacity: .65; color: var(--accent); }
+
+  /* ── Toast ─────────────────────────────────────────────────── */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--paper-light);
+    padding: 14px 20px; border-radius: 0;
+    border: 1px solid var(--ink);
+    box-shadow: 4px 4px 0 var(--accent);
+    font-size: var(--fs-body); line-height: 1.55;
+    max-width: calc(100vw - 32px); width: max-content;
+    z-index: 1000; opacity: 0;
+    transition: opacity .25s, transform .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast .toast-title {
+    font-weight: 700; margin-bottom: 4px;
+    font-family: var(--font-serif); font-size: var(--fs-body);
+  }
+  .toast .toast-body { opacity: .85; font-size: var(--fs-fine); }
+  /* Action toast — sticky variant with buttons; user must dismiss */
+  .toast.toast-action { pointer-events: auto; max-width: 360px; }
+  .toast-actions {
+    display: flex; gap: 8px; margin-top: 12px;
+    justify-content: flex-end;
+  }
+  .toast-action-btn {
+    padding: 6px 14px;
+    font-size: var(--fs-fine); font-weight: 700;
+    font-family: var(--font-serif);
+    letter-spacing: .08em;
+    border-radius: 0; cursor: pointer;
+    border: 1px solid var(--paper-light);
+    background: transparent; color: var(--paper-light);
+    transition: background .12s;
+  }
+  .toast-action-btn:hover { background: rgba(255,255,255,.12); }
+  .toast-action-btn.primary {
+    background: var(--accent); border-color: var(--accent);
+  }
+  .toast-action-btn.primary:hover { background: var(--accent-2); }
+
+  /* ── Stepper (giant serif numerals) ────────────────────────── */
+  .stepper {
+    background: var(--paper-light);
+    box-shadow: 0 2px 8px rgba(28,24,21,0.06);
+    padding: 14px 56px 16px;
+    position: sticky; top: 111px; z-index: 20;
+  }
+  .stepper-inner {
+    display: flex; max-width: 920px; margin: 0 auto;
+    align-items: flex-start; gap: 0;
+  }
+  .step-item {
+    flex: 0 0 auto;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 0;
+    padding: 4px 0 4px 0;
+    cursor: pointer; user-select: none;
+    border-bottom: none;
+    min-width: 84px;
+    transition: opacity .15s;
+  }
+  .step-item:not(.active):not(.done):hover { opacity: .8; }
+  .step-circle {
+    /* Big serif numeral; not a circle */
+    font-family: var(--font-serif);
+    font-size: 32px; font-weight: 500; line-height: .95;
+    color: var(--ink-3);
+    background: transparent; border: none;
+    width: auto; height: auto;
+    border-radius: 0;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.02em;
+    display: block; padding: 0; margin: 0;
+  }
+  .step-item.active .step-circle { color: var(--accent); }
+  .step-item.done .step-circle { color: var(--ink); }
+  .step-circle::after {
+    content: ""; display: block;
+    width: 18px; height: 1px;
+    background: var(--rule); margin-top: 5px;
+  }
+  .step-item.active .step-circle::after { width: 28px; height: 2px; background: var(--accent); }
+  .step-item.done .step-circle::after { width: 22px; background: var(--ink-3); }
+  .step-item.done .step-circle-num::before {
+    content: "✓ "; font-size: 22px; color: var(--ok);
+    margin-right: 2px; font-family: var(--font-sans);
+  }
+  .step-label {
+    font-family: var(--font-serif);
+    font-size: var(--fs-fine); font-weight: 700;
+    color: var(--ink-3);
+    margin-top: 7px;
+    letter-spacing: .04em;
+    white-space: nowrap;
+  }
+  .step-item.active .step-label { color: var(--ink); }
+  .step-item.done .step-label { color: var(--ink-2); }
+  .step-en {
+    font-family: var(--font-serif);
+    font-style: italic; font-weight: 400;
+    font-size: var(--fs-fine); color: var(--ink-3);
+    margin-top: 2px; letter-spacing: .04em;
+    white-space: nowrap;
+  }
+  .step-item.active .step-en { color: var(--accent-2); }
+  /* Dashed connector between steps — uses stepper-inner gap pattern with pseudo flex */
+  .step-spacer {
+    flex: 1 1 auto;
+    border-top: 1px dashed var(--rule);
+    margin: 22px 8px 0;
+    min-width: 8px;
+  }
+
+  /* ── Layout ────────────────────────────────────────────────── */
+  .content { max-width: 880px; margin: 0 auto; padding: 36px 56px 160px; position: relative; }
+  @media (max-width: 600px) { .content { padding: 28px 36px 160px; } }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Chapter mark (第 N 章) above panel head */
+  .panel-head {
+    border-top: 1px solid var(--rule);
+    padding-top: 18px; margin-bottom: 28px;
+    position: relative;
+  }
+  .panel-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h1); font-weight: 700;
+    letter-spacing: .02em; color: var(--ink);
+    line-height: 1.15;
+    margin-top: 2px;
+  }
+  .panel-desc {
+    font-size: var(--fs-body); color: var(--ink-2);
+    margin-top: 16px; line-height: 1.75;
+    max-width: 660px;
+  }
+  @media (max-width: 600px) {
+    .panel-title { letter-spacing: 0; }
+  }
+  .panel-desc strong { color: var(--ink); font-weight: 700; }
+
+  /* Sprig decorations beside chapter — shown on wide viewports */
+  .panel-head .sprig {
+    position: absolute; top: 22px; opacity: .42;
+    color: var(--accent);
+    pointer-events: none;
+  }
+  .panel-head .sprig.left { left: -36px; }
+  .panel-head .sprig.right { right: -36px; transform: scaleX(-1); }
+  @media (max-width: 900px) { .panel-head .sprig { display: none; } }
+
+  /* ── Card (editorial section) ──────────────────────────────── */
+  .card {
+    background: var(--paper-light);
+    border: 1px solid var(--rule);
+    border-radius: 0;
+    padding: 26px 28px; margin-bottom: 22px;
+    position: relative;
+  }
+  /* Top tick rule on each card for editorial feel */
+  .card::before {
+    content: ""; position: absolute; top: -1px; left: -1px; right: -1px;
+    height: 3px; background: linear-gradient(to right, var(--ink) 0, var(--ink) 60px, transparent 60px);
+    pointer-events: none;
+  }
+  .card-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h2); font-weight: 700;
+    color: var(--ink); letter-spacing: .04em;
+  }
+  .card-desc {
+    font-size: var(--fs-body); color: var(--ink-2);
+    margin-top: 6px; line-height: 1.65;
+  }
+  .card-section {
+    margin-top: 20px; padding-top: 20px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  .card-label {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h3); font-weight: 700;
+    letter-spacing: .02em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+
+  /* ── Form (clean inputs on paper) ───────────────────────────── */
+  .field { margin-bottom: 20px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-family: var(--font-serif);
+    font-size: var(--fs-h3); font-weight: 700;
+    color: var(--ink); margin-bottom: 7px;
+    letter-spacing: .02em;
+  }
+  .field .hint, .hint {
+    font-size: var(--fs-fine); color: var(--ink-3); margin-top: 7px; line-height: 1.6;
+    font-style: italic; font-family: var(--font-serif);
+  }
+  .field .hint a, .hint a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+  .field .hint a:hover, .hint a:hover { color: var(--accent-2); }
+
+  input[type=text], input[type=number], input[type=password],
+  textarea, select {
+    width: 100%; padding: 12px 14px;
+    border: 1px solid var(--rule); border-radius: 0;
+    border-bottom: 1.5px solid var(--ink-3);
+    font-size: 16px; font-family: var(--font-sans); background: var(--paper-light);
+    color: var(--ink); transition: border-color .15s, background .15s;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: none; border-color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: #fff;
+  }
+  /* 全域淡化 placeholder：讓「提示／範例字」與「真實填入值」一眼可分，
+     避免使用者把範例 placeholder（人數「2」、購物「萩之月」等）誤認為已填好 */
+  input::placeholder, textarea::placeholder {
+    color: var(--ink-4); font-weight: 400; font-style: italic; opacity: 1;
+  }
+  textarea { resize: vertical; line-height: 1.6; min-height: 80px; }
+  .input-suffix-wrap { position: relative; display: block; }
+  .input-suffix-wrap input { padding-right: 72px; }
+  .input-suffix {
+    position: absolute; right: 14px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-3); pointer-events: none;
+    font-size: 15px; font-family: var(--font-sans);
+  }
+  .act-time-i.suggest { border-color: var(--warn); background: var(--warn-soft); }
+  .field.required label::after {
+    content: " ※"; color: var(--accent); font-weight: 700;
+  }
+  .field.invalid input, .field.invalid textarea {
+    border-color: var(--err); background: var(--err-soft);
+  }
+  .field.invalid label { color: var(--err); }
+  .day-card.invalid {
+    border-color: var(--err);
+    box-shadow: 0 0 0 2px rgba(168,54,47,0.12);
+  }
+  .field.missing input, .field.missing textarea {
+    border-color: var(--warn); background: var(--warn-soft);
+  }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* ── Buttons (editorial) ────────────────────────────────────── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 11px 22px; border: 1.5px solid var(--ink); border-radius: 0;
+    font-size: var(--fs-body); font-weight: 700; cursor: pointer;
+    transition: all .12s; font-family: var(--font-serif);
+    letter-spacing: .12em;
+    background: var(--paper-light); color: var(--ink);
+    text-transform: none;
+  }
+  .btn:hover { transform: translate(-1px,-1px); box-shadow: 2px 2px 0 var(--ink); }
+  .btn:active { transform: translate(0,0); box-shadow: none; }
+  .btn-primary {
+    background: var(--accent); color: var(--paper-light); border-color: var(--accent);
+  }
+  .btn-primary:hover { box-shadow: 2px 2px 0 var(--ink); }
+  .btn-secondary {
+    background: var(--paper-light); color: var(--ink); border-color: var(--ink);
+  }
+  .btn-secondary:hover { background: var(--paper-deep); }
+  .btn-ghost {
+    background: transparent; color: var(--ink-2); border-color: transparent;
+    letter-spacing: .04em; font-family: var(--font-sans); font-weight: 600;
+  }
+  .btn-ghost:hover { background: var(--paper-deep); color: var(--ink); box-shadow: none; transform: none; }
+  .btn-success {
+    background: var(--ink); color: var(--paper-light); border-color: var(--ink);
+    font-size: var(--fs-h3); padding: 14px 32px;
+  }
+  .btn-success:hover { box-shadow: 3px 3px 0 var(--accent); }
+  .btn-sm { padding: 7px 14px; font-size: var(--fs-fine); letter-spacing: .04em; }
+  .btn-lg { padding: 14px 28px; font-size: var(--fs-h3); }
+  .btn-block { width: 100%; }
+  .btn[disabled] { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-icon-x {
+    width: 26px; height: 26px; padding: 0;
+    border-radius: 0; border: 1px solid var(--rule);
+    background: var(--paper-light); color: var(--ink-3); font-size: var(--fs-fine);
+    font-family: var(--font-sans); letter-spacing: 0;
+  }
+  .btn-icon-x:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); transform: none; box-shadow: none; }
+
+  /* ── Status boxes ──────────────────────────────────────────── */
+  .status-box {
+    padding: 12px 14px; border-radius: 0;
+    font-size: var(--fs-body); margin-top: 12px; line-height: 1.6;
+    border-left: 3px solid;
+    background: var(--paper-light);
+    font-family: var(--font-serif);
+  }
+  .status-ok { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+  .status-err { background: var(--err-soft); border-color: var(--err); color: var(--err); }
+  .status-info { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+  .status-warn { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+
+  /* ── Alert banner (editorial newspaper alert) ──────────────── */
+  .alert-banner {
+    display: none;
+    position: relative;
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-left: 6px solid var(--ink);
+    padding: 18px 24px 18px 22px;
+    margin: 18px 0 22px;
+  }
+  .alert-banner::before {
+    content: ""; position: absolute; top: -1px; left: 5px; right: -1px;
+    height: 3px;
+    background: linear-gradient(to right, var(--ink) 0, var(--ink) 60px, transparent 60px);
+    pointer-events: none;
+  }
+  .alert-banner.show { display: block; }
+  .alert-banner-head {
+    display: flex; align-items: baseline; gap: 12px;
+    font-family: var(--font-serif);
+    color: var(--ink); letter-spacing: .04em;
+  }
+  .alert-banner-head .mark {
+    font-size: 22px; line-height: 1; color: var(--accent);
+    font-weight: 700;
+  }
+  .alert-banner-head .lede {
+    font-size: 20px; font-weight: 700; line-height: 1.2;
+  }
+  .alert-banner-head .count {
+    color: var(--accent); font-variant-numeric: tabular-nums;
+    padding: 0 2px;
+  }
+  .alert-banner-head .sub {
+    margin-left: auto;
+    font-size: var(--fs-fine); font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--ink-3);
+    font-family: var(--font-serif);
+    align-self: center;
+  }
+  .alert-banner-list {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--accent-line);
+    font-size: var(--fs-body); color: var(--ink-2); line-height: 1.85;
+    font-family: var(--font-serif);
+  }
+  .alert-banner-list .item {
+    display: inline-block;
+    margin: 0 14px 0 0;
+    position: relative; padding-left: 12px;
+  }
+  .alert-banner-list .item::before {
+    content: "·"; position: absolute; left: 2px; top: -1px;
+    color: var(--accent); font-weight: 700;
+  }
+  .alert-banner-list .more {
+    color: var(--ink-3); font-style: italic;
+  }
+  @media (max-width: 600px) {
+    .alert-banner { padding: 14px 16px 14px 16px; border-left-width: 5px; }
+    .alert-banner-head .lede { font-size: 17px; }
+    .alert-banner-head .sub { display: none; }
+  }
+
+  /* ── Step 1: Import paths (chapter tri-column) ──────────────── */
+  .path-tabs {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0;
+    border: 1px solid var(--ink); margin-bottom: 22px;
+    background: var(--paper-light);
+  }
+  .path-tab {
+    padding: 18px 14px; text-align: center; cursor: pointer;
+    border-right: 1px solid var(--rule);
+    font-family: var(--font-serif);
+    font-size: var(--fs-body); font-weight: 700;
+    color: var(--ink-2); transition: all .15s;
+    position: relative;
+  }
+  .path-tab:last-child { border-right: none; }
+  .path-tab:hover { background: var(--paper-deep); }
+  .path-tab.active {
+    background: var(--ink); color: var(--paper-light);
+  }
+  .path-tab .tab-sub {
+    font-size: var(--fs-fine); font-weight: 500;
+    font-family: var(--font-sans);
+    color: var(--ink-3);
+    margin-top: 5px; letter-spacing: .04em;
+  }
+  .path-tab.active .tab-sub { color: var(--accent-pale); }
+
+  .path-panel { display: none; }
+  .path-panel.active { display: block; }
+
+  /* Sub-card (two-option layout inside a path-panel) */
+  .sub-card {
+    background: var(--paper-light);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 18px;
+  }
+  .sub-card-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h3); font-weight: 700; color: var(--ink);
+    letter-spacing: .04em; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sub-card-tag {
+    font-family: var(--font-sans);
+    font-size: var(--fs-fine); font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--accent);
+    background: var(--accent-pale, #faecea);
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .sub-card-desc {
+    font-size: var(--fs-body); color: var(--ink-2);
+    line-height: 1.55; margin-bottom: 4px;
+  }
+  .sub-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 14px 0; color: var(--ink-3);
+    font-family: var(--font-serif); font-style: italic;
+    font-size: var(--fs-fine); letter-spacing: .08em;
+  }
+  .sub-divider::before, .sub-divider::after {
+    content: ""; flex: 1; height: 1px;
+    background: var(--rule);
+  }
+
+  /* AI flow */
+  .ai-step {
+    border-left: 1px solid var(--rule);
+    padding-left: 26px; margin-left: 14px; padding-bottom: 22px;
+    position: relative;
+  }
+  .ai-step:last-child { padding-bottom: 0; }
+  .ai-step::before {
+    content: attr(data-step);
+    position: absolute; left: -14px; top: 0;
+    width: 26px; height: 26px;
+    background: var(--paper-light); border: 1.5px solid var(--rule);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-sans);
+    font-size: var(--fs-fine); font-weight: 700; color: var(--ink-3);
+    transition: background .15s, border-color .15s, color .15s;
+  }
+  .ai-step.active::before {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+  }
+  .ai-step.done::before {
+    content: "✓";
+    background: var(--ok); border-color: var(--ok); color: #fff;
+    font-size: var(--fs-fine);
+  }
+  .ai-step-num {
+    display: inline-block;
+    font-family: var(--font-serif);
+    font-size: var(--fs-fine); font-weight: 700; color: var(--accent);
+    letter-spacing: .04em;
+    margin-bottom: 8px;
+  }
+  .ai-step-title {
+    font-family: var(--font-serif);
+    font-size: var(--fs-h3); font-weight: 700; margin-bottom: 10px;
+    color: var(--ink);
+  }
+  /* 步驟說明：非斜體、較深——與灰斜體 hint／placeholder 區隔，避免被當成可略過的提示 */
+  .ai-step-desc {
+    font-size: var(--fs-body); color: var(--ink-2); line-height: 1.65; margin: 0 0 10px;
+  }
+  .ai-step-desc strong { color: var(--ink); font-weight: 700; }
+  /* 小提醒 chip（如：截圖限制）——明顯框起來、與正文/提示都不同 */
+  .inline-caveat {
+    display: inline-flex; align-items: baseline; gap: 6px;
+    margin-top: 4px; padding: 5px 10px;
+    background: var(--paper-deep); border: 1px solid var(--rule);
+    border-radius: 4px; font-size: var(--fs-fine); color: var(--ink-2);
+    line-height: 1.5; font-style: normal;
+  }
+  .inline-caveat strong { color: var(--ink); font-weight: 700; }
+
+  .ai-launch-buttons {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  }
+  /* 機票截圖提示：醒目 callout（不再是灰色附註），放在動作發生處 */
+  .ai-screenshot-note {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin-top: 14px; padding: 12px 14px;
+    background: var(--accent-soft); border: 1px solid var(--accent-line);
+    border-left: 4px solid var(--accent); border-radius: 4px;
+    font-size: var(--fs-body); line-height: 1.65; color: var(--ink);
+  }
+  .ai-screenshot-note .scr-emoji { font-size: 18px; line-height: 1.3; flex-shrink: 0; }
+  .ai-screenshot-note strong { color: var(--accent); }
+  .ai-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 14px; border: 1px solid var(--rule);
+    border-radius: 0; font-size: var(--fs-body); font-weight: 600;
+    background: var(--paper-light); color: var(--ink); text-decoration: none;
+    transition: all .15s;
+    font-family: var(--font-sans);
+  }
+  .ai-btn:hover { border-color: var(--ink); background: var(--paper-deep); }
+  .ai-btn-icon {
+    width: 14px; height: 14px;
+    display: inline-block; flex-shrink: 0;
+  }
+
+  .copy-prompt-area {
+    background: var(--paper-deep); border: 1px solid var(--rule);
+    border-radius: 0; padding: 12px 14px;
+    font-family: var(--font-mono); font-size: var(--fs-fine);
+    max-height: 120px; overflow-y: auto; white-space: pre-wrap;
+    color: var(--ink-2); margin-bottom: 10px;
+  }
+
+  /* ── Step 2: Days / members ────────────────────────────────── */
+  .member-chips {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;
+    min-height: 32px;
+  }
+  .member-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 8px 5px 11px; border-radius: 99px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    font-size: var(--fs-fine);
+  }
+  .chip-avatar { font-size: 15px; line-height: 1; }
+  .chip-name { font-weight: 600; }
+  /* 成員名字可直接編輯（Update）；覆蓋全域 input 樣式，融入 chip */
+  .chip-name-input {
+    width: auto; min-width: 2ch; padding: 0;
+    border: none; border-bottom: 1px dashed transparent; border-radius: 0;
+    background: transparent; font-family: inherit; font-size: var(--fs-fine); font-weight: 600;
+    color: inherit;
+  }
+  .chip-name-input:focus { outline: none; background: transparent; border-bottom-color: var(--accent); }
+  .chip-del {
+    width: 18px; height: 18px; border: none; background: transparent;
+    border-radius: 50%; cursor: pointer; color: var(--ink-3); font-size: var(--fs-fine);
+  }
+  .chip-del:hover { background: var(--err-soft); color: var(--err); }
+  .add-member-row { display: flex; gap: 8px; }
+  .day-card {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    margin-bottom: 8px; overflow: hidden; background: var(--card);
+  }
+  .day-card-header {
+    display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    cursor: pointer; user-select: none;
+  }
+  .day-card-header:hover { background: var(--bg-2); }
+  .day-badge {
+    background: var(--ink); color: white; border-radius: 5px;
+    padding: 3px 8px; font-size: var(--fs-fine); font-weight: 700;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .day-emoji { font-size: 17px; }
+  .day-theme { font-size: var(--fs-fine); font-weight: 600; flex: 1; min-width: 0; }
+  .day-theme.empty { color: var(--ink-3); font-weight: 500; }
+  .day-date-wd {
+    font-size: var(--fs-fine); color: var(--ink-3); white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .chevron {
+    color: var(--ink-3); font-size: var(--fs-fine);
+    transition: transform .15s;
+  }
+  .day-card.open .chevron { transform: rotate(90deg); }
+  .day-card-body {
+    display: none; padding: 14px 16px;
+    border-top: 1px solid var(--line-2); background: var(--bg);
+  }
+  .day-card.open .day-card-body { display: block; }
+  .act-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .act-edit-row {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .act-row1 { display: flex; align-items: center; gap: 6px; }
+  .act-drag-handle {
+    cursor: grab; user-select: none;
+    color: var(--ink-3); font-size: var(--fs-fine); font-weight: 700;
+    padding: 4px 2px; line-height: 1;
+    letter-spacing: -2px;
+    transition: color .15s, background .15s;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .act-drag-handle:hover { color: var(--accent); background: var(--bg-pale); }
+  .act-drag-handle:active { cursor: grabbing; }
+  .act-edit-row.dragging { opacity: .4; }
+  .act-edit-row.drop-above { box-shadow: 0 -2px 0 0 var(--accent) inset, 0 -2px 0 0 var(--accent); border-top: 2px solid var(--accent); }
+  .act-row2 { display: flex; align-items: center; gap: 6px; padding-left: 2px; }
+  /* 地點狀態（地點名稱／讀取中／說明）寬度不固定：窄螢幕改排到下一行，不擠掉 📍 輸入框 */
+  @media (max-width: 600px) {
+    .act-row2 { flex-wrap: wrap; row-gap: 4px; }
+    .act-row2 .map-status:not(:empty) { flex-basis: 100%; padding-left: 22px; flex-wrap: wrap; row-gap: 4px; min-width: 0; }
+    .act-row2 .map-status .map-badge.ok { max-width: 100%; }
+    .act-row2 .map-info-pop { right: auto; left: 0; }
+  }
+  .act-row2 .map-label {
+    font-size: var(--fs-fine); min-width: 18px; color: var(--ink-3);
+  }
+  .act-icon-i, .act-name-i, .act-sub-i, .act-time-i, .act-map-i {
+    padding: 6px 8px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: var(--fs-fine); font-family: inherit;
+    background: var(--card);
+  }
+  .act-icon-i { width: 40px; text-align: center; font-size: 15px; }
+  .act-name-i { flex: 2; min-width: 80px; font-weight: 600; }
+  .act-sub-i  { flex: 1.5; min-width: 70px; font-size: var(--fs-fine); }
+  .act-time-i { width: 70px; font-size: var(--fs-fine); color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  /* 空狀態 placeholder 壓成灰色、normal weight，跟填入的朱紅時間區隔 */
+  .act-time-i::placeholder { color: var(--ink-3); font-weight: 400; }
+  .act-map-i  { flex: 1; font-size: var(--fs-fine); min-width: 0; }
+  .map-verify {
+    flex-shrink: 0; white-space: nowrap;
+    font-size: var(--fs-fine); font-weight: 600; text-decoration: none;
+    color: var(--accent); border: 1px solid var(--accent-line);
+    padding: 5px 9px; border-radius: 5px; background: var(--accent-soft);
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .map-verify:hover {
+    color: #fff; border-color: var(--accent);
+    background: var(--accent);
+  }
+  /* 地點狀態：連結型顯示讀出的地點名稱／讀取中／讀不到；名稱型顯示「貼連結才有天氣」說明 */
+  .map-status { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; }
+  .map-badge {
+    font-size: var(--fs-fine); font-weight: 700; line-height: 1; white-space: nowrap;
+    padding: 5px 9px; border-radius: 5px; border: 1px solid transparent;
+    font-family: inherit;
+  }
+  .map-badge.ok { background: #e7f3e4; color: #2f7d32; border-color: #cfe6ca; }
+  .map-badge.ok { max-width: 12em; overflow: hidden; text-overflow: ellipsis; }
+  .map-badge.warn { background: #fdf1e3; color: #b45309; border-color: #f3d9b8; }
+  .map-badge.wait { background: var(--accent-soft); color: var(--ink-3); }
+  /* ⓘ「怎麼修正？」— 真正可點的就地展開（取代原本只有 hover title 的 ⓘ） */
+  .map-info-wrap { position: relative; display: inline-flex; flex-shrink: 0; }
+  .map-info {
+    font-size: var(--fs-fine); font-family: var(--font-sans); font-weight: 600;
+    color: var(--accent); background: transparent;
+    border: 1px solid var(--accent-line); border-radius: 5px;
+    padding: 3px 8px; cursor: pointer; line-height: 1.2; white-space: nowrap;
+    transition: background .15s, color .15s;
+  }
+  .map-info:hover { background: var(--accent-soft); }
+  .map-info-wrap.open .map-info { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .map-info-pop {
+    display: none; position: absolute; right: 0; top: calc(100% + 6px);
+    z-index: 50; width: 248px; max-width: 70vw;
+    background: var(--ink); color: var(--paper-light);
+    font-size: var(--fs-fine); line-height: 1.6; font-family: var(--font-sans);
+    padding: 10px 12px; border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(28,24,21,.22);
+  }
+  .map-info-wrap.open .map-info-pop { display: block; }
+  .act-del {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-3); font-size: var(--fs-fine); padding: 2px 4px; flex-shrink: 0;
+  }
+  .act-del:hover { color: var(--err); }
+
+  /* ── 清單已存項目（注意事項／打包／購物）：卡片列，跟下方新增輸入框視覺區隔 ──
+     新增輸入框維持一般 input 樣式；已存項目在這裡變成內縮的卡片列，兩者一眼可分。 */
+  .list-item-row {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--paper-deep); border: 1px solid var(--rule);
+    border-radius: 6px; padding: 2px 4px 2px 12px; margin-top: 10px;
+  }
+  /* 用直接子代選取器，才不會跟購物欄位巢狀的 .shop-fields input（flex 3:2、padding
+     另有規則）搶優先權——兩邊各管各的，不必靠寫在後面硬贏 */
+  .list-item-row > input[type=text] {
+    flex: 1; min-width: 0; border: none; border-bottom: none;
+    background: transparent; padding: 9px 4px;
+  }
+  .list-item-row > input[type=text]:focus { background: var(--paper-light); }
+  .list-item-row .shop-fields input { border: none; border-bottom: none; background: transparent; padding: 9px 4px; }
+
+  .hotel-row {
+    display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 6px;
+  }
+  .hotel-row input {
+    padding: 7px 9px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: var(--fs-fine);
+  }
+  /* flight-row2: from | fromCity | → | to | toCity | arr（無 dept，已在 act-row1 時間欄）*/
+  .flight-row2 {
+    display: grid;
+    grid-template-columns: 56px 1fr 18px 56px 1fr 72px;
+    gap: 6px; align-items: center;
+  }
+  .flight-row2 input {
+    padding: 6px 8px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: var(--fs-fine); font-family: inherit;
+    background: var(--card);
+  }
+  .act-num-i {
+    width: 80px; padding: 6px 8px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: var(--fs-fine); font-family: inherit;
+    background: var(--card); font-variant-numeric: tabular-nums;
+  }
+  .flight-arrow {
+    text-align: center; color: var(--ink-3); font-size: var(--fs-fine);
+  }
+  /* 機票 inline row：淡藍背景 */
+  .act-edit-row.flight-inline { background: #eef6ff; border-color: #c5ddf8; }
+  /* 住宿 inline row：淡綠背景 */
+  .act-edit-row.hotel-inline  { background: #f0faf4; border-color: #b8dfc8; }
+  /* 住宿 paid checkbox label */
+  .hotel-paid-label {
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    font-size: var(--fs-fine); color: var(--ink-3); cursor: pointer; flex-shrink: 0;
+  }
+  .hotel-paid-label input[type="checkbox"] { margin: 0; cursor: pointer; accent-color: #2f7d32; }
+  .self-drive-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+  }
+  .self-drive-label input[type="checkbox"] {
+    width: 18px; height: 18px; margin: 0; cursor: pointer; accent-color: var(--accent);
+  }
+  /* 逐天「這天自駕」開關 */
+  .day-selfdrive {
+    display: flex; align-items: center; gap: 8px;
+    font-size: var(--fs-fine); font-weight: 600; margin-bottom: 12px; cursor: pointer;
+  }
+  .day-selfdrive input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+  .day-selfdrive-hint { font-weight: 400; color: var(--ink-3); font-family: var(--font-sans); }
+  /* 逐景點 🅿️ 停車開關（自駕日內） */
+  .park-toggle {
+    border: 1px solid var(--line); background: var(--card);
+    border-radius: 6px; padding: 2px 7px; font-size: var(--fs-fine); cursor: pointer;
+    opacity: .35; filter: grayscale(1); flex-shrink: 0; line-height: 1.2;
+  }
+  .park-toggle.on { opacity: 1; filter: none; background: #e0f2fe; border-color: #7dd3fc; }
+  /* 機票航廈 row */
+  .flight-row3 {
+    display: grid; grid-template-columns: 40px 1fr 18px 1fr; gap: 6px; align-items: center;
+  }
+  .flight-row3 input {
+    padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: var(--fs-fine); font-family: inherit; background: var(--card);
+  }
+  .flight-terminal-label { font-size: var(--fs-fine); color: var(--ink-3); text-align: right; }
+  /* 複製按鈕 */
+  .act-copy {
+    background: none; border: none; cursor: pointer;
+    color: var(--ink-3); font-size: var(--fs-fine); padding: 2px 5px; flex-shrink: 0;
+    border-radius: 4px; transition: color .15s, background .15s;
+  }
+  .act-copy:hover { color: var(--accent); background: var(--accent-soft); }
+  /* 複製目標天面板（bottom sheet） */
+  #copy-panel {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--paper); border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0; padding: 20px 16px 36px;
+    transform: translateY(100%); transition: transform .25s ease;
+    z-index: 9998; box-shadow: 0 -4px 24px rgba(0,0,0,.12);
+    max-width: 640px; margin: 0 auto;
+  }
+  #copy-panel.show { transform: translateY(0); }
+  .copy-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  #copy-panel-title { font-size: var(--fs-fine); font-weight: 700; color: var(--ink); }
+  .copy-panel-close { background: none; border: none; font-size: 18px; cursor: pointer; color: var(--ink-3); padding: 2px 6px; }
+  #copy-day-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .copy-day-btn {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 14px; text-align: left;
+    cursor: pointer; font-family: inherit; transition: border-color .15s, background .15s;
+  }
+  .copy-day-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .copy-day-same { border-color: var(--accent-line); background: var(--accent-soft); }
+  .copy-day-num { display: block; font-size: var(--fs-fine); font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  .copy-day-theme { display: block; font-size: var(--fs-fine); color: var(--ink); margin-top: 2px; }
+  /* Undo Toast */
+  #undo-toast {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(12px);
+    background: #222; color: #fff; border-radius: 8px;
+    padding: 10px 14px; display: flex; align-items: center; gap: 12px;
+    font-size: var(--fs-fine); opacity: 0; transition: opacity .2s, transform .2s;
+    pointer-events: none; z-index: 9999; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.3);
+  }
+  #undo-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  #undo-undo-btn {
+    background: none; border: 1.5px solid rgba(255,255,255,.55); color: #fff;
+    border-radius: 4px; padding: 3px 10px; cursor: pointer; font-size: var(--fs-fine); font-weight: 600;
+  }
+  #undo-undo-btn:hover { background: rgba(255,255,255,.15); }
+  /* 伴手禮兩欄 row：新增列沿用一般 input 樣式（見 .list-item-row 覆寫已存列的外觀） */
+  .shop-fields {
+    flex: 1; display: flex; flex-direction: row; gap: 6px; min-width: 0;
+  }
+  .shop-fields input {
+    padding: 7px 9px; font-size: var(--fs-fine); font-family: inherit; min-width: 0;
+  }
+  .shop-fields input:first-child { flex: 3; }  /* 品名，佔較多寬度 */
+  .shop-place-i { flex: 2; font-size: var(--fs-fine) !important; color: var(--ink-2); }
+  /* 行前清單：AI 來源說明 */
+  .checklist-source-note {
+    font-size: var(--fs-fine); color: var(--ink-3); background: var(--bg-pale);
+    border: 1px solid var(--line-2); border-radius: 6px;
+    padding: 6px 10px; margin-bottom: 8px; line-height: 1.5;
+  }
+  @media (max-width: 600px) {
+    .flight-row2 {
+      grid-template-columns: 48px 1fr 48px 1fr;
+      row-gap: 4px;
+    }
+    .flight-arrow { display: none; }
+  }
+
+  /* ── Step 3: Firebase ──────────────────────────────────────── */
+  .toggle-row {
+    display: flex; gap: 10px; margin-bottom: 16px;
+  }
+  .toggle-card {
+    flex: 1; padding: 14px 16px; border: 1px solid var(--line);
+    border-radius: var(--radius); cursor: pointer;
+    transition: all .15s; background: var(--card);
+  }
+  .toggle-card:hover { border-color: var(--ink-3); }
+  .toggle-card.active {
+    border-color: var(--accent); background: var(--accent-soft);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .toggle-card-title {
+    font-size: var(--fs-h3); font-weight: 700; margin-bottom: 4px;
+  }
+  .toggle-card.active .toggle-card-title { color: var(--accent); }
+  .toggle-card-desc { font-size: var(--fs-body); color: var(--ink-2); line-height: 1.5; }
+
+  .firebase-setup { display: none; }
+  .firebase-setup.show { display: block; }
+  .guide-step { display: flex; gap: 12px; margin-bottom: 14px; }
+  .guide-num {
+    width: 26px; height: 26px; min-width: 26px; background: var(--ink);
+    color: white; border-radius: 50%; font-size: var(--fs-fine); font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .guide-text { font-size: var(--fs-body); color: var(--ink-2); line-height: 1.6; }
+  .guide-text a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .guide-text a:hover { text-decoration: underline; }
+  .guide-text code {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px;
+    font-size: var(--fs-fine); font-family: ui-monospace, monospace;
+  }
+  .guide-code {
+    display: block; background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 6px; padding: 10px 12px; margin: 8px 0 0;
+    font-size: var(--fs-fine); font-family: ui-monospace, monospace;
+    line-height: 1.5; white-space: pre; overflow-x: auto;
+  }
+  /* 每步的「預期結果」回饋——正向綠調，與灰提示明顯區隔 */
+  .guide-result {
+    margin-top: 6px; font-size: var(--fs-fine); font-weight: 600;
+    color: var(--ok, #2e7d52);
+  }
+
+  /* ── Step 4: Theme ─────────────────────────────────────────── */
+  .theme-preview {
+    border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 18px;
+    box-shadow: var(--shadow);
+  }
+  .tp-header {
+    padding: 18px 20px 14px; color: white;
+    transition: background .25s;
+  }
+  .tp-title { font-size: 19px; font-weight: 800; }
+  .tp-sub { font-size: 12px; opacity: .9; margin-top: 3px; }
+  .tp-pills { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .tp-pill {
+    background: rgba(255,255,255,.22); border-radius: 99px;
+    padding: 3px 11px; font-size: 12px;
+  }
+  .tp-pill:empty { display: none; }
+  .tp-sub:empty { display: none; }
+  .tp-nav { display: flex; padding: 0 20px; background: rgba(0,0,0,.13); }
+  .tp-nav-btn {
+    flex: 1; padding: 10px 0; text-align: center; font-size: 12px;
+    color: rgba(255,255,255,.72); font-weight: 500;
+  }
+  .tp-nav-btn.tp-active { color: white; border-bottom: 2px solid white; }
+
+  .theme-cards {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px; margin-bottom: 14px;
+  }
+  .theme-card {
+    border: 2px solid var(--line); border-radius: var(--radius);
+    overflow: hidden; cursor: pointer; transition: all .15s;
+    background: var(--card);
+  }
+  .theme-card:hover { transform: translateY(-2px); border-color: var(--ink-3); }
+  .theme-card.active {
+    border-color: var(--ink);
+    box-shadow: 0 0 0 3px rgba(15,23,42,.08);
+  }
+  .theme-card-preview { height: 42px; }
+  .theme-card-label {
+    font-size: var(--fs-body); font-weight: 600; text-align: center;
+    padding: 8px; color: var(--ink);
+  }
+  /* 正式和色名小字副標（如：朱色 / 浅葱色）——次要、不搶主名 */
+  .theme-card-wa {
+    display: block; margin-top: 2px;
+    font-size: var(--fs-fine); font-weight: 400; font-style: italic;
+    font-family: var(--font-serif); color: var(--ink-3);
+    letter-spacing: .04em;
+  }
+  .custom-colors {
+    display: grid; grid-template-columns: 1fr; gap: 14px;
+    padding-top: 14px; border-top: 1px solid var(--line-2);
+  }
+  .color-field { display: flex; align-items: center; gap: 10px; }
+  .color-field > label {
+    font-size: var(--fs-fine); color: var(--ink-2); font-weight: 600;
+    width: 56px; flex-shrink: 0;
+  }
+  .swatch-row { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+  .swatch {
+    width: 26px; height: 26px; border-radius: 6px; cursor: pointer;
+    border: 2px solid transparent; transition: transform .1s, border-color .1s;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.active { border-color: var(--ink); transform: scale(1.1); }
+
+  /* ── Step 5: Summary / download ────────────────────────────── */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px; margin-bottom: 22px;
+  }
+  .sum-item {
+    background: var(--bg-2); border-radius: 8px; padding: 11px 13px;
+    border: 1px solid var(--line);
+  }
+  .sum-item .sv { font-size: var(--fs-body); font-weight: 700; }
+  .sum-item .sk { font-size: var(--fs-fine); color: var(--ink-3); margin-top: 2px; }
+
+  .deploy-list { list-style: none; padding: 0; }
+  .deploy-list li {
+    display: flex; gap: 12px; padding: 11px 0;
+    border-bottom: 1px solid var(--line-2);
+    font-size: var(--fs-body); color: var(--ink-2);
+  }
+  .deploy-list li:last-child { border-bottom: none; }
+  .deploy-list code {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px;
+    font-family: ui-monospace, monospace; font-size: var(--fs-fine);
+  }
+  .deploy-list a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .deploy-list a:hover { text-decoration: underline; }
+  .dnum {
+    width: 26px; height: 26px; min-width: 26px; background: var(--ink);
+    color: white; border-radius: 50%; font-size: var(--fs-fine); font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .info-note {
+    background: var(--accent-soft); border: 1px solid var(--accent-line);
+    border-radius: var(--radius); padding: 12px 14px;
+    font-size: var(--fs-body); line-height: 1.65; color: var(--ink-2);
+  }
+  .info-note strong { color: var(--ink); }
+
+  /* ── Preview mode toggle ─────────────────────────────────────── */
+  .seg-row { display: inline-flex; border: 1px solid var(--accent-line); border-radius: 10px; overflow: hidden; }
+  .seg-btn {
+    background: var(--paper); color: var(--ink-2); border: none; cursor: pointer;
+    font-family: inherit; font-size: var(--fs-sm); padding: 8px 18px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .seg-btn + .seg-btn { border-left: 1px solid var(--accent-line); }
+  .seg-btn.active { background: var(--accent); color: var(--paper-light); font-weight: 600; }
+  .preview-mode-hint { margin-top: 8px; font-size: var(--fs-fine); color: var(--ink-2); line-height: 1.5; }
+
+  /* ── Quick share card (primary CTA) ──────────────────────────── */
+  .share-card { background: var(--accent-soft); border-color: var(--accent-line); }
+  .share-card::before { background: linear-gradient(to right, var(--accent) 0, var(--accent) 60px, transparent 60px); }
+  .recommend-tag {
+    display: inline-block; background: var(--accent); color: var(--paper-light);
+    font-family: var(--font-serif); font-size: var(--fs-fine); font-weight: 700;
+    letter-spacing: .08em; padding: 3px 10px; margin-right: 10px;
+    vertical-align: 2px; text-transform: none;
+  }
+
+  /* ── Delivery mode comparison cards ─────────────────────────── */
+  .mode-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px; }
+  @media (max-width: 480px) { .mode-compare { grid-template-columns: 1fr; } }
+  .mode-card {
+    border: 2px solid var(--rule); border-radius: 12px;
+    padding: 16px 14px 14px; cursor: pointer;
+    background: var(--paper-light);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .mode-card:hover { border-color: var(--accent-line); }
+  .mode-card.active {
+    border-color: var(--accent); background: var(--accent-soft);
+    box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 15%, transparent);
+  }
+  .mode-card-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    padding: 2px 8px; border-radius: 4px; margin-bottom: 8px;
+    background: var(--rule); color: var(--ink-2);
+  }
+  .mode-card.active .mode-card-badge { background: var(--accent); color: var(--paper-light); }
+  .mode-card-title { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 700; margin-bottom: 10px; }
+  .mode-card-list { list-style: none; padding: 0; margin: 0; font-size: var(--fs-fine); color: var(--ink-2); line-height: 1.8; }
+  .mode-card-list li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+  .mode-card-list li.muted-li::before { content: "–  "; color: var(--ink-3); }
+  .mode-card-list li.muted-li { color: var(--ink-3); }
+
+  /* ── Advanced section (collapsible) ──────────────────────────── */
+  .advanced-section { margin-top: 22px; }
+  .advanced-summary {
+    cursor: pointer; padding: 14px 16px;
+    background: var(--paper-light); border: 1px solid var(--rule);
+    font-size: var(--fs-body); color: var(--ink-2);
+    font-family: var(--font-serif);
+    list-style: none; user-select: none;
+    transition: background .15s;
+  }
+  .advanced-summary::-webkit-details-marker { display: none; }
+  .advanced-summary::before {
+    content: "▸"; display: inline-block; margin-right: 10px;
+    color: var(--accent); transition: transform .15s;
+  }
+  details[open] .advanced-summary::before { transform: rotate(90deg); }
+  .advanced-summary:hover { background: var(--paper-deep); }
+  .advanced-label {
+    display: inline-block; font-weight: 700; color: var(--ink);
+    letter-spacing: .12em; margin-right: 8px;
+  }
+
+  /* ── QR Code modal ───────────────────────────────────────────── */
+  .qr-modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(28,24,21,.6);
+    z-index: 1500; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .qr-modal.open { display: flex; }
+  .qr-modal-inner {
+    background: var(--paper-light); border: 1.5px solid var(--ink);
+    padding: 28px 32px 24px; position: relative;
+    max-width: 360px; width: 100%; text-align: center;
+    box-shadow: 6px 6px 0 var(--accent);
+  }
+  .qr-close {
+    position: absolute; top: 10px; right: 12px;
+    background: transparent; border: none; cursor: pointer;
+    font-size: 18px; color: var(--ink-3);
+    width: 28px; height: 28px; line-height: 1;
+  }
+  .qr-close:hover { color: var(--accent); }
+  .qr-title {
+    font-family: var(--font-serif); font-size: 18px; font-weight: 700;
+    margin-bottom: 16px; color: var(--ink);
+  }
+  #qr-canvas { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .qr-note {
+    margin-top: 14px; font-size: var(--fs-fine); color: var(--ink-3);
+    font-family: var(--font-serif); font-style: italic;
+    line-height: 1.6;
+  }
+
+  /* ── Fleuron / page footer ─────────────────────────────────── */
+  .fleuron-row {
+    display: none;
+  }
+  .fleuron-row .rule {
+    flex: 0 0 auto; width: 60px; height: 1px;
+    background: var(--rule);
+  }
+  .fleuron-row .glyph {
+    font-family: var(--font-serif);
+    font-size: 14px; color: var(--ink-3);
+    letter-spacing: .3em;
+  }
+  .page-footer {
+    display: flex; align-items: center; justify-content: center;
+    gap: 12px; margin: 28px auto 0; padding-bottom: 12px;
+    font-family: var(--font-serif);
+    font-size: var(--fs-fine); color: var(--ink-3);
+    letter-spacing: .12em;
+    font-variant-numeric: tabular-nums;
+  }
+  .page-footer .rule { width: 40px; height: 1px; background: var(--rule); }
+  .page-footer .num { font-style: italic; }
+
+  /* ── Bottom nav ────────────────────────────────────────────── */
+  .nav-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--paper-light);
+    border-top: 1.5px solid var(--ink);
+    padding: 12px 56px;
+    display: flex; justify-content: center; align-items: center;
+    z-index: 50;
+  }
+  .nav-inner {
+    max-width: 920px; width: 100%;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .nav-hint {
+    font-family: var(--font-serif);
+    font-size: var(--fs-fine); color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .12em; font-style: italic;
+  }
+  .nav-hint .nav-page-num { color: var(--accent); font-style: normal; font-weight: 700; }
+  .nav-actions { display: flex; gap: 10px; }
+
+  /* ── Misc ──────────────────────────────────────────────────── */
+  .spinner {
+    display: inline-block; width: 13px; height: 13px;
+    border: 2px solid currentColor; border-top-color: transparent;
+    border-radius: 50%; animation: spin .7s linear infinite;
+    vertical-align: -2px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Unified restore zone — accepts URL paste OR file drop in one area */
+  .restore-zone {
+    position: relative;
+    border: 2px dashed transparent;
+    transition: border-color .15s, background .15s;
+    padding: 8px;
+    margin: 0 -8px;
+    border-radius: 6px;
+  }
+  .restore-zone.dragover {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .restore-zone.dragover textarea { pointer-events: none; }
+  .restore-or-file {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 10px;
+    font-family: var(--font-serif);
+    font-size: var(--fs-fine); color: var(--ink-3);
+    font-style: italic;
+  }
+
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row-spread { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mt-16 { margin-top: 16px; }
+  .muted { color: var(--ink-3); font-size: var(--fs-fine); }
+
+  @media (max-width: 600px) {
+    .grid2, .grid3 { grid-template-columns: 1fr; }
+    .theme-cards { grid-template-columns: repeat(2, 1fr); }
+    .custom-colors { grid-template-columns: repeat(3, 1fr); }
+    .toggle-row { flex-direction: column; }
+    .step-label { font-size: var(--fs-fine); white-space: nowrap; text-align: center; }
+    .step-en { display: none; }
+    .step-item { min-width: 0; flex: 1 1 0; padding: 14px 4px; align-items: center; }
+    .step-spacer { flex: 0 0 8px; min-width: 0; }
+    .step-circle { text-align: center; }
+    .step-circle::after { margin-left: auto; margin-right: auto; }
+    .fleuron-row { display: none; }
+    .nav-bar { padding: 10px 14px; }
+  }
+
+  /* ─── Mobile-refined overrides ─────────────────────────────── */
+  @media (max-width: 600px) {
+    /* Topbar: tighter padding + simplified masthead */
+    .topbar { padding: 14px 16px 10px; }
+    .masthead-home-link { gap: 10px; }
+    .masthead-kicker { display: none; }
+    .masthead-edition { display: none; }
+    .masthead-doctitle { display: none; }
+    .save-indicator { display: none; }
+
+    /* Stepper: fix horizontal padding + correct sticky top (topbar ≈ 62px on mobile) */
+    .stepper { padding: 10px 12px 12px; top: 62px; }
+    /* Hide ✓ checkmark prefix on mobile — done state shown via color change instead */
+    .step-item.done .step-circle-num::before { content: none; }
+
+    /* Content: less horizontal padding, less bottom padding */
+    .content { padding: 24px 16px 120px; }
+
+    /* Activity row 1: wrap sub + time to a second line */
+    .act-row1 { flex-wrap: wrap; }
+    .act-drag-handle { order: 1; }
+    .act-icon-i  { order: 2; }
+    .act-name-i  { order: 3; flex: 1 1 80px; min-width: 0; }
+    .act-del     { order: 4; }
+    .act-sub-i   { order: 5; flex: 1 1 100px; min-width: 0; margin-top: 4px; }
+    .act-time-i  { order: 6; flex: 0 0 70px; margin-top: 4px; }
+
+    /* Hotel row: collapse to single column */
+    .hotel-row { grid-template-columns: 1fr; }
+
+    /* Path tabs: tighter padding + smaller text */
+    .path-tab { padding: 12px 6px; font-size: var(--fs-body); }
+    .path-tab .tab-sub { font-size: var(--fs-fine); letter-spacing: .04em; }
+
+    /* Nav bar: no text wrapping, compact hint */
+    .btn { white-space: nowrap; }
+    .nav-hint { font-size: var(--fs-fine); letter-spacing: 0; }
+    .nav-hint em { display: none; }
+    .nav-actions .btn { padding: 8px 14px; font-size: var(--fs-fine); }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <!-- Three flying birds, decorative -->
+  <div class="masthead-birds" aria-hidden="true">
+    <svg class="b1" viewBox="0 0 24 12" width="22" height="11"><path d="M2 8 Q6 2 12 6 Q18 2 22 8" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>
+    <svg class="b2" viewBox="0 0 24 12" width="20" height="10"><path d="M2 8 Q6 2 12 6 Q18 2 22 8" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>
+    <svg class="b3" viewBox="0 0 24 12" width="18" height="9"><path d="M2 8 Q6 2 12 6 Q18 2 22 8" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linecap="round"/></svg>
+  </div>
+  <div class="topbar-inner">
+    <a href="../" class="masthead-home-link" title="返回封面">
+      <!-- Compass rose -->
+      <svg class="masthead-mark" viewBox="0 0 60 60" aria-hidden="true">
+        <!-- 框架 -->
+        <rect x="7" y="2" width="46" height="49" rx="4" fill="none" stroke="currentColor" stroke-width="1.7"/>
+        <!-- 太陽 -->
+        <circle cx="42" cy="13" r="4.5" fill="currentColor" opacity="0.85"/>
+        <!-- 山脈線稿 -->
+        <path d="M10,40 L24,24 L32,33 L42,17 L50,40"
+              fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- 虛線路徑 -->
+        <line x1="13" y1="44" x2="47" y2="44"
+              stroke="currentColor" stroke-width="0.9"
+              stroke-dasharray="2,2.5" opacity="0.6"/>
+        <!-- 書籤尾 -->
+        <path d="M27.5,51 L27.5,58.5 L30,56 L32.5,58.5 L32.5,51"
+              fill="none" stroke="currentColor" stroke-width="1.5"
+              stroke-linejoin="round" stroke-linecap="round"/>
+      </svg>
+      <div class="masthead-titles">
+        <div class="masthead-kicker">Made for trip mates</div>
+        <div class="masthead-title">旅　人　手　帖</div>
+      </div>
+    </a>
+    <div class="masthead-right">
+      <div class="masthead-edition">正 在 編 輯</div>
+      <div class="masthead-doctitle empty" id="masthead-doctitle">未命名旅程</div>
+      <div class="topbar-actions">
+        <span class="save-indicator" id="save-indicator">就緒</span>
+        <div class="menu-wrap">
+          <button class="btn btn-ghost btn-sm" id="menu-trigger" onclick="toggleMenu(event)" title="更多選項">⋯</button>
+          <div class="menu-pop" id="menu-pop">
+            <div class="menu-section">進度備份</div>
+            <button class="menu-item" onclick="exportProgress()"><span class="menu-icon">⬇</span>匯出進度（換裝置用）</button>
+            <button class="menu-item" onclick="triggerImportProgress()"><span class="menu-icon">⬆</span>匯入進度</button>
+            <div class="menu-divider"></div>
+            <div class="menu-section">關於進度備份</div>
+            <button class="menu-item" onclick="showStorageInfo()"><span class="menu-icon">ⓘ</span>進度備份儲存在哪？</button>
+            <div class="menu-divider"></div>
+            <button class="menu-item danger" onclick="openLoadDialog()"><span class="menu-icon">↺</span>清空所有資料</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Mountain band, decorative -->
+<div class="mountain-band" aria-hidden="true">
+  <svg viewBox="0 0 200 60" preserveAspectRatio="xMidYMid meet">
+    <path d="M0 60 L30 32 L42 42 L62 18 L78 30 L92 22 L114 44 L138 14 L160 38 L180 28 L200 50 L200 60 Z"
+      fill="none" stroke="#5a5247" stroke-width="1.1" stroke-linejoin="round"/>
+    <path d="M0 60 L30 32 L42 42 L62 18 L78 30 L92 22 L114 44 L138 14 L160 38 L180 28 L200 50 L200 60 Z"
+      fill="#5a5247" opacity="0.06"/>
+    <path d="M58 22 L62 18 L66 22 Z M134 18 L138 14 L142 18 Z" fill="#5a5247" opacity="0.5"/>
+    <circle id="mountain-sun" cx="20" cy="24" r="9" fill="none" stroke="#5a5247" stroke-width="0.7" opacity="0.4"/>
+  </svg>
+</div>
+
+<input type="file" id="import-progress-input" accept=".json,application/json" style="display:none" onchange="importProgress(event)">
+<div class="toast" id="toast"><div class="toast-title" id="toast-title"></div><div class="toast-body" id="toast-body"></div><div class="toast-actions" id="toast-actions" style="display:none;"></div></div>
+
+<div class="stepper">
+  <div class="stepper-inner" id="stepper">
+    <!-- injected by JS -->
+  </div>
+</div>
+
+<!-- Editorial fleuron divider -->
+<div class="fleuron-row" aria-hidden="true">
+  <div class="rule"></div>
+  <svg viewBox="0 0 60 16" width="56" height="16"><path d="M2 8 L20 8 M40 8 L58 8" stroke="#c75c54" stroke-width="0.7"/><path d="M30 3 Q26 5 24 8 Q26 11 30 13 Q34 11 36 8 Q34 5 30 3 Z" fill="none" stroke="#c75c54" stroke-width="0.9"/><circle cx="30" cy="8" r="1.5" fill="#c75c54"/><circle cx="22" cy="8" r="1" fill="#c75c54"/><circle cx="38" cy="8" r="1" fill="#c75c54"/></svg>
+  <div class="rule"></div>
+</div>
+
+<div class="content">
+
+<!-- ═════════════════════ STEP 1: 匯入 ═════════════════════ -->
+<div class="panel active" id="panel-0">
+  <div class="panel-head">
+    <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <span class="panel-title">把行程資料貼進來</span>
+    <p class="panel-desc">三種方式結果都一樣，挑順手的就好。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title">選擇匯入方式</div>
+    <div class="card-desc">差別只在你手上現在有什麼。</div>
+    <div class="path-tabs" style="margin-top:16px;">
+      <div class="path-tab active" data-path="ai" onclick="setPath('ai')">
+        <div>用 AI 整理</div>
+        <div class="tab-sub">推薦 · 最快最省事</div>
+      </div>
+      <div class="path-tab" data-path="manual" onclick="setPath('manual')">
+        <div>手動填寫</div>
+        <div class="tab-sub">從空白開始</div>
+      </div>
+      <div class="path-tab" data-path="load" onclick="setPath('load')">
+        <div>修改既有行程</div>
+        <div class="tab-sub">貼網址或丟檔案還原</div>
+      </div>
+    </div>
+
+    <!-- Path AI -->
+    <div class="path-panel active" id="path-ai">
+      <div class="ai-step active" id="ai-step-1" data-step="①">
+        <div class="ai-step-title">貼上行程文字草稿</div>
+        <div class="ai-step-desc">任何隨手記的格式都可以，不用事先排版；機票與訂房截圖，下一步直接交給 AI 即可。</div>
+        <textarea id="trip-text" rows="8"
+          placeholder="例：&#10;4/15 (三) 抵達仙台&#10;  10:30 桃園飛仙台 BR-198&#10;  下午 仙台車站、青葉城跡&#10;  晚餐 牛舌利久&#10;  住 仙台國際飯店&#10;..."
+          oninput="updateTripText()"></textarea>
+      </div>
+
+      <div class="ai-step" id="ai-step-2" data-step="②">
+        <div class="ai-step-title">複製提示詞，貼到你常用的 AI</div>
+        <div class="ai-step-desc">
+          提示詞已包含整理指令與剛貼的行程。貼進 AI 送出即可，<strong>免費版就能用，免 API Key</strong>。
+        </div>
+        <button class="btn btn-primary btn-block" id="copy-prompt-btn"
+          onclick="copyPromptToClipboard()" disabled>
+          📋 複製 Prompt 提示詞
+        </button>
+        <div class="ai-launch-buttons">
+          <a class="ai-btn" href="https://claude.ai/new" target="_blank" rel="noopener">
+            <span class="ai-btn-icon" style="background:#cc785c;border-radius:3px;"></span>
+            開啟 Claude
+          </a>
+          <a class="ai-btn" href="https://chatgpt.com/" target="_blank" rel="noopener">
+            <span class="ai-btn-icon" style="background:#10a37f;border-radius:50%;"></span>
+            開啟 ChatGPT
+          </a>
+          <a class="ai-btn" href="https://gemini.google.com/app" target="_blank" rel="noopener">
+            <span class="ai-btn-icon" style="background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);border-radius:3px;"></span>
+            開啟 Gemini
+          </a>
+        </div>
+        <div class="mt-12">
+          <span style="font-size:var(--fs-fine);color:var(--ink-3);text-decoration:underline;cursor:pointer;" onclick="togglePromptPreview()">▸ 想先看 Prompt 提示詞完整內容？點此展開預覽</span>
+        </div>
+        <div class="ai-screenshot-note">
+          <span class="scr-emoji">📸</span>
+          <span><strong>有機票或訂房截圖？</strong>送出提示詞後，直接把截圖拖進「同一個 AI 對話」——AI 會自動抓出班機、時間與訂位代號，省下手打時間。</span>
+        </div>
+        <div id="prompt-preview" style="display:none;margin-top:10px;">
+          <div class="copy-prompt-area" id="prompt-area"></div>
+        </div>
+      </div>
+
+      <div class="ai-step" id="ai-step-3" data-step="③">
+        <div class="ai-step-title">把 AI 整理的內容整段貼回來</div>
+        <div class="ai-step-desc">
+          直接整段複製貼上，前後多餘的聊天對話系統會自動忽略。
+        </div>
+        <textarea id="json-paste" rows="6" style="font-family:ui-monospace,monospace;font-size:var(--fs-fine);"
+          placeholder='{ "tripName": "...", "days": [ ... ], ... }' oninput="updateJsonPaste()"></textarea>
+        <button class="btn btn-primary mt-12" onclick="importAiJson()">完成匯入 → 進入第二步「補齊資料」</button>
+        <div id="ai-import-status"></div>
+      </div>
+    </div>
+
+    <!-- Path manual -->
+    <div class="path-panel" id="path-manual">
+      <div class="card-desc" style="margin-bottom: 14px;">
+        從空白表格開始逐天填寫，適合手邊還沒有任何筆記的人。
+      </div>
+      <button class="btn btn-primary" onclick="startManual()">
+        建立空白行程 → 進入下一步
+      </button>
+    </div>
+
+    <!-- Path load -->
+    <div class="path-panel" id="path-load">
+      <div class="card-desc" style="margin-bottom: 14px;">
+        貼上之前的手帖<strong>分享連結</strong>，或丟入下載過的 <strong>.html 檔案</strong>，就能完整還原行程、成員名單與主題設定。
+      </div>
+
+      <div class="restore-zone" id="restore-zone"
+        ondragover="onRestoreDragOver(event)"
+        ondragleave="onRestoreDragLeave(event)"
+        ondrop="onRestoreDrop(event)">
+        <textarea id="restore-input" rows="4"
+          style="width:100%;font-family:ui-monospace,monospace;font-size:var(--fs-fine);"
+          placeholder="貼上分享連結（https://.../v/#z=...）&#10;&#10;或把 index.html 檔拖到這個區塊 ↓"
+          oninput="updateRestoreBtn()"></textarea>
+        <div class="restore-or-file">
+          <span>或</span>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('load-file').click()">
+            📂 選擇 index.html 檔案
+          </button>
+          <input type="file" id="load-file" accept=".html,text/html" style="display:none;" onchange="handleFileLoad(event)">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block mt-12" id="restore-btn"
+        onclick="loadFromRestoreInput()" disabled>
+        還原行程 → 進入下一步
+      </button>
+      <div id="restore-status"></div>
+      <div class="hint mt-12">
+        💡 旅伴或群組裡拿到的連結直接貼進來即可；<code style="font-family:ui-monospace,monospace;background:var(--bg-2);padding:1px 4px;border-radius:3px;">.html</code> 檔則是進階部署過的人才會有。
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═════════════════════ STEP 2: 確認 ═════════════════════ -->
+<div class="panel" id="panel-1">
+  <div class="panel-head">
+    <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <span class="panel-title">把欄位補到完整</span>
+    <p class="panel-desc">
+      逐項補齊細節。這一步多花幾分鐘，旅程現場就少翻找。
+    </p>
+  </div>
+
+  <div class="alert-banner" id="missing-summary" role="status" aria-live="polite"></div>
+
+  <p class="desktop-hint">💡 建議在電腦上操作，這一步欄位較多，手機填寫體驗較差。</p>
+
+  <div class="card">
+    <div class="card-title">基本資訊</div>
+    <div class="card-desc">會顯示在首頁標題、分頁名稱、日期橫條等位置。</div>
+    <div class="grid2 mt-16">
+      <div class="field required" id="ff-title">
+        <label>旅程名稱</label>
+        <input type="text" id="f-title" placeholder="東北賞櫻之旅 2026" oninput="onAnyInput()">
+        <div class="hint">首頁主標題、App 名稱都用這個</div>
+      </div>
+      <div class="field" id="ff-subtitle">
+        <label>城市列表</label>
+        <input type="text" id="f-subtitle" placeholder="仙台・平泉・青森・弘前" oninput="onAnyInput()">
+        <div class="hint">標題下方的副標</div>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="field" id="ff-date-pill">
+        <label>日期</label>
+        <input type="text" id="f-date-pill" placeholder="2026年4月15－22日" oninput="onAnyInput()">
+      </div>
+      <div class="field" id="ff-duration-pill">
+        <label>天數</label>
+        <input type="text" id="f-duration-pill" placeholder="8天7夜" oninput="onAnyInput()">
+      </div>
+      <div class="field" id="ff-people-pill">
+        <label>人數</label>
+        <div class="input-suffix-wrap">
+          <input type="text" id="f-people-pill" placeholder="2"
+            inputmode="numeric" maxlength="3" oninput="onAnyInput()">
+          <span class="input-suffix">人同行</span>
+        </div>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field" id="ff-end-date">
+        <label>結束日期（選填）</label>
+        <input type="text" id="f-end-date" placeholder="4/22"
+          inputmode="numeric" oninput="onAnyInput()">
+        <div class="hint">格式 <code>月/日</code>（如 <code>4/22</code>）。留空則用最後一張日期卡。設定後倒數會準到當天，回程日沒排成一天也不會提早顯示「已結束」。</div>
+      </div>
+      <div class="field" id="ff-end-time">
+        <label>結束時間（選填）</label>
+        <input type="time" id="f-end-time" oninput="onAnyInput()">
+        <div class="hint">如傍晚班機 <code>18:00</code>。留空則算到結束日 23:59。</div>
+      </div>
+    </div>
+    <div class="field" id="ff-self-drive">
+      <label class="self-drive-label">
+        <input type="checkbox" id="f-self-drive" onchange="onSelfDriveToggle()">
+        <span>🚗 這趟是自駕行程</span>
+      </label>
+      <div class="hint">開啟後，每天可標記<strong>「這天自駕」</strong>，該天的景點與住宿才會出現「🅿️ 停車」按鈕（徒步的可逐一關掉）。整趟不開車就免開。</div>
+    </div>
+    <div class="field" id="ff-region" style="display:none;">
+      <label>目的地地區</label>
+      <select id="f-region" onchange="onAnyInput()">
+        <option value="日本">日本（停車場搜尋用「駐車場」）</option>
+        <option value="台灣">台灣（停車場）</option>
+        <option value="韓國">韓國（주차장）</option>
+        <option value="香港・中國">香港・中國（停車場）</option>
+        <option value="歐美其他">歐美・其他（parking）</option>
+      </select>
+      <div class="hint">停車場按鈕會用當地用詞搜尋——免得在日本搜「停車場」找不到資料。</div>
+    </div>
+    <div class="grid2">
+      <div class="field" id="ff-pin">
+        <label>進入密碼（PIN）</label>
+        <input type="text" id="f-pin" placeholder="0415" maxlength="4" pattern="[0-9]*" inputmode="numeric"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'');onAnyInput()">
+        <div class="hint">4 位數字，旅伴打開 App 時要輸入。建議用出發日（如 0415）方便記</div>
+      </div>
+      <div class="field" id="ff-storage-prefix">
+        <label>
+          旅程代碼
+          <button type="button" onclick="genPrefix()" class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:var(--fs-fine);font-weight:500;margin-left:6px;">重新產生</button>
+        </label>
+        <input type="text" id="f-storage-prefix" placeholder="trip2026a"
+          oninput="this.value=this.value.replace(/[^a-z0-9]/g,'');onAnyInput()">
+        <div class="hint">系統自動產生，確保不同旅程的 localStorage 不互相覆蓋</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row-spread">
+      <div>
+        <div class="card-title">旅行成員</div>
+        <div class="card-desc">用於費用分攤、分帳結算<strong>（進階 Firebase 模式才會即時同步分帳）</strong>。點 ✕ 可刪除。</div>
+      </div>
+    </div>
+    <div class="member-chips mt-16" id="member-chips"></div>
+    <div class="add-member-row">
+      <input type="text" id="new-name" placeholder="輸入姓名" style="flex:1;"
+        onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addMember()">
+      <button class="btn btn-secondary" onclick="addMember()">＋ 新增</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">每日行程</div>
+    <div class="card-desc">點開每天可增修活動。<strong>時間選填</strong>，有固定時刻（班機、訂位、表演）才需要——用 <strong>24 小時制</strong>（下午 3 點 = 15:00），填了會自動排序。</div>
+    <div id="day-cards" class="mt-16"></div>
+    <button class="btn btn-secondary mt-12" onclick="addDay()">＋ 新增一天</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">伴手禮 / 購物清單　<span class="muted" style="font-weight:400;font-size:var(--fs-fine);">選填</span></div>
+    <div class="card-desc">旅伴可在 App「購物」分頁勾選、標記已買，還能為品項加照片（只存自己手機）。</div>
+    <div id="shopping-list" class="mt-16"></div>
+    <div class="shop-fields mt-12" id="shopping-add-row" onfocusout="handleShoppingAddBlur(event)">
+      <input type="text" id="new-shopping-name" placeholder="品名，例如：萩之月"
+        onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('new-shopping-place').focus()">
+      <input type="text" id="new-shopping-place" placeholder="哪裡買"
+        class="shop-place-i"
+        onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addShoppingItem()">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+      <span>行前清單　<span class="muted" style="font-weight:400;font-size:var(--fs-fine);">選填</span></span>
+      <button class="btn btn-ghost btn-sm" onclick="clearChecklist()" style="font-size:var(--fs-fine);padding:3px 8px;">清除全部</button>
+    </div>
+    <div class="card-desc">出發前要打包或確認的項目，旅伴在 App 的「打包」分頁可勾選。</div>
+    <div id="checklist-list" class="mt-16"></div>
+    <input type="text" id="new-checklist-item" class="mt-12" placeholder="護照、信用卡、轉接頭…"
+      onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addChecklistItem()" onblur="if(this.value.trim())addChecklistItem()">
+  </div>
+
+  <div class="card">
+    <div class="card-title">注意事項　<span class="muted" style="font-weight:400;font-size:var(--fs-fine);">選填</span></div>
+    <div class="card-desc">提醒事項或小知識，會列在「清單」分頁的「注意事項」子分頁。</div>
+    <div id="notes-list" class="mt-16"></div>
+    <input type="text" id="new-note-text" class="mt-12" placeholder="飯店 check-in 從 15:00 開始"
+      onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addNote()" onblur="if(this.value.trim())addNote()">
+  </div>
+</div>
+
+<!-- ═════════════════════ STEP 3: 主題 ═════════════════════ -->
+<div class="panel" id="panel-2">
+  <div class="panel-head">
+    <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <span class="panel-title">選一個符合這趟旅程的風格</span>
+    <p class="panel-desc">挑個顏色，下方預覽會立刻套上你的真實資料。</p>
+  </div>
+  <div class="card">
+    <div class="card-title">即時預覽</div>
+    <div class="card-desc">對著真實的旅程名稱、日期與成員挑色，所見即所得。</div>
+    <div class="theme-preview" style="margin-top:16px;">
+      <div class="tp-header" id="tp-header">
+        <div class="tp-title" id="tp-title">✈️ 我的旅程</div>
+        <div class="tp-sub" id="tp-sub"></div>
+        <div class="tp-pills">
+          <span class="tp-pill" id="tp-date"></span>
+          <span class="tp-pill" id="tp-dur"></span>
+          <span class="tp-pill" id="tp-ppl"></span>
+        </div>
+      </div>
+      <div class="tp-nav">
+        <div class="tp-nav-btn tp-active">行程</div>
+        <div class="tp-nav-btn">住宿</div>
+        <div class="tp-nav-btn">清單</div>
+        <div class="tp-nav-btn">集合</div>
+        <div class="tp-nav-btn">記帳</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">主題配色</div>
+    <div class="card-desc">七款主題配色，漸層與對比都調好了，點了就套用。</div>
+    <div class="theme-cards" id="theme-cards" style="margin-top:16px;"></div>
+    <input type="hidden" id="f-theme-color" value="#a8362f">
+    <input type="hidden" id="f-theme-accent" value="#c45a4f">
+    <input type="hidden" id="f-theme-light" value="#e3a89c">
+    <input type="hidden" id="f-bg-color" value="#faf2ec">
+    <input type="hidden" id="f-bg-pale" value="#f3e3d8">
+  </div>
+</div>
+
+<!-- ═════════════════════ STEP 4: 下載 ═════════════════════ -->
+<div class="panel" id="panel-3">
+  <div class="panel-head">
+    <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
+    <span class="panel-title">產出可以馬上用的 App</span>
+    <p class="panel-desc">先預覽確認，再選分享方式。選好後自動展開對應的操作區塊。</p>
+  </div>
+  <div class="card">
+    <div class="card-title">設定總覽</div>
+    <div class="card-desc">出版前最後一次校稿——資料、共用、外觀一覽。</div>
+    <div class="summary-grid mt-16" id="summary-grid"></div>
+  </div>
+
+  <!-- ── 兩方案對照卡 ─────────────────────────────────────────── -->
+  <div class="card" id="mode-select-card">
+    <div class="card-title">選分享方式</div>
+    <div class="card-desc">先看兩種方式的差異，選定後再預覽、再產出。</div>
+    <div class="mode-compare mt-16">
+      <div class="mode-card" id="mode-card-basic" onclick="selectDeliveryMode('basic')">
+        <div class="mode-card-badge">推薦 · 零門檻</div>
+        <div class="mode-card-title">🔗 一行分享連結</div>
+        <ul class="mode-card-list">
+          <li>免註冊、免部署，複製連結即傳即用</li>
+          <li>單向瀏覽，旅伴修改僅存於自己手機</li>
+          <li>行程改動後，重新產生新連結再傳一次</li>
+          <li>連結靠這個網站顯示，需有網路才能開啟</li>
+          <li class="muted-li">功能：行程 · 注意事項 · 購物與行前清單</li>
+        </ul>
+      </div>
+      <div class="mode-card" id="mode-card-advanced" onclick="selectDeliveryMode('advanced')">
+        <div class="mode-card-badge">進階 · 多人協作</div>
+        <div class="mode-card-title">☁️ Netlify + Firebase</div>
+        <ul class="mode-card-list">
+          <li>多人即時同步，大家隨時看到最新編輯</li>
+          <li>專屬獨立網址，可加到手機桌面像 App 開啟</li>
+          <li>行程改動後，重新上傳檔案即可更新</li>
+          <li class="muted-li">全功能解鎖：額外支援集合倒數與多人費用分帳</li>
+          <li class="muted-li">需一次性設定 Firebase 與免費部署（約 15 分鐘）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="preview-card" style="display:none;">
+    <div class="card-title">預覽產出的 App</div>
+    <div class="card-desc" id="preview-card-desc"></div>
+    <div class="row mt-16" style="gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-lg" onclick="previewApp('desktop')">
+        🔍 預覽 App（桌機）
+      </button>
+      <button class="btn btn-secondary btn-lg" onclick="previewApp('phone')">
+        📱 預覽 App（手機）
+      </button>
+    </div>
+    <div id="dl-status"></div>
+  </div>
+
+  <!-- ── 最低門檻：分享連結區塊 ─────────────────────────────────── -->
+  <div id="section-basic" style="display:none">
+  <div class="card share-card">
+    <div class="card-title">
+      <span class="recommend-tag">推薦</span>
+      用分享連結直接傳給旅伴
+    </div>
+    <div class="card-desc">
+      免註冊、免部署：產生連結 → 貼到 LINE → 旅伴點開就能看、可改但只存自己手機（不同步）。
+    </div>
+    <div class="row mt-16" style="gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary btn-lg" onclick="generateShareUrl()">
+        🔗 產生分享連結
+      </button>
+    </div>
+    <div id="share-actions" class="row mt-12" style="display:none;gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-primary" id="share-native-btn" onclick="shareNative()" style="display:none;">📤 傳送給旅伴</button>
+      <button class="btn btn-primary" id="share-qr-btn" onclick="showQrCode()">📱 顯示 QR Code</button>
+      <button class="btn btn-secondary" onclick="copyShareUrl()">📋 複製連結</button>
+      <button class="btn btn-secondary" onclick="openShareUrl()">↗ 開啟連結</button>
+      <button class="btn btn-ghost btn-sm" id="toggle-url-btn" onclick="toggleShareUrlText()" style="font-size:var(--fs-fine);">▾ 顯示連結文字</button>
+    </div>
+    <input type="text" id="share-url-input" readonly
+      style="display:none;margin-top:14px;font-family:ui-monospace,monospace;font-size:var(--fs-fine);color:var(--ink-2);"
+      onclick="this.select()">
+    <div id="share-status"></div>
+    <div class="info-note mt-16" style="background:var(--paper-deep);border-color:var(--rule);">
+      <strong>怎麼運作？</strong>行程內容就完整儲存在這串專屬連結裡，旅伴點開就能直接看，<strong>完全不經過外部伺服器</strong>，安全又有隱私，密碼保護也照常生效。<br>
+      <strong>行程有變動？</strong>回來改好，重新按「產生分享連結」，把新連結傳給旅伴蓋掉舊的。
+    </div>
+    <div class="info-note mt-12" style="background:var(--paper-deep);border-left:3px solid var(--accent);">
+      <strong>連結的壽命，綁在這個網站上</strong><br>
+      連結靠這個網站（旅人手帖）顯示行程——萬一哪天網站收掉或網域到期，連結就會打不開。
+      想長期保存、不依賴任何人？<a href="javascript:void(0)" onclick="selectDeliveryMode('advanced')">改用進階模式 → 下載 + 部署</a>，把行程放進你自己的空間（例如免費的 Netlify）。
+    </div>
+  </div>
+  </div><!-- #section-basic -->
+
+  <!-- ── 進階：Firebase + 下載部署區塊 ─────────────────────────── -->
+  <div id="section-advanced" style="display:none">
+  <details class="advanced-section" open>
+    <summary class="advanced-summary" style="display:none">
+      <span class="advanced-label">進階選項</span>
+      需要多人即時同步、想自己架站、或想讓 App 離線也能開？
+    </summary>
+
+  <div class="card mt-16">
+    <div class="card-title">多人即時同步（Firebase）</div>
+    <div class="card-desc">
+      啟用後，<strong>行程協作編輯、注意事項、集合倒數、費用分帳</strong>會即時同步到每個人的手機。只在「下載 + 部署」模式生效，分享連結模式不啟用。
+    </div>
+    <div class="firebase-setup show" id="firebase-setup">
+      <div class="info-note" style="background:var(--paper-deep);border-left:3px solid var(--accent);margin-bottom:14px;">
+        <strong>這三步是第一次設定才要做。</strong>之前已經設定過、現在只是要改內容重新部署，直接看本區塊最後的「<strong>之後要改內容？</strong>」。
+      </div>
+      <div class="card-section">
+        <div class="card-label">第一次設定（三步）</div>
+        <div class="guide-step">
+          <div class="guide-num">1</div>
+          <div class="guide-text"><strong>建一個資料庫。</strong>開啟 <a href="https://console.firebase.google.com/" target="_blank" rel="noopener">Firebase Console →</a>，「建立專案」輸入名稱（例 <code>tokyo-trip-2027</code>），問到 Gemini、Google Analytics 都選「不啟用」。進專案後，左側「資料儲存空間」→「Realtime Database」（找不到就用上方搜尋列搜 <code>Realtime Database</code>）→「建立資料庫」→ 位置選「新加坡（asia-southeast1）」→ 安全性規則選「以鎖定模式啟動」（別選測試模式，它 30 天後會自動鎖上、旅伴會連不上）→「啟用」。
+            <div class="guide-result">✓ 完成：你有一個資料庫了。</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">2</div>
+          <div class="guide-text"><strong>把資料庫只開放給這趟旅程。</strong>切到上方「規則」分頁，整段換成下面這段，按「發布」。這段只開放你旅程代碼的空間、沒有期限。
+            <pre class="guide-code" id="fb-rules-code"></pre>
+            <button type="button" class="btn btn-secondary btn-sm mt-12" id="fb-rules-copy" onclick="copyFbRules()">📋 複製規則</button>
+            <div class="guide-result">✓ 完成：「規則」分頁顯示你的代碼，狀態為已發布。</div>
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">3</div>
+          <div class="guide-text"><strong>把資料庫接到這個生成器。</strong>左側「設定 ⚙」→「一般」→ 捲到「您的應用程式」→ 點網頁圖示 <code>&lt;/&gt;</code>，暱稱隨意（例 <code>trip-app</code>）、不用勾 Firebase 託管 →「註冊應用程式」。畫面會出現一段含 <code>firebaseConfig</code> 的程式碼，整段複製、貼到下方欄位（系統自動取需要的部分），按「測試連線」。
+            <div class="guide-result">✓ 完成：看到「✓ Firebase 連線成功」就設定好了。</div>
+          </div>
+        </div>
+        <div class="field mt-16">
+          <label>Firebase Config — 留空則不啟用</label>
+          <textarea id="f-firebase" rows="8" style="font-family:ui-monospace,monospace;font-size:var(--fs-fine);"
+            placeholder='{&#10;  "apiKey": "AIzaSy...",&#10;  "authDomain": "...",&#10;  "databaseURL": "https://....firebasedatabase.app",&#10;  "projectId": "...",&#10;  ...&#10;}'
+            oninput="onFirebaseInput()"></textarea>
+        </div>
+        <button class="btn btn-secondary" id="fb-test-btn" onclick="testFirebase()">測試連線</button>
+        <div id="fb-status"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">下載 + 部署</div>
+    <div class="card-desc">
+      適合：需要 Firebase 多人同步、想要自己掌控的獨立網址、想把 App 加到手機桌面用。
+    </div>
+    <div class="row mt-16" style="gap:10px;flex-wrap:wrap;">
+      <button class="btn btn-success btn-lg" onclick="downloadZip()">
+        ⬇ 下載 .zip 部署包
+      </button>
+    </div>
+    <div id="download-status"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">部署到網路</div>
+    <div class="card-desc">把 zip 解壓縮後整個資料夾上傳，旅伴就能在手機上打開。</div>
+    <ol class="deploy-list mt-16">
+      <li><div class="dnum">1</div><div>解壓縮下載的 .zip，會得到一個資料夾，含 <code>index.html</code>、<code>manifest.json</code>、<code>sw.js</code> 三個檔案。</div></li>
+      <li><div class="dnum">2</div><div>前往 <a href="https://netlify.com" target="_blank" rel="noopener">netlify.com</a> 註冊（用 GitHub 或 Google 都行），免費。</div></li>
+      <li><div class="dnum">3</div><div>登入後在左側點「Projects」，把<strong>解壓縮出來的資料夾</strong>拖進頁面最下方的拖放區（寫著「Drag and drop your folder here」，或點旁邊的「choose a folder」選取）。請拖資料夾、不要拖 .zip。部署完成後，Netlify 會給你一個網址（<code>https://xxx.netlify.app</code>）。</div></li>
+      <li><div class="dnum">4</div><div>網址預設是隨機名（如 <code>bejewelled-souffle-46181b</code>），<strong>趁分享前先改好記一點</strong>：進這個 Project →「Project configuration」→「General」→「Project details」→「Manage project name」，改成像 <code>claire-tokyo-2027</code>，網址就跟著變短。（只能用小寫英數字和連字號、要沒被別人用過；改名後舊網址會失效，所以先改再傳）</div></li>
+      <li><div class="dnum">5</div><div>把網址傳給旅伴。在手機上打開 → 加入主畫面，就像 App 一樣使用。</div></li>
+    </ol>
+    <div class="info-note mt-16">
+      <strong>☁ 天氣預報自動運作。</strong>App 部署後會從 Open-Meteo 抓未來 16 天的天氣，免費、不需設定。旅程開始日距今超過 16 天時顯示「尚無預報」，越接近出發越準。
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">之後要改內容？網址不用換</div>
+    <div class="card-desc">發現上錯行程、想更新景點時，改好內容重新送出即可，旅伴手上的連結或網址都不會失效。</div>
+    <div class="card-section">
+      <div class="card-label">用分享連結的你</div>
+      <p class="card-desc" style="margin-top:6px;">回生成器改好 → 重新按「產生分享連結」→ 把新連結傳給旅伴，蓋掉舊的就好。</p>
+    </div>
+    <div class="card-section">
+      <div class="card-label">自己部署的你</div>
+      <ol class="deploy-list mt-12">
+        <li><div class="dnum">1</div><div>回生成器把行程改對（同瀏覽器的草稿還在；不在的話，把本機那份 <code>index.html</code> 丟進步驟一還原），重新下載、解壓縮。</div></li>
+        <li><div class="dnum">2</div><div>到 Netlify 點進<strong>原本那個網站</strong> →「Deploys」分頁 → 捲到最下方拖放區，把新資料夾拖進去。同一個網址就更新了。</div></li>
+      </ol>
+      <div class="info-note mt-12" style="background:var(--paper-deep);border-left:3px solid var(--accent);">
+        <strong>有用 Firebase 同步的話：旅程代碼維持原本那組，規則完全不用動。</strong>只有一種情況要回 Firebase——<strong>重新下載前看一眼上面的「Firebase Config」欄位</strong>：
+        <ul style="margin:6px 0 0 18px;padding:0;line-height:1.7;">
+          <li><strong>還有內容</strong> → 不用動，直接重新下載、部署。</li>
+          <li><strong>是空白的</strong>（多半是用分享連結、或重貼全新內容把資料帶回來時）→ 應用程式已經建好、<strong>不會再出現 <code>&lt;/&gt;</code>「註冊應用程式」</strong>。改到 Firebase「設定 ⚙ → 一般 → 您的應用程式」，點 <code>trip-app</code>、在「SDK 設定和配置」選「<strong>設定</strong>」，把 <code>firebaseConfig</code> 複製貼回欄位，按「測試連線」看到成功，再重新下載、部署。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  </details>
+  </div><!-- #section-advanced -->
+</div>
+
+<!-- QR Code modal -->
+<div class="qr-modal" id="qr-modal">
+  <div class="qr-modal-inner">
+    <button class="qr-close" onclick="closeQrModal()" aria-label="關閉">✕</button>
+    <div class="qr-title">掃描 QR Code</div>
+    <canvas id="qr-canvas"></canvas>
+    <div class="qr-note" id="qr-note">產生 QR Code…</div>
+  </div>
+</div>
+
+</div><!-- .content -->
+
+<div class="nav-bar">
+  <div class="nav-inner">
+    <div class="nav-hint" id="nav-hint">步驟 1 / 5</div>
+    <div class="nav-actions">
+      <button class="btn btn-secondary" id="btn-prev" onclick="prevStep()" style="display:none;">← 上一步</button>
+      <button class="btn btn-primary" id="btn-next" onclick="nextStep()">下一步 →</button>
+    </div>
+  </div>
+</div>
+
+<script src="generator-app.js"></script>
+
+<!-- Undo Toast -->
+<div id="undo-toast">
+  <span id="undo-msg"></span>
+  <button id="undo-undo-btn" onclick="doUndo()">復原</button>
+</div>
+
+<!-- 複製到哪一天 bottom sheet -->
+<div id="copy-panel">
+  <div class="copy-panel-header">
+    <span id="copy-panel-title">複製到哪一天？</span>
+    <button class="copy-panel-close" onclick="cancelCopy()" title="取消">✕</button>
+  </div>
+  <div id="copy-day-btns"></div>
+</div>
+</body>
+</html>

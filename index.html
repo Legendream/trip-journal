@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>旅人手帖 · 為旅伴做的小本子</title>
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="apple-touch-icon" href="/icon.svg">
+<link rel="manifest" href="/manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* 嚴格對齊 generator/index.html 的 Design System Tokens */
+  :root {
+    --paper: #f6f0e3;
+    --paper-deep: #ede5d2;
+    --paper-light: #faf6ec;
+    --card: #fbf6e9;
+    --ink: #1c1815;
+    --ink-2: #5a5247;
+    --ink-3: #9a8f7e;
+    --ink-4: #b8b0a0;
+    --rule: #d8cfb8;
+    --rule-soft: #e6dfc9;
+    --accent: #a8362f;        /* terracotta red */
+    --accent-2: #c75c54;
+    --accent-soft: #faecea;
+    --accent-line: #e8c8c4;
+    --ok: #4a6b3a;
+    --radius: 4px;
+    --radius-lg: 6px;
+    --font-serif: "Noto Serif TC", "Songti TC", "Source Han Serif TC", serif;
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang TC", sans-serif;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 90px;
+    background-image:
+      radial-gradient(circle at 18% 12%, rgba(168,54,47,0.022) 0, transparent 320px),
+      radial-gradient(circle at 82% 88%, rgba(28,24,21,0.018) 0, transparent 360px);
+  }
+
+  body::before, body::after {
+    content: ""; position: fixed; top: 0; bottom: 0; width: 1px;
+    background: var(--rule); pointer-events: none; z-index: 5;
+  }
+  body::before { left: 28px; }
+  body::after { right: 28px; }
+  @media (max-width: 760px) {
+    body::before, body::after { display: none; }
+  }
+
+  .wrapper {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+  }
+
+  /* 頂部導航：融入產生器的三隻飛鳥圖騰 */
+  .topbar {
+    background: var(--paper-light);
+    border-bottom: 1.5px solid var(--ink);
+    padding: 14px 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .topbar-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--ink);
+  }
+  .topbar-birds {
+    display: flex;
+    gap: 4px;
+    color: var(--accent);
+    opacity: 0.85;
+  }
+  .topbar-logo {
+    font-family: var(--font-serif);
+    font-weight: 700;
+    font-size: 16px;
+    letter-spacing: 0.15em;
+  }
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .topbar-tag {
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .topbar-cta {
+    background: var(--accent);
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: var(--radius);
+    font-size: 12.5px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: 0.2s;
+  }
+  .topbar-cta:hover { background: var(--accent-2); }
+
+  /* 山脈飾帶（沿用原站裝飾，跨頁一致） */
+  .mountain-band {
+    background: var(--paper-light);
+    border-bottom: 1px solid var(--rule);
+    padding: 6px 0 4px;
+    display: flex; justify-content: center;
+    opacity: .42;
+  }
+  .mountain-band svg { display: block; max-width: 640px; width: 78%; height: auto; }
+
+  .section-header {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .section-eyebrow {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 12.5px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .section-title {
+    font-family: var(--font-serif);
+    font-size: 29px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    line-height: 1.35;
+  }
+  .section-desc {
+    font-size: 14.5px;
+    color: var(--ink-3);
+    margin-top: 6px;
+  }
+
+  /* 1. Hero 首屏 */
+  .hero {
+    padding: 75px 0 55px;
+    text-align: center;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero-inner {
+    position: relative;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  .hero-stamp {
+    position: absolute;
+    top: -16px;
+    right: 32px;
+    color: var(--accent);
+    opacity: 0.32;
+    transform: rotate(14deg);
+    pointer-events: none;
+  }
+  .hero-title {
+    font-family: var(--font-serif);
+    font-size: 54px;
+    font-weight: 900;
+    letter-spacing: 0.35em;
+    margin-left: 0.35em;
+    margin-bottom: 22px;
+    color: var(--ink);
+  }
+  .hero-tagline {
+    font-family: var(--font-serif);
+    font-size: 19.5px;
+    color: var(--ink-2);
+    line-height: 1.8;
+    max-width: 680px;
+    margin: 0 auto 28px;
+  }
+  .hero-badges {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--ink-2);
+    flex-wrap: wrap;
+  }
+  .hero-badge {
+    background: var(--paper-light);
+    border: 1px solid var(--rule);
+    padding: 4px 12px;
+    border-radius: 999px;
+  }
+
+  /* 2. 成品展示 Showcase */
+  .sample-showcase {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 48px;
+    align-items: center;
+    padding: 70px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .sample-headline {
+    font-family: var(--font-serif);
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-bottom: 20px;
+  }
+  .sample-body {
+    font-size: 16px;
+    color: var(--ink-2);
+    line-height: 1.8;
+    margin-bottom: 24px;
+  }
+  .sample-link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ink);
+    color: #fff;
+    padding: 12px 24px;
+    font-size: 14.5px;
+    text-decoration: none;
+    border-radius: var(--radius);
+    transition: 0.2s;
+  }
+  .sample-link-btn:hover { background: var(--accent); }
+  .sample-pin-tips {
+    font-size: 13px;
+    color: var(--ink-3);
+    margin-top: 14px;
+    line-height: 1.6;
+  }
+
+  .mockup-phone {
+    width: 310px;
+    border: 9px solid #1c1815;
+    border-radius: 36px;
+    background: #fff5f8;
+    box-shadow: 0 20px 48px rgba(28,24,21,0.18), 0 2px 10px rgba(28,24,21,0.08);
+    overflow: hidden;
+    margin: 0 auto;
+    font-family: var(--font-sans);
+    color: #1e0d12;
+  }
+  .mockup-top {
+    background: linear-gradient(145deg, #c94b72 0%, #e06a8a 55%, #f5a3ba 100%);
+    color: #fff;
+    padding: 16px 16px 14px;
+  }
+  .mockup-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .mockup-title { font-weight: 800; font-size: 15px; line-height: 1.25; }
+  .mockup-meta { font-size: 10.5px; opacity: 0.88; margin-top: 3px; }
+  .mockup-countdown {
+    background: rgba(255,255,255,0.22);
+    border-radius: 10px;
+    padding: 6px 10px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .mockup-cd-num { font-size: 16px; font-weight: 900; line-height: 1; }
+  .mockup-cd-label { font-size: 8.5px; opacity: 0.9; margin-top: 2px; }
+  .mockup-pills { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
+  .mockup-pill { background: rgba(255,255,255,0.2); border-radius: 14px; padding: 2px 8px; font-size: 9.5px; }
+  .mockup-body { padding: 12px; }
+  .mockup-day-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 8px rgba(60,30,40,0.06); overflow: hidden; }
+  .mockup-day-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+  .mockup-day-badge {
+    width: 36px; height: 36px; border-radius: 9px; background: #ffeef3;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .mockup-day-num { font-size: 8px; font-weight: 700; color: #c94b72; line-height: 1; }
+  .mockup-day-date { font-size: 14px; font-weight: 900; color: #c94b72; line-height: 1.1; }
+  .mockup-day-info { flex: 1; min-width: 0; }
+  .mockup-day-theme { font-size: 12px; font-weight: 700; line-height: 1.3; color: #1e0d12; }
+  .mockup-day-sub { font-size: 10px; color: #9a7080; margin-top: 2px; }
+  .mockup-day-body { border-top: 1px solid #f0d4dc; padding: 2px 12px 6px; }
+  .mockup-act { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f8f0f3; }
+  .mockup-act:last-child { border-bottom: none; }
+  .mockup-act-icon { width: 14px; height: 14px; flex-shrink: 0; color: #c94b72; }
+  .mockup-act-info { flex: 1; min-width: 0; }
+  .mockup-act-name { font-size: 11.5px; font-weight: 600; color: #1e0d12; }
+  .mockup-act-sub { font-size: 9.5px; color: #9a7080; margin-top: 1px; }
+  .mockup-act-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+  .mockup-time-tag { font-size: 9.5px; font-weight: 700; color: #c94b72; background: #ffeef3; border-radius: 4px; padding: 2px 5px; }
+  .mockup-map-btn {
+    font-size: 9px; font-weight: 700; color: #c94b72; background: #ffeef3; border-radius: 4px;
+    padding: 2px 6px; display: inline-flex; align-items: center; gap: 2px;
+  }
+  .mockup-nav { display: flex; background: #fff; border-top: 1px solid #f0d4dc; padding: 6px 0 5px; }
+  .mockup-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; color: #9a7080; font-size: 9.5px; }
+  .mockup-nav-btn.active { color: #c94b72; font-weight: 700; }
+  .mockup-nav-btn svg { width: 16px; height: 16px; }
+
+  /* 3. 核心功能 Features */
+  .features-section { padding: 75px 0; border-bottom: 1px solid var(--rule); }
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .feature-card {
+    background: var(--card); border: 1px solid var(--rule); padding: 24px 20px;
+    border-radius: var(--radius); border-top: 3px solid var(--accent);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .feature-title { font-family: var(--font-serif); font-size: 19px; font-weight: 700; line-height: 1.4; margin-bottom: 10px; }
+  .feature-desc { font-size: 14px; color: var(--ink-2); line-height: 1.7; }
+  .micro-ui-wrap { margin-top: 18px; padding-top: 14px; border-top: 1px dashed var(--rule-soft); }
+  .micro-spot-card {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--paper-light); border: 1px solid var(--rule);
+    padding: 8px 12px; border-radius: 4px; gap: 8px;
+  }
+  .micro-spot-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .micro-spot-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  .micro-spot-meta { font-size: 10.5px; color: var(--ink-3); white-space: nowrap; }
+  .micro-spot-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .micro-btn-terracotta {
+    display: inline-flex; align-items: center; gap: 4px; background: #fff;
+    border: 1px solid var(--accent); color: var(--accent); font-size: 11px;
+    font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  }
+  .micro-weather-badge {
+    display: inline-flex; align-items: center; gap: 4px; background: #fff;
+    border: 1px solid var(--rule); color: var(--accent); font-size: 11px;
+    font-weight: 700; padding: 3px 8px; border-radius: 4px; white-space: nowrap;
+  }
+
+  /* 4. 旅行海報成果展（真實成品照片） */
+  .poster-showcase-section {
+    padding: 75px 0; background: var(--paper-light);
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
+  .poster-showcase-inner { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 40px; align-items: center; }
+  .poster-badge {
+    display: inline-block; background: var(--card); border: 1px solid var(--accent);
+    color: var(--accent); font-size: 12px; padding: 4px 10px; border-radius: 4px;
+    font-weight: 600; margin-bottom: 14px;
+  }
+  .poster-headline { font-family: var(--font-serif); font-size: 28px; font-weight: 700; line-height: 1.4; margin-bottom: 16px; }
+  .poster-desc { font-size: 14.5px; color: var(--ink-2); line-height: 1.85; margin-bottom: 22px; }
+  .poster-tags { display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; }
+  .poster-tag-item { background: var(--card); border: 1px solid var(--rule); color: var(--ink-2); padding: 5px 12px; border-radius: 999px; }
+  .poster-images-wrap { display: flex; justify-content: center; align-items: center; gap: 16px; }
+  .poster-card-single { width: 175px; transform: rotate(-2.5deg); transition: 0.3s; }
+  .poster-card-single:hover { transform: rotate(0deg) scale(1.03); }
+  .poster-card-full { width: 175px; transform: rotate(2.5deg); transition: 0.3s; }
+  .poster-card-full:hover { transform: rotate(0deg) scale(1.03); }
+  .poster-img {
+    width: 100%; border-radius: 12px;
+    box-shadow: 0 16px 36px -8px rgba(0,0,0,0.45);
+    display: block; border: 1px solid rgba(255,255,255,0.1);
+  }
+  .poster-cap {
+    font-size: 11px; text-align: center; margin-bottom: 8px;
+    font-family: var(--font-sans); font-weight: 700; color: var(--ink);
+  }
+
+  /* 5. How It Works 四步驟 */
+  .how-section { padding: 75px 0; border-bottom: 1px solid var(--rule); background: var(--paper-deep); }
+  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: stretch; }
+  .step-card {
+    background: var(--card); border: 1px solid var(--rule); padding: 24px 20px;
+    border-radius: var(--radius); display: flex; flex-direction: column; justify-content: space-between;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .step-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(28,24,21,0.08); }
+  .step-top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .step-num-group { display: flex; flex-direction: column; }
+  .step-num {
+    font-family: var(--font-serif); font-size: 36px; font-weight: 500; line-height: 0.92;
+    color: var(--accent); letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  }
+  .step-num-line { display: block; width: 26px; height: 2px; background: var(--accent); margin-top: 6px; }
+  .step-phase-badge {
+    font-size: 11px; font-weight: 600; color: var(--ink-3); background: var(--paper-light);
+    border: 1px solid var(--rule); padding: 2px 7px; border-radius: 4px;
+  }
+  .step-title-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px; }
+  .step-label { font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: 0.04em; }
+  .step-en { font-family: var(--font-serif); font-style: italic; font-weight: 400; font-size: 13px; color: var(--ink-3); }
+  .step-lead { font-size: 14px; color: var(--ink-2); line-height: 1.68; margin-bottom: 16px; }
+  .step-pills { display: flex; flex-direction: column; gap: 6.5px; padding-top: 14px; border-top: 1px dashed var(--rule-soft); margin-top: auto; }
+  .feature-pill { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); line-height: 1.35; }
+  .feature-pill svg { flex-shrink: 0; color: var(--accent); }
+  .step-swatch-box { margin-top: 10px; padding: 7px 10px; background: var(--paper-light); border: 1px solid var(--rule); border-radius: 4px; }
+  .step-swatch-title { font-size: 11px; color: var(--ink-3); margin-bottom: 5px; display: flex; justify-content: space-between; }
+  .step-swatch-dots { display: flex; gap: 5px; align-items: center; }
+  .step-swatch-dot {
+    width: 14px; height: 14px; border-radius: 50%; cursor: pointer; border: 1px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15); transition: transform 0.15s;
+  }
+  .step-swatch-dot:hover { transform: scale(1.25); }
+
+  /* 6. 隱私與開源 Trust */
+  .trust-section { padding: 75px 0; border-bottom: 1px solid var(--rule); }
+  .trust-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .trust-card { background: var(--card); border: 1.5px solid var(--ink); padding: 32px 26px; border-radius: var(--radius); }
+  .trust-badge-label {
+    display: inline-block; background: var(--ink); color: #fff; font-family: var(--font-serif);
+    font-style: italic; font-size: 12px; padding: 2px 8px; border-radius: 2px; margin-bottom: 12px;
+  }
+  .trust-title { font-family: var(--font-serif); font-size: 21px; font-weight: 700; margin-bottom: 12px; }
+  .trust-desc { font-size: 14.5px; color: var(--ink-2); line-height: 1.8; }
+
+  /* 7. 編者的話 */
+  .story-section { padding: 75px 0; border-bottom: 1px solid var(--rule); }
+  .story-box { max-width: 720px; margin: 0 auto; background: var(--card); border: 1px solid var(--rule); padding: 44px 38px; border-radius: var(--radius); }
+  .story-title { font-family: var(--font-serif); font-size: 24px; font-weight: 700; margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--rule-soft); }
+  .story-body p { font-size: 15.5px; color: var(--ink-2); line-height: 1.85; margin-bottom: 16px; }
+  .story-sign-wrap { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+  .story-stamp { color: var(--accent); opacity: 0.38; transform: rotate(-6deg); }
+  .story-sign { font-size: 14px; color: var(--ink-3); }
+
+  /* 8. CTA & 下期預告 */
+  .cta-section { padding: 70px 0 50px; text-align: center; }
+  .cta-btn {
+    display: inline-block; background: var(--accent); color: #fff; padding: 16px 44px;
+    font-family: var(--font-serif); font-size: 20px; font-weight: 700; letter-spacing: 0.15em;
+    text-decoration: none; border-radius: var(--radius); box-shadow: 0 4px 12px rgba(168,54,47,0.2);
+    transition: 0.2s; margin-bottom: 14px;
+  }
+  .cta-btn:hover { background: var(--accent-2); transform: translateY(-2px); }
+  .cta-sub { font-size: 13.5px; color: var(--ink-3); }
+  .next-issue {
+    max-width: 720px; margin: 40px auto 0; padding: 30px 28px;
+    background: var(--paper-deep); border: 1px dashed var(--ink-3);
+    border-radius: var(--radius); text-align: left;
+  }
+
+  .colophon {
+    padding: 40px 0 20px; border-top: 1.5px solid var(--ink); font-size: 13px;
+    color: var(--ink-3); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-top: 40px;
+  }
+
+  @media (max-width: 900px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    .poster-showcase-inner { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 650px) {
+    .sample-showcase { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .trust-grid { grid-template-columns: 1fr; }
+    .hero-title { font-size: 38px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 頂部導航：融入產生器的三隻飛鳥圖騰 -->
+<header class="topbar">
+  <div class="wrapper topbar-inner">
+    <a href="#" class="topbar-brand">
+      <div class="topbar-birds" aria-hidden="true">
+        <svg viewBox="0 0 24 12" width="18" height="9"><path d="M2 8 Q6 2 12 6 Q18 2 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 12" width="16" height="8"><path d="M2 8 Q6 2 12 6 Q18 2 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+        <svg viewBox="0 0 24 12" width="14" height="7"><path d="M2 8 Q6 2 12 6 Q18 2 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      </div>
+      <span class="topbar-logo">旅　人　手　帖</span>
+    </a>
+    <div class="topbar-right">
+      <span class="topbar-tag">免註冊 · 完全免費</span>
+      <a href="./generator/" class="topbar-cta">開始製作 ↗</a>
+    </div>
+  </div>
+</header>
+
+<!-- 山脈飾帶 -->
+<div class="mountain-band" aria-hidden="true">
+  <svg viewBox="0 0 200 60" preserveAspectRatio="xMidYMid meet">
+    <path d="M0 60 L30 32 L42 42 L62 18 L78 30 L92 22 L114 44 L138 14 L160 38 L180 28 L200 50 L200 60 Z"
+      fill="#5a5247" opacity="0.06"/>
+    <path d="M58 22 L62 18 L66 22 Z M134 18 L138 14 L142 18 Z" fill="#5a5247" opacity="0.5"/>
+    <circle cx="100" cy="12" r="9" fill="none" stroke="#a8362f" stroke-width="0.7" opacity="0.6"/>
+  </svg>
+</div>
+
+<!-- 1. Hero 首屏 -->
+<section class="hero">
+  <div class="wrapper hero-inner">
+    <div class="hero-stamp" aria-hidden="true">
+      <svg width="86" height="86" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 2"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="0.8"/>
+        <path id="curve-hero" d="M 22 50 A 28 28 0 0 1 78 50" fill="none"/>
+        <text font-size="7" font-family="Noto Serif TC, serif" fill="currentColor" letter-spacing="1.2">
+          <textPath href="#curve-hero" startOffset="50%" text-anchor="middle">TRAVELER'S NOTE</textPath>
+        </text>
+        <text x="50" y="53" font-size="11" font-family="Noto Serif TC, serif" font-weight="700" fill="currentColor" text-anchor="middle">旅人手帖</text>
+        <line x1="28" y1="58" x2="72" y2="58" stroke="currentColor" stroke-width="0.8"/>
+        <text x="50" y="68" font-size="7.5" font-family="sans-serif" fill="currentColor" text-anchor="middle" letter-spacing="0.5">2026 SPRING</text>
+      </svg>
+    </div>
+
+    <h1 class="hero-title">旅　人　手　帖</h1>
+    <p class="hero-tagline">
+      不用註冊，10 分鐘把排好的行程變成手機桌面 App。<br>
+      點一下直接開地圖導航，內容絕不存到伺服器。
+    </p>
+    <div class="hero-badges">
+      <span class="hero-badge">✔ 免註冊直接做</span>
+      <span class="hero-badge">✔ 景點一鍵直連導航</span>
+      <span class="hero-badge">✔ 行程內容不存伺服器</span>
+      <span class="hero-badge">✔ MIT 開源自由使用</span>
+    </div>
+  </div>
+</section>
+
+<!-- 2. 成品展示 Showcase -->
+<section class="sample-showcase">
+  <div class="wrapper" style="display: contents;">
+    <div>
+      <h2 class="sample-headline">每趟旅行，<br>都該有一本順手的隨身手帖</h2>
+      <p class="sample-body">
+        照著四步驟指引，就能做出<strong>加到手機桌面、像 App 一樣隨開隨用</strong>的行程頁。分享連結就能傳給旅伴一起看，每日時間軸、Google 地圖導航、住宿航班、行前清單（打包/購物）都幫你整理好；<strong>進階模式</strong>還能加上即時記帳與集合倒數。
+      </p>
+      <div>
+        <a href="./trip-app-v2/" target="_blank" rel="noopener" class="sample-link-btn">打開「東北賞櫻 8 天」完整範例 ↗</a>
+      </div>
+      <div class="sample-pin-tips">
+        <p>• 範例沒有設定 PIN 碼，點開就能直接看</p>
+        <p>• （你自己製作時可以自訂 PIN 碼隨手防看）</p>
+      </div>
+    </div>
+
+    <!-- 1:1 真實 App 手機展示 -->
+    <div class="mockup-phone" aria-hidden="true">
+      <div class="mockup-top">
+        <div class="mockup-top-row">
+          <div>
+            <div class="mockup-title">🌸 東北賞櫻之旅</div>
+            <div class="mockup-meta">仙台・平泉・青森・松島</div>
+          </div>
+          <div class="mockup-countdown">
+            <div class="mockup-cd-num">D-30</div>
+            <div class="mockup-cd-label">出發倒數</div>
+          </div>
+        </div>
+        <div class="mockup-pills">
+          <span class="mockup-pill">4/15－22</span>
+          <span class="mockup-pill">8天7夜</span>
+          <span class="mockup-pill">6人同行</span>
+        </div>
+      </div>
+
+      <div class="mockup-body">
+        <div class="mockup-day-card">
+          <div class="mockup-day-head">
+            <div class="mockup-day-badge">
+              <span class="mockup-day-num">Day 1</span>
+              <span class="mockup-day-date">15</span>
+            </div>
+            <div class="mockup-day-info">
+              <div class="mockup-day-theme">抵達仙台・市區</div>
+              <div class="mockup-day-sub">4/15（三）· 3 個行程點</div>
+            </div>
+          </div>
+          <div class="mockup-day-body">
+            <div class="mockup-act">
+              <svg class="mockup-act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+              <div class="mockup-act-info">
+                <div class="mockup-act-name">桃園機場集合</div>
+                <div class="mockup-act-sub">CI118 班機</div>
+              </div>
+              <div class="mockup-act-right"><span class="mockup-time-tag">08:30</span></div>
+            </div>
+            <div class="mockup-act">
+              <svg class="mockup-act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <div class="mockup-act-info">
+                <div class="mockup-act-name">仙台機場抵達</div>
+                <div class="mockup-act-sub">仙台空港</div>
+              </div>
+              <div class="mockup-act-right"><span class="mockup-time-tag">16:00</span><span class="mockup-map-btn">📍 導航</span></div>
+            </div>
+            <div class="mockup-act">
+              <svg class="mockup-act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 7v14M21 7v14M6 11h4M6 15h4M14 11h4M14 15h4M9 3h6v4H9z"/></svg>
+              <div class="mockup-act-info">
+                <div class="mockup-act-name">Check-in 飯店</div>
+                <div class="mockup-act-sub">ホテル京阪仙台</div>
+              </div>
+              <div class="mockup-act-right"><span class="mockup-map-btn">📍 導航</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- App 底部分頁（4 大核心 Tab） -->
+      <div class="mockup-nav">
+        <div class="mockup-nav-btn active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span>行程</span>
+        </div>
+        <div class="mockup-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg>
+          <span>清單</span>
+        </div>
+        <div class="mockup-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          <span>集合</span>
+        </div>
+        <div class="mockup-nav-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+          <span>記帳</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. 核心功能 Features -->
+<section class="features-section">
+  <div class="wrapper">
+    <div class="section-header">
+      <div class="section-eyebrow">Features</div>
+      <h2 class="section-title">專為自由行設計的貼心細節</h2>
+      <p class="section-desc">解決現場找路、找車位、看天氣與傳群組的各種小麻煩</p>
+    </div>
+
+    <div class="features-grid">
+      <!-- F1: 導航 -->
+      <div class="feature-card">
+        <div>
+          <h3 class="feature-title">抵達現場直接開導航，不用狼狽複製地址</h3>
+          <p class="feature-desc">在行程裡收好 Google 地圖定位。到了當地點一下立刻規劃路線，出國找路不再手忙腳亂。</p>
+        </div>
+        <div class="micro-ui-wrap">
+          <div class="micro-spot-card">
+            <div class="micro-spot-left">
+              <span class="micro-spot-dot"></span>
+              <span class="micro-spot-name">淺草寺 雷門大門</span>
+            </div>
+            <div class="micro-btn-terracotta">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+              <span>Google Maps 導航 ↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F2: 天氣 -->
+      <div class="feature-card">
+        <div>
+          <h3 class="feature-title">行前掌握 16 天氣溫，收行李不怕穿錯衣服</h3>
+          <p class="feature-desc">景點貼上地圖連結，自動載入出發前 16 天即時氣候預報。精準掌握冷暖溫差與降雨，穿搭厚薄一目了然。</p>
+        </div>
+        <div class="micro-ui-wrap">
+          <div class="micro-spot-card">
+            <div class="micro-spot-left">
+              <span class="micro-spot-meta">Day 1 抵達</span>
+              <span class="micro-spot-name">仙台空港</span>
+            </div>
+            <div class="micro-weather-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+              <span>18°C 晴 · 降雨 10%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- F3: 停車 -->
+      <div class="feature-card">
+        <div>
+          <h3 class="feature-title">自駕一鍵搜尋周邊停車，找車位不必會打外文</h3>
+          <p class="feature-desc">快到景點時不用盲滑地圖或切換外文輸入法。點一下自動帶入當地語言搜尋附近停車場，副駕找位更從容。</p>
+        </div>
+        <div class="micro-ui-wrap">
+          <div class="micro-spot-card">
+            <div class="micro-spot-left">
+              <span class="micro-spot-dot"></span>
+              <span class="micro-spot-name">松島海岸 觀光船碼頭</span>
+            </div>
+            <div class="micro-btn-terracotta">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></svg>
+              <span>搜尋周邊停車 ↗</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. 旅行海報成果展（真實成品照片） -->
+<section class="poster-showcase-section">
+  <div class="wrapper poster-showcase-inner">
+    <div>
+      <span class="poster-badge">✦ 一鍵產出 · 免開修圖軟體</span>
+      <h2 class="poster-headline">單日小卡傳群組，整趟行程還能做成旅行海報</h2>
+      <p class="poster-desc">
+        出發當天不用在群組反覆說明行程。一鍵將當天日程匯出成極簡風格小卡，還能放上當日代表照片，傳給旅伴對時間超清楚，訂位代號、住宿地點、天氣也能隨選隱藏保護隱私；<br><br>
+        整趟行程還能匯出成俐落的 9:16 直式海報，發到社群限動超美觀，底部附帶旅人手帖 QR Code，讓好友隨手一掃也能做一本自己的專屬手帖！
+      </p>
+      <div class="poster-tags">
+        <span class="poster-tag-item">✔ 單日小卡可放代表照</span>
+        <span class="poster-tag-item">✔ 全行程匯出 9:16 直式海報</span>
+        <span class="poster-tag-item">✔ 訂位代號／住宿地點／天氣皆可隱藏</span>
+        <span class="poster-tag-item">✔ 附手帖 QR Code 好友隨掃隨做</span>
+      </div>
+    </div>
+
+    <!-- 兩張真實海報實體展示 -->
+    <div class="poster-images-wrap">
+      <div class="poster-card-single">
+        <div class="poster-cap">【單日行程小卡】</div>
+        <img class="poster-img" src="./images/poster-single-day-card.png" alt="單日行程小卡範例，顯示 Day 2 仙台市區賞櫻的景點清單與住宿">
+      </div>
+      <div class="poster-card-full">
+        <div class="poster-cap">【全行程 9:16 海報】</div>
+        <img class="poster-img" src="./images/poster-full-trip.png" alt="全行程直式海報範例，顯示每日行程主題與圖示的整趟旅程總覽">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. How It Works 四步驟 -->
+<section class="how-section">
+  <div class="wrapper">
+    <div class="section-header">
+      <div class="section-eyebrow">How It Works</div>
+      <h2 class="section-title">四個步驟，10 分鐘輕鬆完成</h2>
+      <p class="section-desc">不用學習複雜工具，把原本排好的筆記直接變成專屬隨身手帖</p>
+    </div>
+
+    <div class="steps-grid">
+      <!-- Step 01 -->
+      <div class="step-card">
+        <div>
+          <div class="step-top-row">
+            <div class="step-num-group">
+              <span class="step-num">01</span>
+              <span class="step-num-line"></span>
+            </div>
+            <span class="step-phase-badge">免 API Key</span>
+          </div>
+          <div class="step-title-row">
+            <span class="step-label">匯入行程</span>
+            <span class="step-en">Import</span>
+          </div>
+          <p class="step-lead">
+            複製預設提示詞交給常用 AI，雜亂筆記與機票訂房截圖自動轉為結構化日程。
+          </p>
+        </div>
+        <div class="step-pills">
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>免 API Key · 免費版 AI 即可</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>支援文字筆記與訂單截圖</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>亦可手動填寫或還原舊檔</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 02 -->
+      <div class="step-card">
+        <div>
+          <div class="step-top-row">
+            <div class="step-num-group">
+              <span class="step-num">02</span>
+              <span class="step-num-line"></span>
+            </div>
+            <span class="step-phase-badge">自動辨識</span>
+          </div>
+          <div class="step-title-row">
+            <span class="step-label">補齊資料</span>
+            <span class="step-en">Polish</span>
+          </div>
+          <p class="step-lead">
+            貼入景點的地圖分享連結，自動辨識地點與 16 天氣象；補齊交通航班，隨手自訂防看密碼。
+          </p>
+        </div>
+        <div class="step-pills">
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>貼 Google Maps 連結自動抓名稱</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>16 天即時天氣預報自動同步</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>自訂 4 位數 PIN 碼隨手防看</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 03 -->
+      <div class="step-card">
+        <div>
+          <div class="step-top-row">
+            <div class="step-num-group">
+              <span class="step-num">03</span>
+              <span class="step-num-line"></span>
+            </div>
+            <span class="step-phase-badge">所見即所得</span>
+          </div>
+          <div class="step-title-row">
+            <span class="step-label">挑選外觀</span>
+            <span class="step-en">Style</span>
+          </div>
+          <p class="step-lead">
+            挑選 7 款風格主題配色。預覽畫面即時套用真實行程與成員名單，所見即所得。
+          </p>
+        </div>
+        <div class="step-pills">
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>內建 7 款質感主題配色</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>真實行程即時套用預覽</span>
+          </div>
+          <div class="step-swatch-box">
+            <div class="step-swatch-title">
+              <span style="color:var(--ink-2); font-weight:600;">可選主題色彩：</span>
+              <span style="font-size:11px; color:var(--ink-3);">點擊試看效果</span>
+            </div>
+            <div class="step-swatch-dots">
+              <span class="step-swatch-dot" style="background:#a8362f" title="赭紅" onclick="setSwatch('#a8362f')"></span>
+              <span class="step-swatch-dot" style="background:#5b7e56" title="抹茶綠" onclick="setSwatch('#5b7e56')"></span>
+              <span class="step-swatch-dot" style="background:#3e7b8a" title="湖水綠" onclick="setSwatch('#3e7b8a')"></span>
+              <span class="step-swatch-dot" style="background:#c94b72" title="櫻花粉" onclick="setSwatch('#c94b72')"></span>
+              <span class="step-swatch-dot" style="background:#36486b" title="靛藍" onclick="setSwatch('#36486b')"></span>
+              <span class="step-swatch-dot" style="background:#735c82" title="藤紫" onclick="setSwatch('#735c82')"></span>
+              <span class="step-swatch-dot" style="background:#c68642" title="琥珀黃" onclick="setSwatch('#c68642')"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 04 -->
+      <div class="step-card">
+        <div>
+          <div class="step-top-row">
+            <div class="step-num-group">
+              <span class="step-num">04</span>
+              <span class="step-num-line"></span>
+            </div>
+            <span class="step-phase-badge">免下載即用</span>
+          </div>
+          <div class="step-title-row">
+            <span class="step-label">加到手機桌面</span>
+            <span class="step-en">Build / Share</span>
+          </div>
+          <p class="step-lead">
+            在手機瀏覽器點選「加入主畫面」，隨開隨用；一行專屬連結傳到群組，旅伴點開就能看。
+          </p>
+        </div>
+        <div class="step-pills">
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>瀏覽器「加入主畫面」如專屬 App</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>免去 App Store 搜尋下載與登入</span>
+          </div>
+          <div class="feature-pill">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            <span>一行專屬網址傳群組，旅伴點開即看</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. 隱私至上 · 完全開源 Trust -->
+<section class="trust-section">
+  <div class="wrapper">
+    <div class="section-header">
+      <div class="section-eyebrow">Trust & Open Source</div>
+      <h2 class="section-title">隱私至上 · 完全開源</h2>
+      <p class="section-desc">一個人開發的純粹工具，沒有商業花招，只做好兩件事</p>
+    </div>
+
+    <div class="trust-grid">
+      <div class="trust-card">
+        <span class="trust-badge-label">PRIVACY FIRST</span>
+        <h3 class="trust-title">行程不存伺服器，資料由你完全掌控</h3>
+        <p class="trust-desc">
+          預設模式下，行程資料直接編碼在你產生的專屬連結裡，由旅伴的瀏覽器端解碼顯示——旅人手帖的伺服器不會留存你的行程內容，也不會蒐集個人足跡。<br><br>
+          如果需要跟旅伴多人即時記帳與集合定位，可以串接由你自己申請、自己管理的 Firebase，資料存在你自己的帳號裡，不是我們的伺服器。
+        </p>
+      </div>
+
+      <div class="trust-card">
+        <span class="trust-badge-label">MIT OPEN SOURCE</span>
+        <h3 class="trust-title">完全免費、程式碼採 MIT 開源開放</h3>
+        <p class="trust-desc">
+          這是一個因自己旅行痛點而生的小作品。沒有付費解鎖、沒有訂閱制、沒有煩人的註冊廣告。<br><br>
+          整套工具完全開源並採 MIT 授權釋出，任何人都可以自由使用、修改原始碼，甚至架設改造成屬於你自己的專屬版本。
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. 編者的話 -->
+<section class="story-section">
+  <div class="wrapper">
+    <div class="story-box">
+      <h2 class="story-title">為什麼我做了這本旅人手帖？</h2>
+      <div class="story-body">
+        <p>每次排自由行，出發前我的 Google 文件總是整理得很完整：哪天去哪裡、住宿航班、地圖連結全都清清楚楚。</p>
+        <p>但一到當地，往往變成站在路口手忙腳亂。一邊要在文件裡翻找地址、複製貼進地圖導航，一邊還要切換通訊軟體跟旅伴對集合時間。整趟走下來，光是找資料就累壞了，根本沒力氣好好看風景。</p>
+        <p>我想要一個真正順手的隨身工具：免註冊、行程不存任何伺服器、加到手機桌面就像專屬 App，所有景點點一下直接開導航。</p>
+        <p>把找路的時間省下來，好好享受眼前的風景與身邊的旅伴。</p>
+        <div class="story-sign-wrap">
+          <div class="story-stamp" aria-hidden="true">
+            <svg width="46" height="46" viewBox="0 0 60 60">
+              <circle cx="30" cy="30" r="27" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="2.5 1.5"/>
+              <circle cx="30" cy="30" r="23" fill="none" stroke="currentColor" stroke-width="0.8"/>
+              <text x="30" y="32" font-size="8.5" font-family="Noto Serif TC, serif" font-weight="bold" fill="currentColor" text-anchor="middle">手帖隨筆</text>
+              <text x="30" y="42" font-size="5.5" font-family="sans-serif" fill="currentColor" text-anchor="middle" letter-spacing="0.5">CLAIRE</text>
+            </svg>
+          </div>
+          <div class="story-sign">Claire Cheng · 2026 春</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 8. CTA & 下期預告 -->
+<section class="cta-section">
+  <div class="wrapper">
+    <div>
+      <a href="./generator/" class="cta-btn">翻 開 手 帖 →</a>
+    </div>
+    <div class="cta-sub">四個步驟 · 通常 10 分鐘以內完成 · 免註冊直接開始</div>
+
+    <div class="next-issue">
+      <div style="font-family:var(--font-serif); font-size: 13.5px; color: var(--accent); font-weight: 700; margin-bottom: 8px;">下一期預告</div>
+      <h3 style="font-family:var(--font-serif); font-size: 19px; font-weight: 700; margin-bottom: 10px;">行程共享集（即將推出）</h3>
+      <p style="font-size: 14.5px; color: var(--ink-2); line-height: 1.75;">
+        排行程不用每次都從零開始！未來會陸續公開親自走過的完整行程，你可以一鍵把範本「匯入成自己的草稿」，自己改改日期、增刪想去的景點，輕鬆做成專屬行程頁。<br><br>
+        <span style="color: var(--accent); font-weight: 600;">下一期首發：親自規劃走訪的「東北賞櫻 8 天 7 夜」完整手帖。</span><br>
+        <span style="font-size: 12.5px; color: var(--ink-3);">（這是還在準備中的未來功能，不是跟團或賣套裝行程喔，敬請期待！）</span>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- 版權頁 -->
+<footer class="wrapper">
+  <div class="colophon">
+    <div>版權頁</div>
+    <div>編者：Claire Cheng</div>
+    <div>創刊：2026 春</div>
+    <div>授權：MIT 開源授權 · 免費自由使用</div>
+    <div>旅人手帖 · No. 01 · 2026 春</div>
+  </div>
+</footer>
+
+<script>
+  function setSwatch(color) {
+    document.querySelectorAll('.step-num').forEach(el => el.style.color = color);
+    document.querySelectorAll('.step-num-line').forEach(el => el.style.background = color);
+  }
+</script>
+
+</body>
+</html>

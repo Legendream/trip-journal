@@ -1,0 +1,15 @@
+.claude/settings.local.json
+.DS_Store
+__*.html
+
+# Local Netlify folder
+.netlify
+
+# Claude Code 工作檯（每個都是獨立的 git 工作資料夾，不進版控）
+.claude/worktrees/
+
+# 舊版 UI 原型：含旅伴真實姓名，只留本機，不上傳 GitHub、不公開到網站
+trip-app_UI v.2/
+
+# 海報驗收輸出圖（1440×2560 PNG，本機對照用，不進版控）
+docs/design-handoff/showcase-poster/output/

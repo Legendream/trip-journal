@@ -1,0 +1,19 @@
+{
+  "name": "旅人手帖",
+  "short_name": "旅人手帖",
+  "description": "把 AI 整理好的行程打包成可分享的旅遊 App，零部署、即刻分享",
+  "start_url": "/generator/",
+  "display": "standalone",
+  "background_color": "#f6f0e3",
+  "theme_color": "#a8362f",
+  "orientation": "portrait",
+  "lang": "zh-TW",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

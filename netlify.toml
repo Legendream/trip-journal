@@ -1,0 +1,16 @@
+# 這裡刻意「沒有」ignore 規則。
+#
+# 原本有一條 ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ..."，
+# 用意是「只有文件變動就不要浪費建置時間」。但本專案的流程是「開分支 → Netlify
+# 先部署該分支（成功）→ 合併回 main」，而合併後 main 的檔案內容跟分支完全一樣，
+# 這條規則就會判定「沒有內容變更」，把 main 的正式部署取消掉（Netlify 顯示
+# "Canceled build due to no content change"）。結果是分支部署永遠成功、正式站
+# 永遠不更新——2026-07-09 到 09-12 之間 #26~#29 全部沒上線，而且不會有任何錯誤
+# 通知，只能靠比對線上檔案才發現。
+#
+# 本站沒有 build command，「建置」其實只是把目錄上傳、成本極低，不值得為了省那
+# 點時間冒正式站靜默停更的風險。要恢復類似最佳化的話，請只掛在非 production
+# context（例如 [context.branch-deploy]），不要套用到 production。
+
+[build]
+  publish = "."
