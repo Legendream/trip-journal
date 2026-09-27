@@ -1275,7 +1275,7 @@
   details.specs-drawer summary::-webkit-details-marker { display: none; }
   details.specs-drawer summary:hover { color: var(--accent); }
   .specs-table-wrap { padding: 12px 14px; overflow-x: auto; }
-  .specs-table { width: 100%; border-collapse: collapse; font-size: var(--fs-fine); line-height: 1.6; background: #fff; }
+  .specs-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: var(--fs-fine); line-height: 1.6; background: #fff; }
   .specs-table th, .specs-table td {
     padding: 12px 14px; border: 1px solid var(--rule); text-align: left; vertical-align: top;
   }
@@ -1829,9 +1829,11 @@
     </div>
 
     <div class="checklist-panel active" id="pane-packing">
-      <div class="checklist-intro" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
-        <span>出發前要打包或確認的項目，旅伴在 App 的「打包」分頁可獨立勾選。以下項目可自由增修或刪除。</span>
-        <button class="btn btn-ghost btn-sm" onclick="clearChecklist()" style="font-size:var(--fs-fine);padding:3px 8px;flex-shrink:0;">清除全部</button>
+      <div class="checklist-intro">
+        出發前要打包或確認的項目，旅伴在 App 的「打包」分頁可獨立勾選。以下項目可自由增修或刪除。
+        <div style="text-align:right;margin-top:6px;">
+          <button class="btn btn-ghost btn-sm" onclick="clearChecklist()" style="font-size:var(--fs-fine);padding:3px 8px;">清除全部</button>
+        </div>
       </div>
       <div id="checklist-list"></div>
       <input type="text" id="new-checklist-item" class="mt-12" placeholder="護照、信用卡、轉接頭…"
