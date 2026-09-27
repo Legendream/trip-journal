@@ -365,8 +365,9 @@
     .day-hotel {
       margin: 0 16px 14px; background: var(--pink-bg);
       border-radius: 10px; padding: 10px 12px;
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: flex-start; gap: 8px;
     }
+    .day-hotel-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
     .day-hotel-info { flex: 1; min-width: 0; }
     .day-hotel-name { font-size: 13px; font-weight: 600; color: var(--text-2); }
     .day-hotel-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
@@ -2275,9 +2276,25 @@ function renderItinerary(opts) {
     }).join("");
 
     const _hotel = _dayHotelInfo(d);
-    const hotelHtml = _hotel ? `
+    const hotelHtml = _hotel ? (() => {
+      const _hMapBtn  = _hotel.map ? `<a class="map-btn" href="${mapUrl(_hotel.map)}" target="_blank" rel="noopener">📍 地圖</a>` : "";
+      const _hParkBtn = (d.selfDrive && _hotel.name && _hotel.park !== false)
+        ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(_hotel))}" target="_blank" rel="noopener">🅿️ 停車</a>` : "";
+      const _hMenu = _canEdit ? `<span class="slot-menu-wrap">
+          <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('hotel:${d.day}')">⋯</button>
+          ${itinMenuKey === "hotel:" + d.day ? `<div class="act-menu">
+            <button class="act-menu-item" onclick="startEditHotel(${d.day})">✏️ 編輯</button>
+            <button class="act-menu-item danger" onclick="deleteHotel(${d.day})">🗑 刪除</button>
+          </div>` : ""}
+        </span>` : "";
+      const _hActions = (_hMapBtn || _hParkBtn || _hMenu) ? `
+          <div class="act-actions">
+            <span class="act-actions-gap"></span>
+            ${_hMapBtn}${_hParkBtn}${_hMenu}
+          </div>` : "";
+      return `
       <div class="day-hotel">
-        <span style="font-size:18px">🏨</span>
+        <span class="day-hotel-icon">🏨</span>
         <div class="day-hotel-info">
           <div class="day-hotel-name">${_esc(_hotel.name || "")}</div>
           <div class="day-hotel-meta">
@@ -2288,17 +2305,10 @@ function renderItinerary(opts) {
             </span>
             ${_hotel.note ? `<span class="day-hotel-note">${_esc(_hotel.note)}</span>` : ""}
           </div>
+          ${_hActions}
         </div>
-        ${_hotel.map ? `<a class="map-btn" href="${mapUrl(_hotel.map)}" target="_blank" rel="noopener">📍 地圖</a>` : ""}
-        ${(d.selfDrive && _hotel.name && _hotel.park !== false) ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(_hotel))}" target="_blank" rel="noopener">🅿️ 停車</a>` : ""}
-        ${_canEdit ? `<span class="slot-menu-wrap">
-          <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('hotel:${d.day}')">⋯</button>
-          ${itinMenuKey === "hotel:" + d.day ? `<div class="act-menu">
-            <button class="act-menu-item" onclick="startEditHotel(${d.day})">✏️ 編輯</button>
-            <button class="act-menu-item danger" onclick="deleteHotel(${d.day})">🗑 刪除</button>
-          </div>` : ""}
-        </span>` : ""}
-      </div>` : "";
+      </div>`;
+    })() : "";
     const hotelAddHtml = (!_hotel && _canEdit) ? `<button class="slot-add-btn" onclick="startAddHotel(${d.day})">➕ 新增住宿</button>` : "";
 
     const restaurantHtml = (() => {
