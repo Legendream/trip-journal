@@ -102,19 +102,19 @@ let state = {
 //     且「朱泥」其實是陶土名），使用者反應困惑，故改為易懂主名＋正式和色副標。
 const THEMES = [
   // 朱色 shuiro — vermilion terracotta，和 generator 主色同調、預設選項
-  { name: '🏺 赭紅',     wa: '朱色',   color: '#a8362f', accent: '#c45a4f', light: '#e3a89c', bg: '#faf2ec', pale: '#f3e3d8' },
+  { name: '赭紅',     wa: '朱色',   color: '#a8362f', accent: '#c45a4f', light: '#e3a89c', bg: '#faf2ec', pale: '#f3e3d8' },
   // 抹茶色 matcha — muted matcha green
-  { name: '🍵 抹茶綠',   wa: '抹茶色', color: '#5d7242', accent: '#7d8f5d', light: '#b5c193', bg: '#f3f2e6', pale: '#e2e3c8' },
+  { name: '抹茶綠',   wa: '抹茶色', color: '#5d7242', accent: '#7d8f5d', light: '#b5c193', bg: '#f3f2e6', pale: '#e2e3c8' },
   // 浅葱色 asagi — Edo 期常見的淺青（藍綠調）
-  { name: '🌊 湖水綠',   wa: '浅葱色', color: '#2e6e72', accent: '#4f9094', light: '#94b8b9', bg: '#edf3f2', pale: '#d4e1de' },
+  { name: '湖水綠',   wa: '浅葱色', color: '#2e6e72', accent: '#4f9094', light: '#94b8b9', bg: '#edf3f2', pale: '#d4e1de' },
   // 桜色 sakura — 櫻花粉
-  { name: '🌸 櫻花粉',   wa: '桜色',   color: '#a6586a', accent: '#c87d8a', light: '#e3b6bb', bg: '#faf0ee', pale: '#f1d8da' },
+  { name: '櫻花粉',   wa: '桜色',   color: '#a6586a', accent: '#c87d8a', light: '#e3b6bb', bg: '#faf0ee', pale: '#f1d8da' },
   // 紺青 konjō — deep ink-navy blue，明治文人色
-  { name: '🌌 靛藍',     wa: '紺青',   color: '#2c456c', accent: '#4d6791', light: '#92a4c2', bg: '#ecf0f6', pale: '#d4dde9' },
+  { name: '靛藍',     wa: '紺青',   color: '#2c456c', accent: '#4d6791', light: '#92a4c2', bg: '#ecf0f6', pale: '#d4dde9' },
   // 藤色 fuji — muted wisteria purple
-  { name: '🪻 藤紫',     wa: '藤色',   color: '#6a5897', accent: '#8a7ab2', light: '#b8aed1', bg: '#f0eef6', pale: '#ddd8e8' },
+  { name: '藤紫',     wa: '藤色',   color: '#6a5897', accent: '#8a7ab2', light: '#b8aed1', bg: '#f0eef6', pale: '#ddd8e8' },
   // 山吹色 yamabuki — warm ochre / kerria yellow
-  { name: '🌾 琥珀黃',   wa: '山吹色', color: '#b8842a', accent: '#d4a04c', light: '#e8c98a', bg: '#f7f0dd', pale: '#ecdcb6' },
+  { name: '琥珀黃',   wa: '山吹色', color: '#b8842a', accent: '#d4a04c', light: '#e8c98a', bg: '#f7f0dd', pale: '#ecdcb6' },
 ];
 
 // 目的地地區 → 當地「停車場」用詞（解決日本要搜「駐車場」才有資料的痛點）
@@ -334,7 +334,12 @@ function goTo(step) {
   document.getElementById('btn-next').style.display = step === STEPS.length - 1 ? 'none' : '';
   if (step === 1) renderStep2();
   if (step === 2) renderThemeStep();
-  if (step === 3) { renderSummary(); renderFbRules(); }
+  if (step === 3) {
+    renderSummary(); renderFbRules();
+    // 記住這次工作階段裡使用者上次選的分享方式；第一次進來預設「一行分享連結」
+    selectDeliveryMode(_previewMode === 'advanced' ? 'advanced' : 'basic');
+    ensureFreshShareUrl();
+  }
   // Scroll AFTER render so the newly-laid-out panel starts at the top.
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   saveState();
@@ -359,6 +364,11 @@ function setPath(p, silent) {
     panel.classList.toggle('active', panel.id === 'path-' + p);
   });
   if (!silent) saveState();
+}
+
+function switchChecklistSubtab(tab) {
+  document.querySelectorAll('.checklist-subtab').forEach(b => b.classList.toggle('active', b.id === 'tab-btn-' + tab));
+  document.querySelectorAll('.checklist-panel').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab));
 }
 
 // ── AI flow ────────────────────────────────────────────────────────
@@ -1971,7 +1981,7 @@ function renderThemeStep() {
   tc.innerHTML = THEMES.map((t, i) =>
     `<div class="theme-card${i === state.activeTheme ? ' active' : ''}" onclick="selectTheme(${i})">
       <div class="theme-card-preview" style="background:linear-gradient(135deg,${t.color},${t.accent})"></div>
-      <div class="theme-card-label">${t.name}${t.wa ? `<span class="theme-card-wa">${t.wa}</span>` : ''}</div>
+      <div class="theme-card-label">${t.name}</div>
     </div>`
   ).join('');
   applyTheme();
@@ -2417,17 +2427,29 @@ async function downloadZip() {
 // the link → viewer page (legendream.com/v/) decodes and renders.
 // No backend, no accounts. Hash never sent to server per HTTP spec.
 
-async function buildShareUrl() {
-  if (!state.fields['f-title']) {
-    throw new Error('請先在步驟 2 填入旅程名稱');
-  }
+function shareCfgJson() {
+  // 先做步驟二畫面會做的舊格式遷移，免得只是切到步驟二就被判定「行程有修改」
+  ensureExtras();
   const cfg = collectConfig();
   // Strip Firebase — quick-share mode is view-only (no multi-person sync).
   // Keeping firebase keys would let viewers write to the trip creator's project.
   cfg.firebase = {};
   cfg._quickShare = true;
+  return JSON.stringify(cfg);
+}
 
-  const json = JSON.stringify(cfg);
+// 畫面上這條分享連結是用哪一版行程產生的；'' ＝ 還沒產生過
+let sharedCfgJson = '';
+
+function shareUrlIsStale() {
+  return !!sharedCfgJson && shareCfgJson() !== sharedCfgJson;
+}
+
+async function buildShareUrl() {
+  if (!state.fields['f-title']) {
+    throw new Error('請先在步驟 2 填入旅程名稱');
+  }
+  const json = shareCfgJson();
   const bytes = new TextEncoder().encode(json);
   const compressed = await gzipBytes(bytes);
   const encoded = bytesToBase64url(compressed);
@@ -2435,7 +2457,7 @@ async function buildShareUrl() {
   // Use site origin (same domain as generator). If running standalone
   // (generator opened from file://), fall back to current origin anyway.
   const base = location.origin + location.pathname.replace(/generator\/?.*$/, '');
-  return base + 'v/#z=' + encoded;
+  return { url: base + 'v/#z=' + encoded, json };
 }
 
 async function gzipBytes(bytes) {
@@ -2450,49 +2472,45 @@ function bytesToBase64url(bytes) {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function generateShareUrl() {
+async function generateShareUrl({ refreshed = false } = {}) {
   const stat = document.getElementById('share-status');
   const out = document.getElementById('share-url-input');
-  const actions = document.getElementById('share-actions');
   stat.innerHTML = '<div class="status-box status-info"><span class="spinner"></span>&nbsp;產生連結中…</div>';
   try {
-    const url = await buildShareUrl();
+    const { url, json } = await buildShareUrl();
     out.value = url;
-    out.style.display = 'none';           // 連結文字預設收合，靠「顯示連結文字」展開
-    actions.style.display = '';
-    const toggleBtn = document.getElementById('toggle-url-btn');
-    if (toggleBtn) toggleBtn.textContent = '▾ 顯示連結文字';
+    sharedCfgJson = json;
     const sizeKb = (url.length / 1024).toFixed(1);
     let warn = '';
     if (url.length > 8000) {
       warn = ' <span style="color:var(--warn);">⚠ 連結較長（' + sizeKb + ' KB），LINE 仍可貼但部分 QR 掃描可能困難。</span>';
     }
-    stat.innerHTML = '<div class="status-box status-ok">✓ 連結已產生。建議直接用 <strong>📱 QR Code</strong>' +
-      (navigator.share ? ' 或 <strong>📤 傳送給旅伴</strong>' : '') +
-      ' 分享，不必貼那一長串網址。<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
+    const via = '<strong>📱 QR Code</strong>' + (navigator.share ? ' 或 <strong>📤 傳送給旅伴</strong>' : '');
+    const lead = refreshed
+      ? '🔄 <strong>行程有修改，連結已自動更新成最新版。</strong>之前傳出去的舊連結不會跟著變，請用 ' + via + ' 把新連結重新傳給旅伴。'
+      : '✓ 連結已產生。建議直接用 ' + via + ' 分享，不必貼那一長串網址。';
+    stat.innerHTML = '<div class="status-box ' + (refreshed ? 'status-warn' : 'status-ok') + '">' + lead +
+      '<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
       '連結包含整份行程的所有資料（' + sizeKb + ' KB）所以較長——這是「不經外部伺服器、兼顧隱私安全」的優點。</span>' + warn + '</div>';
   } catch (e) {
+    // 產生失敗就收掉舊連結，免得按鈕把舊版傳出去
+    out.value = '';
+    sharedCfgJson = '';
     stat.innerHTML = '<div class="status-box status-err">' + e.message + '</div>';
   }
 }
 
-// 展開／收合那串長網址（預設收合，避免畫面被醜長網址佔據）
-function toggleShareUrlText() {
-  const out = document.getElementById('share-url-input');
-  const btn = document.getElementById('toggle-url-btn');
-  if (!out) return;
-  const show = out.style.display === 'none';
-  out.style.display = show ? '' : 'none';
-  if (btn) btn.textContent = show ? '▴ 收合連結文字' : '▾ 顯示連結文字';
-  if (show) out.select();
+// 分享按鈕一律拿依目前行程產生的連結；回傳空字串代表產生失敗
+async function ensureFreshShareUrl() {
+  const input = document.getElementById('share-url-input');
+  if (input.value && !shareUrlIsStale()) return input.value;
+  await generateShareUrl({ refreshed: !!input.value });
+  return input.value;
 }
 
 async function copyShareUrl() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   try {
     await navigator.clipboard.writeText(input.value);
     showToast('已複製分享連結', '貼到 LINE / 訊息給旅伴即可');
@@ -2506,19 +2524,13 @@ async function copyShareUrl() {
 
 async function openShareUrl() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   window.open(input.value, '_blank');
 }
 
 async function shareNative() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   const title = (state.fields['f-title'] || '').trim() || '旅人手帖';
   try {
     await navigator.share({
@@ -2536,10 +2548,7 @@ async function shareNative() {
 
 async function showQrCode() {
   const input = document.getElementById('share-url-input');
-  if (!input.value) {
-    await generateShareUrl();
-    if (!input.value) return;
-  }
+  if (!(await ensureFreshShareUrl())) return;
   const url = input.value;
   const modal = document.getElementById('qr-modal');
   const canvas = document.getElementById('qr-canvas');
