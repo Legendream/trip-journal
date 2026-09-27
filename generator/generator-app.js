@@ -102,19 +102,19 @@ let state = {
 //     且「朱泥」其實是陶土名），使用者反應困惑，故改為易懂主名＋正式和色副標。
 const THEMES = [
   // 朱色 shuiro — vermilion terracotta，和 generator 主色同調、預設選項
-  { name: '🏺 赭紅',     wa: '朱色',   color: '#a8362f', accent: '#c45a4f', light: '#e3a89c', bg: '#faf2ec', pale: '#f3e3d8' },
+  { name: '赭紅',     wa: '朱色',   color: '#a8362f', accent: '#c45a4f', light: '#e3a89c', bg: '#faf2ec', pale: '#f3e3d8' },
   // 抹茶色 matcha — muted matcha green
-  { name: '🍵 抹茶綠',   wa: '抹茶色', color: '#5d7242', accent: '#7d8f5d', light: '#b5c193', bg: '#f3f2e6', pale: '#e2e3c8' },
+  { name: '抹茶綠',   wa: '抹茶色', color: '#5d7242', accent: '#7d8f5d', light: '#b5c193', bg: '#f3f2e6', pale: '#e2e3c8' },
   // 浅葱色 asagi — Edo 期常見的淺青（藍綠調）
-  { name: '🌊 湖水綠',   wa: '浅葱色', color: '#2e6e72', accent: '#4f9094', light: '#94b8b9', bg: '#edf3f2', pale: '#d4e1de' },
+  { name: '湖水綠',   wa: '浅葱色', color: '#2e6e72', accent: '#4f9094', light: '#94b8b9', bg: '#edf3f2', pale: '#d4e1de' },
   // 桜色 sakura — 櫻花粉
-  { name: '🌸 櫻花粉',   wa: '桜色',   color: '#a6586a', accent: '#c87d8a', light: '#e3b6bb', bg: '#faf0ee', pale: '#f1d8da' },
+  { name: '櫻花粉',   wa: '桜色',   color: '#a6586a', accent: '#c87d8a', light: '#e3b6bb', bg: '#faf0ee', pale: '#f1d8da' },
   // 紺青 konjō — deep ink-navy blue，明治文人色
-  { name: '🌌 靛藍',     wa: '紺青',   color: '#2c456c', accent: '#4d6791', light: '#92a4c2', bg: '#ecf0f6', pale: '#d4dde9' },
+  { name: '靛藍',     wa: '紺青',   color: '#2c456c', accent: '#4d6791', light: '#92a4c2', bg: '#ecf0f6', pale: '#d4dde9' },
   // 藤色 fuji — muted wisteria purple
-  { name: '🪻 藤紫',     wa: '藤色',   color: '#6a5897', accent: '#8a7ab2', light: '#b8aed1', bg: '#f0eef6', pale: '#ddd8e8' },
+  { name: '藤紫',     wa: '藤色',   color: '#6a5897', accent: '#8a7ab2', light: '#b8aed1', bg: '#f0eef6', pale: '#ddd8e8' },
   // 山吹色 yamabuki — warm ochre / kerria yellow
-  { name: '🌾 琥珀黃',   wa: '山吹色', color: '#b8842a', accent: '#d4a04c', light: '#e8c98a', bg: '#f7f0dd', pale: '#ecdcb6' },
+  { name: '琥珀黃',   wa: '山吹色', color: '#b8842a', accent: '#d4a04c', light: '#e8c98a', bg: '#f7f0dd', pale: '#ecdcb6' },
 ];
 
 // 目的地地區 → 當地「停車場」用詞（解決日本要搜「駐車場」才有資料的痛點）
@@ -336,7 +336,9 @@ function goTo(step) {
   if (step === 2) renderThemeStep();
   if (step === 3) {
     renderSummary(); renderFbRules();
-    if (shareUrlIsStale()) generateShareUrl({ refreshed: true });
+    // 記住這次工作階段裡使用者上次選的分享方式；第一次進來預設「一行分享連結」
+    selectDeliveryMode(_previewMode === 'advanced' ? 'advanced' : 'basic');
+    ensureFreshShareUrl();
   }
   // Scroll AFTER render so the newly-laid-out panel starts at the top.
   requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -362,6 +364,11 @@ function setPath(p, silent) {
     panel.classList.toggle('active', panel.id === 'path-' + p);
   });
   if (!silent) saveState();
+}
+
+function switchChecklistSubtab(tab) {
+  document.querySelectorAll('.checklist-subtab').forEach(b => b.classList.toggle('active', b.id === 'tab-btn-' + tab));
+  document.querySelectorAll('.checklist-panel').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab));
 }
 
 // ── AI flow ────────────────────────────────────────────────────────
@@ -1974,7 +1981,7 @@ function renderThemeStep() {
   tc.innerHTML = THEMES.map((t, i) =>
     `<div class="theme-card${i === state.activeTheme ? ' active' : ''}" onclick="selectTheme(${i})">
       <div class="theme-card-preview" style="background:linear-gradient(135deg,${t.color},${t.accent})"></div>
-      <div class="theme-card-label">${t.name}${t.wa ? `<span class="theme-card-wa">${t.wa}</span>` : ''}</div>
+      <div class="theme-card-label">${t.name}</div>
     </div>`
   ).join('');
   applyTheme();
@@ -2468,16 +2475,11 @@ function bytesToBase64url(bytes) {
 async function generateShareUrl({ refreshed = false } = {}) {
   const stat = document.getElementById('share-status');
   const out = document.getElementById('share-url-input');
-  const actions = document.getElementById('share-actions');
   stat.innerHTML = '<div class="status-box status-info"><span class="spinner"></span>&nbsp;產生連結中…</div>';
   try {
     const { url, json } = await buildShareUrl();
     out.value = url;
     sharedCfgJson = json;
-    out.style.display = 'none';           // 連結文字預設收合，靠「顯示連結文字」展開
-    actions.style.display = '';
-    const toggleBtn = document.getElementById('toggle-url-btn');
-    if (toggleBtn) toggleBtn.textContent = '▾ 顯示連結文字';
     const sizeKb = (url.length / 1024).toFixed(1);
     let warn = '';
     if (url.length > 8000) {
@@ -2493,9 +2495,7 @@ async function generateShareUrl({ refreshed = false } = {}) {
   } catch (e) {
     // 產生失敗就收掉舊連結，免得按鈕把舊版傳出去
     out.value = '';
-    out.style.display = 'none';
     sharedCfgJson = '';
-    actions.style.display = 'none';
     stat.innerHTML = '<div class="status-box status-err">' + e.message + '</div>';
   }
 }
@@ -2506,17 +2506,6 @@ async function ensureFreshShareUrl() {
   if (input.value && !shareUrlIsStale()) return input.value;
   await generateShareUrl({ refreshed: !!input.value });
   return input.value;
-}
-
-// 展開／收合那串長網址（預設收合，避免畫面被醜長網址佔據）
-function toggleShareUrlText() {
-  const out = document.getElementById('share-url-input');
-  const btn = document.getElementById('toggle-url-btn');
-  if (!out) return;
-  const show = out.style.display === 'none';
-  out.style.display = show ? '' : 'none';
-  if (btn) btn.textContent = show ? '▴ 收合連結文字' : '▾ 顯示連結文字';
-  if (show) out.select();
 }
 
 async function copyShareUrl() {
