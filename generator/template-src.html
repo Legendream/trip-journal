@@ -989,13 +989,6 @@
       margin-bottom: 14px; background: #fff;
     }
     .share-preview-wrap canvas { display: block; width: 100%; height: auto; }
-    .share-toggles { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-bottom: 14px; }
-    .share-toggle {
-      display: flex; align-items: center; gap: 6px;
-      font-size: 13px; color: var(--text-2); cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .share-toggle input { width: 16px; height: 16px; accent-color: var(--pink); }
     .share-link-row { display: flex; gap: 8px; margin-bottom: 14px; }
     .share-link-input { flex: 1; font-size: 12px; min-width: 0; }
 
@@ -1206,37 +1199,16 @@
   </div>
 </div>
 
-<!-- Day Share Overlay -->
-<div class="exp-overlay" id="share-overlay" onclick="if(event.target===this)closeDayShare()">
-  <div class="exp-form-sheet">
-    <div class="msg-form-header">
-      <span class="msg-form-title">📤 分享這天</span>
-      <button class="msg-close-btn" onclick="closeDayShare()">✕</button>
-    </div>
-    <div class="share-preview-wrap"><canvas id="share-canvas"></canvas></div>
-    <div class="share-toggles" id="share-toggles"></div>
-    <div class="share-link-row">
-      <input class="form-input share-link-input" id="share-link-input" readonly onclick="this.select()">
-      <button class="mini-btn" id="share-copy-btn" onclick="copyShareLink()">🔗 複製連結</button>
-    </div>
-    <button class="btn btn-pink" id="share-send-btn" style="width:100%;font-size:16px;padding:16px" onclick="sendDayShare()">📤 分享</button>
-  </div>
-</div>
-
-<!-- Showcase Poster Overlay -->
+<!-- Showcase Poster Overlay（單日／整趟共用；單日由各天卡片的「分享這天」開啟，整趟由頂部「製作行程海報」開啟） -->
 <div class="exp-overlay" id="showcase-overlay" onclick="if(event.target===this)closeShowcaseShare()">
   <div class="exp-form-sheet">
     <div class="msg-form-header">
-      <span class="msg-form-title">🖼️ 製作行程海報</span>
+      <span class="msg-form-title" id="showcase-form-title">🖼️ 製作行程海報</span>
       <button class="msg-close-btn" onclick="closeShowcaseShare()">✕</button>
-    </div>
-    <div class="showcase-scope-row">
-      <button class="showcase-scope-btn" id="showcase-scope-day" onclick="setShowcaseScope('day')">單日</button>
-      <button class="showcase-scope-btn" id="showcase-scope-trip" onclick="setShowcaseScope('trip')">整趟</button>
     </div>
     <div id="showcase-fields"></div>
     <div class="share-preview-wrap"><canvas id="showcase-canvas"></canvas></div>
-    <div class="share-link-row">
+    <div class="share-link-row" id="showcase-link-row">
       <input class="form-input share-link-input" id="showcase-link-input" readonly onclick="this.select()">
       <button class="mini-btn" id="showcase-copy-btn" onclick="copyShowcaseLink()">🔗 複製連結</button>
     </div>
@@ -2389,13 +2361,7 @@ function renderItinerary(opts) {
   scrollToTodayCard();
 }
 
-// ─── 單日行程分享 (Day Share) ──────────────────────────────────────
-// 用 canvas 把某一天的行程畫成一張圖卡，供分享出去。圖卡是另外排版，不是畫面截圖，
-// 所以能在送出前選擇隱藏訂位號碼／住宿地點／天氣（design 決定 C／D，見驗收條件）。
-
-const SHARE_CARD_W = 720;
-let _shareDay  = null;
-let _shareOpts = { hideRef: false, hideHotelLoc: false, hideWx: false };
+// ─── 分享用 canvas 共用小工具（單日／整趟海報都會用到） ──────────────
 
 function _themeColors() {
   const cs = getComputedStyle(document.documentElement);
@@ -2433,273 +2399,18 @@ function _graphemes(text) {
   return Array.from(String(text || ""));
 }
 
-// 先以空白斷詞（中文沒有空白，整串會是一個詞，退回逐字元換行；英文則不會被從字中間截斷）。
-function _wrapText(ctx, text, maxWidth) {
-  const words = String(text || "").split(/(\s+)/).filter(w => w !== "");
-  const lines = [];
-  let line = "";
-  words.forEach(word => {
-    if (/^\s+$/.test(word)) {
-      if (line && ctx.measureText(line + word).width <= maxWidth) line += word;
-      return;
-    }
-    if (ctx.measureText(word).width > maxWidth) {
-      if (line) { lines.push(line); line = ""; }
-      let seg = "";
-      _graphemes(word).forEach(ch => {
-        const test = seg + ch;
-        if (seg && ctx.measureText(test).width > maxWidth) { lines.push(seg); seg = ch; }
-        else seg = test;
-      });
-      line = seg;
-      return;
-    }
-    const test = line ? line + word : word;
-    if (line && ctx.measureText(test).width > maxWidth) { lines.push(line); line = word; }
-    else line = test;
-  });
-  if (line) lines.push(line);
-  return lines.length ? lines : [""];
-}
-
-// 當天天氣：用當天第一個有定位到的地點當代表（跟天氣膠囊的 fallback 邏輯一致），
-// 取「daily」區間（最低—最高溫），還沒抓到／查不到就回傳 null（圖卡照常產生、不顯示天氣）。
-function _dayWeatherSummary(d) {
-  const fallbackQ = _DAY_WX_FALLBACK[d.date];
-  if (!fallbackQ) return null;
-  const geoRes = _latLonOf(fallbackQ);
-  if (!geoRes) return null;
-  const dayData = (_WX_CACHE[`${geoRes.lat},${geoRes.lon}`] || {})[d.date];
-  const w = dayData && dayData.daily;
-  if (!w) return null;
-  return { icon: wmoIcon(w.code), min: w.min, max: w.max, rain: _rainStr(w) || "" };
-}
-
-function _shareCardData(day, opts) {
-  const d = DAYS.find(x => x.day === day);
-  if (!d) return null;
-  return {
-    d, acts: _dayMergedActs(d), hotel: _dayHotelInfo(d),
-    wx: opts.hideWx ? null : _dayWeatherSummary(d),
-  };
-}
-
-// 同一份版面邏輯量測（draw=false）與實際繪製（draw=true）都用它，確保兩次算出同一個高度。
-function _renderShareCard(ctx, W, data, opts, draw) {
-  const { d, acts, hotel, wx } = data;
-  const C = _themeColors();
-  const PAD = 28;
-  const contentW = W - PAD * 2;
-  const setFont = (px, weight) => {
-    ctx.font = `${weight || 400} ${px}px -apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Kaku Gothic ProN","Noto Sans CJK TC",sans-serif`;
-  };
-  const lh = px => Math.round(px * 1.45);
-  ctx.textBaseline = "top";
-
-  // ── Header ──
-  const headerPadTop = 24;
-  setFont(17, 700);
-  const themeLines = _wrapText(ctx, d.theme || "", contentW - (wx ? 130 : 0));
-  const headerH = headerPadTop + 20 + 34 + (themeLines.length * lh(17)) + 22;
-
-  if (draw) {
-    const grad = ctx.createLinearGradient(0, 0, W, headerH);
-    grad.addColorStop(0, C.pink); grad.addColorStop(1, C.pink2);
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, headerH);
-
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    setFont(13, 700);
-    ctx.fillText(`DAY ${d.day}`, PAD, headerPadTop);
-
-    ctx.fillStyle = "#fff";
-    setFont(24, 900);
-    ctx.fillText(`${d.date}（${d.wd}）`, PAD, headerPadTop + 20);
-
-    setFont(17, 700);
-    let ty = headerPadTop + 20 + 34;
-    themeLines.forEach(line => { ctx.fillText(line, PAD, ty); ty += lh(17); });
-
-    if (wx) {
-      const wxText = `${wx.icon} ${wx.min}–${wx.max}°${wx.rain}`;
-      setFont(15, 700);
-      const pillW = ctx.measureText(wxText).width + 24, pillH = 32;
-      const px2 = W - PAD - pillW, py2 = headerPadTop;
-      ctx.fillStyle = "rgba(255,255,255,0.25)";
-      _roundRect(ctx, px2, py2, pillW, pillH, 16); ctx.fill();
-      ctx.fillStyle = "#fff";
-      ctx.fillText(wxText, px2 + 12, py2 + 7);
-    }
-  }
-
-  let y = headerH + 20;
-
-  // ── Activities ──
-  acts.forEach((a, idx) => {
-    const iconW = 30, textX = PAD + iconW, textW = contentW - iconW;
-    const hasTime = !!a.time;
-    const timeReserve = hasTime ? 74 : 0;
-
-    setFont(15, 700);
-    const nameLines = _wrapText(ctx, a.name || "", textW - timeReserve);
-    setFont(12.5, 400);
-    const subLines = a.sub ? _wrapText(ctx, a.sub, textW) : [];
-    const refLines = (a.ref && !opts.hideRef) ? _wrapText(ctx, "📋 " + a.ref, textW) : [];
-
-    const rowTop = y;
-    if (draw) {
-      setFont(20, 400);
-      ctx.fillStyle = C.text;
-      ctx.fillText(a.icon || "📍", PAD, rowTop);
-    }
-
-    let ly = rowTop + 2;
-    setFont(15, 700);
-    ctx.fillStyle = C.text;
-    nameLines.forEach(line => { if (draw) ctx.fillText(line, textX, ly); ly += lh(15); });
-
-    if (hasTime && draw) {
-      setFont(12, 700);
-      const timeW = ctx.measureText(a.time).width + 16;
-      const tpx = PAD + contentW - timeW, tpy = rowTop;
-      ctx.fillStyle = C.pinkPale;
-      _roundRect(ctx, tpx, tpy, timeW, 22, 6); ctx.fill();
-      ctx.fillStyle = C.pink;
-      ctx.fillText(a.time, tpx + 8, tpy + 4);
-    }
-
-    if (subLines.length) {
-      setFont(12.5, 400);
-      ctx.fillStyle = C.text3;
-      subLines.forEach(line => { if (draw) ctx.fillText(line, textX, ly); ly += lh(12.5); });
-    }
-    if (refLines.length) {
-      setFont(11.5, 400);
-      ctx.fillStyle = C.text3;
-      refLines.forEach(line => { if (draw) ctx.fillText(line, textX, ly); ly += lh(11.5); });
-    }
-
-    ly += 14;
-    if (draw && idx < acts.length - 1) {
-      ctx.strokeStyle = C.border;
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(PAD, ly - 7); ctx.lineTo(PAD + contentW, ly - 7); ctx.stroke();
-    }
-    y = ly;
-  });
-
-  // ── Hotel (name always shown; location line hideable, and never shown if it's a URL) ──
-  if (hotel && hotel.name) {
-    const boxTop = y;
-    const boxPad = 14, iconW = 28;
-    const innerW = contentW - boxPad * 2 - iconW;
-    setFont(14, 700);
-    const nameLines = _wrapText(ctx, hotel.name || "", innerW);
-    const isUrl = /^https?:\/\//i.test(hotel.map || "");
-    const showLoc = hotel.map && !isUrl && !opts.hideHotelLoc;
-    setFont(12, 400);
-    const locLines = showLoc ? _wrapText(ctx, hotel.map, innerW) : [];
-
-    const innerH = nameLines.length * lh(14) + (locLines.length ? locLines.length * lh(12) : 0);
-    const boxH = boxPad * 2 + Math.max(innerH, 24);
-
-    if (draw) {
-      ctx.fillStyle = C.pinkBg;
-      _roundRect(ctx, PAD, boxTop, contentW, boxH, 12); ctx.fill();
-      setFont(18, 400);
-      ctx.fillStyle = C.text;
-      ctx.fillText("🏨", PAD + boxPad, boxTop + boxPad);
-      let ny = boxTop + boxPad;
-      setFont(14, 700);
-      ctx.fillStyle = C.text2;
-      nameLines.forEach(line => { ctx.fillText(line, PAD + boxPad + iconW, ny); ny += lh(14); });
-      if (locLines.length) {
-        setFont(12, 400);
-        ctx.fillStyle = C.text3;
-        locLines.forEach(line => { ctx.fillText(line, PAD + boxPad + iconW, ny); ny += lh(12); });
-      }
-    }
-    y = boxTop + boxH + 18;
-  } else {
-    y += 4;
-  }
-
-  // ── Footer ──
-  setFont(11, 400);
-  const footText = `${(_CFG.meta && _CFG.meta.title) || ""} ・ 旅人手帖`;
-  if (draw) {
-    ctx.fillStyle = C.text3;
-    ctx.textAlign = "center";
-    ctx.fillText(footText, W / 2, y);
-    ctx.textAlign = "left";
-  }
-  y += lh(11) + 20;
-
-  return y;
-}
-
-function drawDayShareCanvas(canvas, day, opts) {
-  const data = _shareCardData(day, opts);
-  if (!data) return null;
-  const W = SHARE_CARD_W;
-
-  const mCanvas = document.createElement("canvas");
-  const totalH  = _renderShareCard(mCanvas.getContext("2d"), W, data, opts, false);
-
-  const SCALE = 2;
-  canvas.width  = Math.ceil(W * SCALE);
-  canvas.height = Math.ceil(totalH * SCALE);
-  const ctx = canvas.getContext("2d");
-  ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, W, totalH);
-  _renderShareCard(ctx, W, data, opts, true);
-  return data;
-}
-
+// 單日分享：改用行程海報（drawShowcaseCanvas 的 day scope），
+// 跟「製作行程海報」共用同一顆 overlay／canvas，見下面 Showcase Poster 區塊。
 function openDayShare(day) {
   const d = DAYS.find(x => x.day === day);
   if (!d) return;
   if (!_dayMergedActs(d).length) { alert("該日尚無行程內容"); return; }
-  _shareDay  = day;
-  _shareOpts = { hideRef: false, hideHotelLoc: false, hideWx: false };
-  document.getElementById("share-overlay").classList.add("visible");
-  renderShareOverlay();
-}
-function closeDayShare() {
-  document.getElementById("share-overlay").classList.remove("visible");
-  _shareDay = null;
-}
-function toggleShareOpt(key) {
-  _shareOpts[key] = !_shareOpts[key];
-  renderShareOverlay();
-}
-
-function renderShareOverlay() {
-  const day = _shareDay;
-  if (day == null) return;
-  const d = DAYS.find(x => x.day === day);
-  if (!d) return;
-  const acts  = _dayMergedActs(d);
-  const hotel = _dayHotelInfo(d);
-  const wx    = _dayWeatherSummary(d);
-
-  const hasRef      = acts.some(a => a.ref);
-  const hasHotelLoc = !!(hotel && hotel.map && !/^https?:\/\//i.test(hotel.map));
-  const hasWx       = !!wx;
-
-  drawDayShareCanvas(document.getElementById("share-canvas"), day, _shareOpts);
-
-  document.getElementById("share-link-input").value = location.href;
-
-  document.getElementById("share-toggles").innerHTML = [
-    hasRef      ? `<label class="share-toggle"><input type="checkbox" ${_shareOpts.hideRef ? "checked" : ""} onchange="toggleShareOpt('hideRef')"> 隱藏訂位號碼</label>` : "",
-    hasHotelLoc ? `<label class="share-toggle"><input type="checkbox" ${_shareOpts.hideHotelLoc ? "checked" : ""} onchange="toggleShareOpt('hideHotelLoc')"> 隱藏住宿地點</label>` : "",
-    hasWx       ? `<label class="share-toggle"><input type="checkbox" ${_shareOpts.hideWx ? "checked" : ""} onchange="toggleShareOpt('hideWx')"> 隱藏天氣</label>` : "",
-  ].join("");
-
-  const canShareFiles = !!(navigator.canShare && navigator.share);
-  document.getElementById("share-send-btn").textContent = canShareFiles ? "📤 分享" : "⬇️ 下載圖卡圖片";
+  _showcaseScope   = "day";
+  _showcaseDay     = day;
+  _showcaseCaption = "";
+  _setShowcasePhotoUrl(null);
+  document.getElementById("showcase-overlay").classList.add("visible");
+  renderShowcaseOverlay();
 }
 
 async function _copyLinkToClipboard(inputId, btnId) {
@@ -2716,7 +2427,6 @@ async function _copyLinkToClipboard(inputId, btnId) {
     setTimeout(() => { btn.textContent = orig; }, 1500);
   }
 }
-function copyShareLink() { return _copyLinkToClipboard("share-link-input", "share-copy-btn"); }
 
 // ─── 單日行程分享：已更新提示（跟上次分享時的內容快照比對） ──────────
 function _daySnapshotKey(day) { return _PFX + "-share-snapshot-" + day; }
@@ -2753,41 +2463,6 @@ function _maybeShowLocalEditToast() {
   setTimeout(() => el.classList.remove("visible"), 4000);
 }
 
-function sendDayShare() {
-  const canvas = document.getElementById("share-canvas");
-  const d = DAYS.find(x => x.day === _shareDay);
-  if (!canvas || !d) return;
-  canvas.toBlob(async (blob) => {
-    if (!blob) { alert("圖卡產生失敗，請稍後再試"); return; }
-    const fileName = `day${d.day}-${(d.date || "").replace("/", "-")}.png`;
-    const file = new File([blob], fileName, { type: "image/png" });
-    const link = location.href;
-    const shareText = `Day ${d.day}・${d.theme}\n${link}`;
-
-    let sent = false, aborted = false;
-    if (navigator.canShare && navigator.share) {
-      try {
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text: shareText, title: d.theme || "" });
-          sent = true;
-        }
-      } catch (e) {
-        if (e && e.name === "AbortError") aborted = true; // 使用者自己取消，不當作已送出
-      }
-    }
-    if (!sent && !aborted) {
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-      sent = true;
-    }
-    if (sent) { _markDayShared(d.day); renderItinerary({ cardsOnly: true }); }
-  }, "image/png");
-}
 
 // ─── 行程展示分享 (Showcase Poster) ─────────────────────────────────
 // 給非同行者看的行程海報：單日（可加照片／一句話）或整趟（每日主題清單）兩種範圍，
@@ -2814,22 +2489,16 @@ function _showcaseDaysWithContent() {
   return DAYS.filter(d => _dayMergedActs(d).length > 0);
 }
 
+// 頂部「製作行程海報」入口：只做整趟（單日改由各天卡片的「分享這天」開啟，見 openDayShare）
 function openShowcaseShare() {
   const withContent = _showcaseDaysWithContent();
   if (!withContent.length) { alert("行程尚無內容"); return; }
-  _showcaseScope   = "day";
-  _showcaseDay     = withContent[0].day;
-  _showcaseCaption = "";
-  _setShowcasePhotoUrl(null);
+  _showcaseScope = "trip";
   document.getElementById("showcase-overlay").classList.add("visible");
   renderShowcaseOverlay();
 }
 function closeShowcaseShare() {
   document.getElementById("showcase-overlay").classList.remove("visible");
-}
-function setShowcaseScope(scope) {
-  _showcaseScope = scope; // 整趟模式不畫照片、隱藏照片區塊；照片保留，切回單日還在
-  renderShowcaseOverlay();
 }
 function setShowcaseDay(dayStr) {
   _showcaseDay = Number(dayStr);
@@ -2870,8 +2539,10 @@ function _syncShowcasePhotoPos() {
 }
 
 function renderShowcaseOverlay() {
-  document.getElementById("showcase-scope-day").classList.toggle("selected", _showcaseScope === "day");
-  document.getElementById("showcase-scope-trip").classList.toggle("selected", _showcaseScope === "trip");
+  const isDay = _showcaseScope === "day";
+  document.getElementById("showcase-form-title").textContent = isDay ? "📤 分享這天" : "🖼️ 製作行程海報";
+  // 單日是傳給同行旅伴看今天的行程，不需要「複製回訪首頁連結」這個給非同行者的入口
+  document.getElementById("showcase-link-row").style.display = isDay ? "none" : "";
 
   let fieldsHtml = "";
   if (_showcaseScope === "day") {
@@ -3333,18 +3004,22 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
   }
 
   // ── 回訪入口 footer：QR ＋ 標語 ＋ 網址，皆為靜態圖片內容，不可點擊 ──
-  ctx.fillStyle = "rgba(255,255,255,0.08)";
-  _roundRect(ctx, PAD, 1056, CW, 176, 24); ctx.fill();
-  let textX = PAD + 24;
-  if (typeof qrcode !== "undefined") {
-    ctx.fillStyle = "#ffffff";
-    _roundRect(ctx, 64, 1072, 144, 144, 12); ctx.fill();
-    if (_drawQrOnCtx(ctx, SHOWCASE_HOMEPAGE_URL, 70, 1078, 132, "#1e0d12", null)) textX = 232;
+  // 只在整趟海報顯示：這是給非同行者看的「來做一份自己的」入口。
+  // 單日海報是傳給同行旅伴看今天的行程，不需要邀請對方去用生成器。
+  if (scope === "trip") {
+    ctx.fillStyle = "rgba(255,255,255,0.08)";
+    _roundRect(ctx, PAD, 1056, CW, 176, 24); ctx.fill();
+    let textX = PAD + 24;
+    if (typeof qrcode !== "undefined") {
+      ctx.fillStyle = "#ffffff";
+      _roundRect(ctx, 64, 1072, 144, 144, 12); ctx.fill();
+      if (_drawQrOnCtx(ctx, SHOWCASE_HOMEPAGE_URL, 70, 1078, 132, "#1e0d12", null)) textX = 232;
+    }
+    setFont(30, 800);
+    put("也來排一趟自己的行程", textX, 1100, 40, WHITE);
+    setFont(24, 500);
+    put(SHOWCASE_HOMEPAGE_URL.replace(/^https?:\/\//, "").replace(/\/$/, ""), textX, 1148, 32, DIM);
   }
-  setFont(30, 800);
-  put("也來排一趟自己的行程", textX, 1100, 40, WHITE);
-  setFont(24, 500);
-  put(SHOWCASE_HOMEPAGE_URL.replace(/^https?:\/\//, "").replace(/\/$/, ""), textX, 1148, 32, DIM);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   return { photoAxis };
@@ -3372,19 +3047,27 @@ function _downloadShowcaseBlob(blob, fileName) {
 function sendShowcaseShare() {
   const canvas = document.getElementById("showcase-canvas");
   if (!canvas) return;
-  const label = _showcaseScope === "day" ? `day${_showcaseDay}` : "trip";
+  const isDay = _showcaseScope === "day";
+  const d = isDay ? DAYS.find(x => x.day === _showcaseDay) : null;
+  const label = isDay ? `day${_showcaseDay}` : "trip";
   const fileName = `poster-${label}-${Date.now()}.png`;
   const title = (_CFG.meta && _CFG.meta.title) || "我的行程";
-  const shareText = `${title}\n${SHOWCASE_HOMEPAGE_URL}`;
+  // 單日是傳給同行旅伴看今天的行程，分享文字不附生成器首頁連結；
+  // 整趟是給非同行者看的展示海報，才附回訪入口。
+  const shareText = isDay
+    ? `Day ${d ? d.day : _showcaseDay}・${(d && d.theme) || title}`
+    : `${title}\n${SHOWCASE_HOMEPAGE_URL}`;
+  const afterDelivered = () => { if (isDay) { _markDayShared(_showcaseDay); renderItinerary({ cardsOnly: true }); } };
 
   const deliver = blob => {
     if (!blob) { alert("海報產生失敗，請稍後再試"); return; }
     const file = new File([blob], fileName, { type: "image/png" });
-    if (!(_canShareImageFile() && navigator.canShare({ files: [file] }))) { _downloadShowcaseBlob(blob, fileName); return; }
-    navigator.share({ files: [file], text: shareText, title }).catch(e => {
+    if (!(_canShareImageFile() && navigator.canShare({ files: [file] }))) { _downloadShowcaseBlob(blob, fileName); afterDelivered(); return; }
+    navigator.share({ files: [file], text: shareText, title }).then(afterDelivered).catch(e => {
       if (e && e.name === "AbortError") return; // 使用者自己取消分享
       alert("沒辦法分享，改幫你下載圖片");
       _downloadShowcaseBlob(blob, fileName);
+      afterDelivered();
     });
   };
   // 備好的 PNG 直接同步交出去；還沒轉好（剛改完就按）才當場轉檔
