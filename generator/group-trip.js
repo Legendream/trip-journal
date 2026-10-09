@@ -63,6 +63,11 @@ function sameIdSet(a, b) {
   const s = new Set(a);
   return b.every(x => s.has(x));
 }
+// 物件（日卡／活動）的名單：只有對不上的組名（A-1）時視為沒人，其餘空值 = 全員
+function listIdsOf(o, members, fallback) {
+  if (!(o.with && o.with.length) && o.withUnknown && o.withUnknown.length) return [];
+  return o.with && o.with.length ? o.with : (fallback || _gtIds(members));
+}
 // 空值 = 全員
 function effectiveIds(withIds, members) {
   return withIds && withIds.length ? withIds : _gtIds(members);
@@ -163,13 +168,17 @@ function computeAlerts(state) {
   const push = (a) => { a.dismissable = a.code !== 'A-1'; if (!(a.dismissable && dismissed.has(a.key))) alerts.push(a); };
 
   // 名單只有對不上的組名（A-1）時當成沒人，才不會被當成全員而連帶觸發其他提醒（check.js 同）
-  const unresolved = o => !(o.with && o.with.length) && o.withUnknown && o.withUnknown.length;
+  // 跨年：日期依卡片順序往下排，月日突然倒退超過半年就當作進入下一年
+  let yr = year, prevT = null;
   const cards = days.map(d => {
-    const set = unresolved(d) ? [] : effectiveIds(d.with, members), pd = _gtParseDate(d.date, year);
+    const set = listIdsOf(d, members);
+    let pd = _gtParseDate(d.date, yr);
+    if (pd && prevT != null && prevT - pd.getTime() > 180 * 864e5) { yr++; pd = _gtParseDate(d.date, yr); }
+    if (pd) prevT = pd.getTime();
     return {
       d, set, date: d.date, time: pd ? pd.getTime() : null,
       acts: (d.items || []).filter(it => it.type === 'activity')
-        .map(it => ({ it, set: unresolved(it) ? [] : (it.with && it.with.length ? it.with : set) })),
+        .map(it => ({ it, set: listIdsOf(it, members, set) })),
     };
   });
 
@@ -193,6 +202,9 @@ function computeAlerts(state) {
   // A-3：自己第一張卡到最後一張卡之間，某天沒有卡
   all.forEach(id => {
     const mine = cards.filter(c => c.time != null && c.set.includes(id)).map(c => c.time);
+    // 有卡但都沒日期：算不出空缺，不提醒
+    if (!mine.length && cards.some(c => c.time == null && c.set.includes(id))) return;
+    if (mine.length && Math.max(...mine) - Math.min(...mine) > 120 * 864e5) return;   // 跨度超過 4 個月：多半是日期打錯，不逐天列
     if (!mine.length) { push({ code: 'A-3', key: `A-3||${id}`, memberId: id, name: nameOf(id), date: '' }); return; }
     const have = new Set(mine.map(t => _gtFmt(new Date(t))));
     const last = Math.max(...mine);
@@ -267,14 +279,12 @@ function syncGroupLists(days, oldIds, newIds, members) {
   const all = _gtIds(members);
   let n = 0;
   (days || []).forEach(d => {
-    let hit = false;
     const cardWas = d.with && d.with.length ? d.with : null;
-    if (cardWas && sameIdSet(cardWas, oldIds)) { setWithList(d, newIds, all, members); hit = true; }
+    if (cardWas && sameIdSet(cardWas, oldIds)) { setWithList(d, newIds, all, members); n++; }   // 只算日卡；活動名單一併同步但不計入
     const cardNow = effectiveIds(d.with, members);
     (d.items || []).forEach(it => {
-      if (it.with && it.with.length && sameIdSet(it.with, oldIds)) { setWithList(it, newIds, cardNow, members); hit = true; }
+      if (it.with && it.with.length && sameIdSet(it.with, oldIds)) setWithList(it, newIds, cardNow, members);
     });
-    if (hit) n++;
   });
   return n;
 }
@@ -287,7 +297,7 @@ function keepMemberOnlyIn(days, dayId, memberId, members) {
   let n = 0;
   days.forEach(d => {
     if (d === target || d.date !== target.date) return;
-    const eff = effectiveIds(d.with, members);
+    const eff = listIdsOf(d, members);
     if (!eff.includes(memberId)) return;
     const rest = eff.filter(x => x !== memberId);
     if (!rest.length) return;                     // 拿掉就沒人了：不動，交給使用者處理
@@ -311,7 +321,7 @@ function mergeSameDateCards(days, date, members) {
   const first = cards[0];
   const items = [];
   cards.forEach(c => {
-    const eff = effectiveIds(c.with, members);
+    const eff = listIdsOf(c, members);
     (c.items || []).forEach(it => {
       if ((!it.with || !it.with.length) && !sameIdSet(eff, all)) it.with = _gtSortByMembers(eff, members);
       items.push(it);
@@ -332,7 +342,7 @@ function splitDateCards(days, date, groups, members, newCard) {
   const cards = (days || []).filter(d => d.date === date);
   if (!cards.length) return false;
   const covered = new Set();
-  cards.forEach(c => effectiveIds(c.with, members).forEach(id => covered.add(id)));
+  cards.forEach(c => listIdsOf(c, members).forEach(id => covered.add(id)));
   let list = all.filter(id => !covered.has(id));
   if (!list.length) {
     if (cards.length !== 1 || !groups.length) return false;
@@ -367,5 +377,5 @@ function renumberDaysByDate(days) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { deepTagColor, groupTagStyle, describeList, setWithList, syncGroupLists, keepMemberOnlyIn, mergeSameDateCards, splitDateCards, removeMemberFromLists, renumberDaysByDate, GROUP_SECTION_TEMPLATE, GROUP_PROMPT_ANCHOR, buildGroupSection, resolveWith, mergeMembers, normalizeImported, computeAlerts, effectiveIds, sameIdSet };
+  module.exports = { listIdsOf, deepTagColor, groupTagStyle, describeList, setWithList, syncGroupLists, keepMemberOnlyIn, mergeSameDateCards, splitDateCards, removeMemberFromLists, renumberDaysByDate, GROUP_SECTION_TEMPLATE, GROUP_PROMPT_ANCHOR, buildGroupSection, resolveWith, mergeMembers, normalizeImported, computeAlerts, effectiveIds, sameIdSet };
 }

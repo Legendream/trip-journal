@@ -200,7 +200,7 @@ test('2-4 名單反推：全員／某組／對不上顯示成員', () => {
 test('2-8 改組別名單：名單完全吻合的卡（含活動）一起改，回傳卡數', () => {
   const days = [day('d1', '11/3', ['c', 'd'], [act('x', ['c', 'd']), act('y')]), day('d2', '11/3', ['a', 'b']), day('d3', '11/6', undefined, [act('z', ['c', 'd'])])];
   const n = gt.syncGroupLists(days, ['c', 'd'], ['c'], MEM);
-  assert.strictEqual(n, 2);
+  assert.strictEqual(n, 1, '只算日卡張數；活動名單照樣同步');
   assert.deepStrictEqual(days[0].with, ['c']);
   assert.strictEqual(days[0].items[0].with, undefined, '活動名單等於新的卡名單 → 改成沿用');
   assert.deepStrictEqual(days[1].with, ['a', 'b']);
@@ -258,6 +258,30 @@ test('同日的卡 Day 編號相同', () => {
   const days = [day('1', '11/1'), day('2', '11/1'), day('3', '11/2'), day('4', '11/3')];
   gt.renumberDaysByDate(days);
   assert.deepStrictEqual(days.map(d => d.day), [1, 1, 2, 3]);
+});
+
+test('跨年行程不會把整年列成 A-3；空白日期不誤報', () => {
+  const days = [day('1', '12/30', ['a', 'b']), day('2', '12/30', ['c', 'd']), day('3', '12/31'), day('4', '1/1'), day('5', '1/2')];
+  const al = gt.computeAlerts({ members: MEM, groups: GRP, days, hotels: [], year: 2026 });
+  assert.ok(!al.some(a => a.code === 'A-3'), JSON.stringify(al.filter(a => a.code === 'A-3').slice(0, 2)));
+  const gap = [day('1', '12/30'), day('2', '1/2', ['a', 'b']), day('3', '1/3')];
+  assert.deepStrictEqual(gt.computeAlerts({ members: MEM, groups: GRP, days: gap, hotels: [], year: 2026 }).filter(a => a.code === 'A-3' && a.memberId === 'a').map(a => a.date), ['12/31', '1/1']);
+  const typo = [day('1', '11/3'), day('2', '11/4'), day('3', '1/2'), day('4', '11/6')];
+  assert.ok(gt.computeAlerts({ members: MEM, groups: GRP, days: typo, hotels: [], year: 2026 }).length < 20);
+  const blank = [day('1', '')];
+  assert.ok(!gt.computeAlerts({ members: MEM, groups: GRP, days: blank, hotels: [], year: 2026 }).some(a => a.code === 'A-3'));
+});
+test('名單只剩對不上的名字時，合併／分開／只留在都當成沒人（不變成全員）', () => {
+  const ghost = { ...day('g', '11/4'), withUnknown: ['小貓'] };
+  const days = [ghost, day('d2', '11/4', ['b'])];
+  const nc = { id: 'n', items: [] };
+  assert.ok(gt.splitDateCards(days, '11/4', GRP, MEM, nc));
+  assert.deepStrictEqual(nc.with, ['a', 'c', 'd'], '幽靈卡不算涵蓋任何人');
+});
+test('G-9 只計日卡張數', () => {
+  const days = [day('d1', '11/3', ['c', 'd'], [act('x', ['c', 'd'])]), day('d2', '11/6', undefined, [act('z', ['c', 'd'])])];
+  assert.strictEqual(gt.syncGroupLists(days, ['c', 'd'], ['c'], MEM), 1);
+  assert.deepStrictEqual(days[1].items[0].with, ['c']);
 });
 
 // 畫面片段（用假 DOM 跑 renderDays，檢查產生的 HTML）
