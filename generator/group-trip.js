@@ -162,12 +162,14 @@ function computeAlerts(state) {
   const alerts = [];
   const push = (a) => { a.dismissable = a.code !== 'A-1'; if (!(a.dismissable && dismissed.has(a.key))) alerts.push(a); };
 
+  // 名單只有對不上的組名（A-1）時當成沒人，才不會被當成全員而連帶觸發其他提醒（check.js 同）
+  const unresolved = o => !(o.with && o.with.length) && o.withUnknown && o.withUnknown.length;
   const cards = days.map(d => {
-    const set = effectiveIds(d.with, members), pd = _gtParseDate(d.date, year);
+    const set = unresolved(d) ? [] : effectiveIds(d.with, members), pd = _gtParseDate(d.date, year);
     return {
       d, set, date: d.date, time: pd ? pd.getTime() : null,
       acts: (d.items || []).filter(it => it.type === 'activity')
-        .map(it => ({ it, set: it.with && it.with.length ? it.with : set })),
+        .map(it => ({ it, set: unresolved(it) ? [] : (it.with && it.with.length ? it.with : set) })),
     };
   });
 
@@ -222,6 +224,148 @@ function computeAlerts(state) {
   return alerts;
 }
 
+// ═══ 包 2：產生器畫面用的純函式 ═══════════════════════════════════════
+
+// ── 組名標籤配色 ────────────────────────────────────────────────────
+// 深色 = 主題主色混入 #1e0d12 35%（Colors.dc.html；七款主題對比皆 ≥ 4.51:1）
+function deepTagColor(themeHex) {
+  const hx = h => [1, 3, 5].map(i => parseInt(String(h).slice(i, i + 2), 16));
+  const base = /^#[0-9a-f]{6}$/i.test(themeHex || '') ? themeHex : '#a8362f';
+  const ink = hx('#1e0d12');
+  return '#' + hx(base).map((v, i) => Math.round(v * 0.65 + ink[i] * 0.35).toString(16).padStart(2, '0')).join('');
+}
+// 第 1 組實心、第 2 組外框、第 3 組淡底加框；回傳標籤本體與圓點的 inline style
+function groupTagStyle(index, deep, pale) {
+  const kind = index % 3;
+  if (kind === 0) return { tag: `background:${deep};color:#fff`, dot: 'background:#fff' };
+  if (kind === 1) return { tag: `background:#fff;color:${deep};box-shadow:0 0 0 1.5px ${deep} inset`, dot: `background:${deep}` };
+  return { tag: `background:${pale || '#f3e3d8'};color:${deep};box-shadow:0 0 0 1.5px ${deep} inset`, dot: `background:${deep}` };
+}
+
+// ── 名單反推顯示 ────────────────────────────────────────────────────
+// 'all'：全員；'group'：恰等於某組；'members'：對不上任何一組（顯示成員頭像）
+function describeList(ids, groups, members) {
+  const all = _gtIds(members);
+  const list = effectiveIds(ids, members);
+  if (sameIdSet(list, all)) return { kind: 'all', ids: all };
+  const i = (groups || []).findIndex(g => sameIdSet(g.memberIds, list));
+  if (i >= 0) return { kind: 'group', index: i, group: groups[i], ids: list };
+  return { kind: 'members', ids: _gtSortByMembers(list, members) };
+}
+
+// 把名單寫回 obj.with：等於預設（全員或日卡）就存空值
+function setWithList(obj, ids, fallbackIds, members) {
+  delete obj.withUnknown;
+  const list = _gtSortByMembers(ids, members);
+  if (!list.length || sameIdSet(list, fallbackIds)) delete obj.with;
+  else obj.with = list;
+}
+
+// ── 改組別名單時，名單完全吻合的卡一起改（G-9）。回傳受影響的卡數 ──────────
+function syncGroupLists(days, oldIds, newIds, members) {
+  if (!newIds.length || sameIdSet(oldIds, newIds)) return 0;
+  const all = _gtIds(members);
+  let n = 0;
+  (days || []).forEach(d => {
+    let hit = false;
+    const cardWas = d.with && d.with.length ? d.with : null;
+    if (cardWas && sameIdSet(cardWas, oldIds)) { setWithList(d, newIds, all, members); hit = true; }
+    const cardNow = effectiveIds(d.with, members);
+    (d.items || []).forEach(it => {
+      if (it.with && it.with.length && sameIdSet(it.with, oldIds)) { setWithList(it, newIds, cardNow, members); hit = true; }
+    });
+    if (hit) n++;
+  });
+  return n;
+}
+
+// ── A-2 修正：同一天其他卡把這個人拿掉 ───────────────────────────────
+function keepMemberOnlyIn(days, dayId, memberId, members) {
+  const target = (days || []).find(d => d.id === dayId);
+  if (!target) return 0;
+  const all = _gtIds(members);
+  let n = 0;
+  days.forEach(d => {
+    if (d === target || d.date !== target.date) return;
+    const eff = effectiveIds(d.with, members);
+    if (!eff.includes(memberId)) return;
+    const rest = eff.filter(x => x !== memberId);
+    if (!rest.length) return;                     // 拿掉就沒人了：不動，交給使用者處理
+    setWithList(d, rest, all, members);
+    (d.items || []).forEach(it => {
+      if (!it.with || !it.with.length) return;
+      const kept = it.with.filter(x => rest.includes(x));
+      setWithList(it, kept, rest, members);
+    });
+    n++;
+  });
+  return n;
+}
+
+// ── 這天一起行動：同日的卡合併成一張全員卡 ───────────────────────────────
+// 活動原本屬於哪張卡，就在活動標上那張卡的名單，合併後才不會變成大家都有
+function mergeSameDateCards(days, date, members) {
+  const all = _gtIds(members);
+  const cards = (days || []).filter(d => d.date === date);
+  if (cards.length < 2) return false;
+  const first = cards[0];
+  const items = [];
+  cards.forEach(c => {
+    const eff = effectiveIds(c.with, members);
+    (c.items || []).forEach(it => {
+      if ((!it.with || !it.with.length) && !sameIdSet(eff, all)) it.with = _gtSortByMembers(eff, members);
+      items.push(it);
+    });
+  });
+  first.items = items;
+  if (!first.theme) first.theme = (cards.find(c => c.theme) || {}).theme || '';
+  first.selfDrive = cards.some(c => c.selfDrive);
+  delete first.with; delete first.withUnknown; delete first.unsure;
+  cards.slice(1).forEach(c => days.splice(days.indexOf(c), 1));
+  return true;
+}
+
+// ── 這天分頭行動：替「這天沒出現的人」加一張卡；全員卡則拆成第 1 組＋其餘的人 ─────
+// newCard：呼叫端建好的空白日卡（有 id）。回傳 true 表示有加卡
+function splitDateCards(days, date, groups, members, newCard) {
+  const all = _gtIds(members);
+  const cards = (days || []).filter(d => d.date === date);
+  if (!cards.length) return false;
+  const covered = new Set();
+  cards.forEach(c => effectiveIds(c.with, members).forEach(id => covered.add(id)));
+  let list = all.filter(id => !covered.has(id));
+  if (!list.length) {
+    if (cards.length !== 1 || !groups.length) return false;
+    const c = cards[0], a = groups[0].memberIds;
+    if (sameIdSet(a, all)) return false;
+    setWithList(c, a, all, members);
+    list = all.filter(id => !a.includes(id));
+  }
+  const last = cards[cards.length - 1];
+  Object.assign(newCard, { day: last.day, date: last.date, wd: last.wd });
+  setWithList(newCard, list, all, members);
+  days.splice(days.indexOf(last) + 1, 0, newCard);
+  return true;
+}
+
+// ── 刪除成員：從所有名單拿掉；名單因此變空的，留一筆 withUnknown 觸發 A-1 提醒（規則 13）──
+function removeMemberFromLists(state, memberId, memberName) {
+  const strip = obj => {
+    if (!obj.with || !obj.with.includes(memberId)) return;
+    obj.with = obj.with.filter(x => x !== memberId);
+    if (!obj.with.length) { delete obj.with; obj.withUnknown = [memberName || '（已刪除的成員）']; }
+  };
+  (state.groups || []).forEach(g => { g.memberIds = g.memberIds.filter(x => x !== memberId); });
+  (state.days || []).forEach(d => { strip(d); (d.items || []).forEach(strip); });
+  (state.hotels || []).forEach(strip);
+}
+
+// 同日的卡 day 編號相同，其餘依日期順序遞增
+function renumberDaysByDate(days) {
+  let n = 0, prev = null;
+  (days || []).forEach(d => { if (d.date !== prev || !d.date) n++; prev = d.date; d.day = n; });
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { GROUP_SECTION_TEMPLATE, GROUP_PROMPT_ANCHOR, buildGroupSection, resolveWith, mergeMembers, normalizeImported, computeAlerts, effectiveIds, sameIdSet };
+  module.exports = { deepTagColor, groupTagStyle, describeList, setWithList, syncGroupLists, keepMemberOnlyIn, mergeSameDateCards, splitDateCards, removeMemberFromLists, renumberDaysByDate, GROUP_SECTION_TEMPLATE, GROUP_PROMPT_ANCHOR, buildGroupSection, resolveWith, mergeMembers, normalizeImported, computeAlerts, effectiveIds, sameIdSet };
 }

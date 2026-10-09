@@ -177,5 +177,163 @@ test('略過的提醒不再出現；A-1 不能略過', () => {
   assert.strictEqual(again.length, 0);
 });
 
+// ═══ 包 2：畫面用的純函式與畫面片段 ═══════════════════════════════════
+const M = (id, name) => ({ id, name, avatar: '' });
+const MEM = [M('a', '小貓'), M('b', '阿熊'), M('c', '小魚'), M('d', '阿鹿')];
+const GRP = [{ id: 'g0', name: '鹿兒島組', memberIds: ['a', 'b'], order: 0 }, { id: 'g1', name: '福岡組', memberIds: ['c', 'd'], order: 1 }];
+const day = (id, date, w, items = []) => ({ id, day: 1, date, wd: '', theme: id, emoji: '📍', ...(w ? { with: w } : {}), items });
+const act = (id, w) => ({ id, type: 'activity', title: id, ...(w ? { with: w } : {}) });
+
+test('2-4 組名標籤配色：主題深色版（赭紅 #782825）、三種外觀', () => {
+  assert.strictEqual(gt.deepTagColor('#a8362f'), '#782825');
+  const [s1, s2, s3] = [0, 1, 2].map(i => gt.groupTagStyle(i, '#782825', '#f3e3d8'));
+  assert.match(s1.tag, /background:#782825;color:#fff/);                       // 實心
+  assert.match(s2.tag, /background:#fff;color:#782825;box-shadow/);            // 外框
+  assert.match(s3.tag, /background:#f3e3d8;color:#782825;box-shadow/);         // 淡底加框
+});
+test('2-4 名單反推：全員／某組／對不上顯示成員', () => {
+  assert.strictEqual(gt.describeList(undefined, GRP, MEM).kind, 'all');
+  assert.strictEqual(gt.describeList(['a', 'b'], GRP, MEM).group.name, '鹿兒島組');
+  assert.strictEqual(gt.describeList(['d', 'c'], GRP, MEM).index, 1);
+  assert.deepStrictEqual(gt.describeList(['d', 'a'], GRP, MEM), { kind: 'members', ids: ['a', 'd'] });
+});
+test('2-8 改組別名單：名單完全吻合的卡（含活動）一起改，回傳卡數', () => {
+  const days = [day('d1', '11/3', ['c', 'd'], [act('x', ['c', 'd']), act('y')]), day('d2', '11/3', ['a', 'b']), day('d3', '11/6', undefined, [act('z', ['c', 'd'])])];
+  const n = gt.syncGroupLists(days, ['c', 'd'], ['c'], MEM);
+  assert.strictEqual(n, 2);
+  assert.deepStrictEqual(days[0].with, ['c']);
+  assert.strictEqual(days[0].items[0].with, undefined, '活動名單等於新的卡名單 → 改成沿用');
+  assert.deepStrictEqual(days[1].with, ['a', 'b']);
+  assert.deepStrictEqual(days[2].items[0].with, ['c']);
+});
+test('2-7 A-2「只留在」：同日其他卡拿掉這個人', () => {
+  const days = [day('d1', '11/4', ['a']), day('d2', '11/4', ['b', 'c', 'd'], [act('x', ['b']), act('y', ['c'])])];
+  days[0].with = ['a', 'b'];
+  assert.strictEqual(gt.keepMemberOnlyIn(days, 'd2', 'b', MEM), 1);
+  assert.deepStrictEqual(days[0].with, ['a']);
+  const days2 = [day('d1', '11/4', ['a', 'b']), day('d2', '11/4', ['b', 'c'], [act('x', ['b'])])];
+  gt.keepMemberOnlyIn(days2, 'd1', 'b', MEM);
+  assert.deepStrictEqual(days2[1].with, ['c']);
+  assert.strictEqual(days2[1].items[0].with, undefined, '活動只剩沒人 → 沿用日卡');
+});
+test('2-6 這天一起行動：合併成一張全員卡，活動保留原本屬於誰', () => {
+  const days = [day('d1', '11/7', ['a', 'b'], [act('x')]), day('d2', '11/7', ['c', 'd'], [act('y', ['c'])]), day('d3', '11/8')];
+  assert.ok(gt.mergeSameDateCards(days, '11/7', MEM));
+  assert.strictEqual(days.length, 2);
+  assert.strictEqual(days[0].with, undefined);
+  assert.deepStrictEqual(days[0].items.map(i => [i.id, i.with]), [['x', ['a', 'b']], ['y', ['c']]]);
+  assert.strictEqual(gt.mergeSameDateCards(days, '11/8', MEM), false);
+});
+test('2-6 這天分頭行動：替沒出現的人加卡；全員卡拆成第 1 組＋其餘', () => {
+  const days = [day('d1', '11/5', ['a', 'b']), day('d9', '11/6')];
+  const nc = { id: 'n1', day: 1, date: '', wd: '', theme: '', emoji: '📍', items: [] };
+  assert.ok(gt.splitDateCards(days, '11/5', GRP, MEM, nc));
+  assert.deepStrictEqual(nc.with, ['c', 'd']);
+  assert.deepStrictEqual(days.map(d => d.id), ['d1', 'n1', 'd9']);
+  assert.strictEqual(nc.date, '11/5');
+  const days2 = [day('d1', '11/6')];
+  const nc2 = { id: 'n2', items: [] };
+  assert.ok(gt.splitDateCards(days2, '11/6', GRP, MEM, nc2));
+  assert.deepStrictEqual(days2[0].with, ['a', 'b']);
+  assert.deepStrictEqual(nc2.with, ['c', 'd']);
+  assert.strictEqual(gt.splitDateCards(days2, '11/6', GRP, MEM, { id: 'n3', items: [] }), false, '兩張卡已涵蓋所有人 → 不再拆');
+});
+test('規則 13 刪除成員：從所有名單拿掉，名單變空的留下 A-1 提醒', () => {
+  const st = { groups: JSON.parse(JSON.stringify(GRP)), hotels: [], days: [day('d1', '11/4', ['a']), day('d2', '11/4', ['a', 'b'])] };
+  gt.removeMemberFromLists(st, 'a', '小貓');
+  assert.deepStrictEqual(st.groups[0].memberIds, ['b']);
+  assert.deepStrictEqual(st.days[1].with, ['b']);
+  assert.strictEqual(st.days[0].with, undefined);
+  assert.deepStrictEqual(st.days[0].withUnknown, ['小貓']);
+  const al = gt.computeAlerts({ members: MEM.filter(m => m.id !== 'a'), groups: st.groups, days: st.days, hotels: [], year: 2026 });
+  assert.ok(al.some(a => a.code === 'A-1'));
+});
+test('A-1：對不上的組名視為沒人，不會連帶觸發其他卡的 A-2／A-4', () => {
+  const days = [day('d1', '11/3', ['a', 'b']), { ...day('d2', '11/3'), withUnknown: ['福岡團'] }];
+  const al = gt.computeAlerts({ members: MEM, groups: GRP, days, hotels: [], year: 2026 });
+  assert.ok(al.some(a => a.code === 'A-1' && a.name === '福岡團'));
+  assert.ok(!al.some(a => a.code === 'A-2'));
+});
+test('同日的卡 Day 編號相同', () => {
+  const days = [day('1', '11/1'), day('2', '11/1'), day('3', '11/2'), day('4', '11/3')];
+  gt.renumberDaysByDate(days);
+  assert.deepStrictEqual(days.map(d => d.day), [1, 1, 2, 3]);
+});
+
+// 畫面片段（用假 DOM 跑 renderDays，檢查產生的 HTML）
+function groupedSandbox() {
+  const { groups } = readJson(path.join(AI, 'groups.json'));
+  const g = loadGenerator();
+  g.ctx.__groups = groups; g.ctx.__out = readJson(path.join(AI, 'out-antigravity-v3.json'));
+  g.run(`
+    state.splitUp = true;
+    __groups.forEach(gr => gr.members.forEach(n => { if (!state.members.some(m => m.name === n)) state.members.push({ name: n, avatar: '' }); }));
+    ensureMemberIds();
+    state.groups = __groups.map((gr, i) => ({ id: 'g' + i, name: gr.name, order: i, memberIds: gr.members.map(n => state.members.find(m => m.name === n).id) }));
+    applyParsedData(__out);
+    renderStep2();
+  `);
+  return g;
+}
+test('2-4／2-7 日卡 HTML：組名標籤、全員虛線鈕、提醒列、A-0 計數', () => {
+  const g = groupedSandbox();
+  const html = g.el('day-cards').innerHTML;
+  assert.ok(html.includes('class="g-tag g-who-btn"'), '有組名標籤');
+  assert.ok(html.includes('g-pbtn'), '全員卡有虛線人形鈕');
+  assert.ok(html.includes('阿熊 同一天出現兩次'));
+  assert.ok(/只留在[^<]+<\/button>/.test(html), 'A-2 有修正鈕');
+  assert.ok(html.includes('AI 沒把握，請確認同行的人'));
+  assert.match(g.el('group-alert-bar').innerHTML, /\d+ 處需要確認/);
+  assert.ok(html.includes('這天分頭行動'), '只有一張卡的日子有分頭行動鈕');
+  assert.ok(html.includes('這天一起行動'), '同日兩張卡有一起行動鈕');
+});
+test('2-3 步驟 2 各組成員：摘要＋編輯；編輯區可展開、第 3 組後隱藏「再加一組」', () => {
+  const g = groupedSandbox();
+  const sum = g.el('group-members').innerHTML;
+  assert.ok(sum.includes('各組成員') && sum.includes('編輯') && sum.includes('鹿兒島組') && sum.includes('福岡組'));
+  g.run('toggleGroupEdit()');
+  assert.ok(g.el('group-members').innerHTML.includes('＋ 再加一組'));
+  g.run('addGroup()');
+  assert.ok(!g.el('group-members').innerHTML.includes('＋ 再加一組'), '第 3 組建立後隱藏');
+});
+test('2-5 選擇器 HTML：單選項目依日卡／活動不同，選中項由名單反推', () => {
+  const g = groupedSandbox();
+  const idx = g.run(`state.days.findIndex(d => d.date === '11/6')`);
+  g.run(`openWho('day', ${idx})`);
+  let html = g.el('day-cards').innerHTML;
+  assert.ok(/aria-checked="true" onclick="pickWho\('all'\)"/.test(html), '全員卡 → 選中「全員」');
+  assert.ok(['全員', '鹿兒島組', '福岡組', '自己選'].every(t => html.includes(t)));
+  g.run(`pickWho('g1')`);
+  assert.ok(!g.el('day-cards').innerHTML.includes('g-who-picker'), '選組別後自動關閉');
+  g.run(`openWho('day', ${idx}); pickWho('custom')`);
+  assert.ok(g.el('day-cards').innerHTML.includes('g-who-picker'), '自己選維持開啟');
+  g.run(`openWho('item', ${idx}, 0)`);
+  html = g.el('day-cards').innerHTML;
+  assert.ok(html.includes('跟這天一樣'));
+});
+test('2-1 沒分組：renderDays 不產生任何分組元素；切回「全程一起」也一樣', () => {
+  const g = loadGenerator();
+  g.ctx.__cfg = readJson(path.join(root, 'generator/schema-example.json'));
+  g.run('importLoadedConfig(__cfg); renderStep2();');
+  const bad = html => /g-tag|g-pbtn|g-avs|g-who|g-warn|g-pair|g-a3|group-members|group-alert-bar/.test(html);
+  assert.ok(!bad(g.el('day-cards').innerHTML));
+  assert.strictEqual(g.run(`document.getElementById('group-alert-bar')`).innerHTML, '', '沒有 A-0 計數列內容');
+  // 有分組資料但關閉「有分頭」
+  g.run(`state.members.slice(0,2).forEach(m => {}); state.groups = [{ id: 'g0', name: 'X組', memberIds: [state.members[0].id], order: 0 }]; state.splitUp = false; renderStep2();`);
+  assert.ok(!bad(g.el('day-cards').innerHTML));
+});
+test('2-2 D1 分組設定文字（G-1～G-8）', () => {
+  const g = loadGenerator();
+  g.run('renderSplitSetup()');
+  let h = g.el('split-setup').innerHTML;
+  assert.ok(h.includes('有人分頭行動嗎？') && h.includes('全程一起') && h.includes('有分頭'));
+  assert.ok(!h.includes('各組成員'), '預設「全程一起」不顯示組別區塊');
+  g.run('setSplitUp(true)');
+  h = g.el('split-setup').innerHTML;
+  for (const t of ['各組成員', '組名照草稿的寫法填，AI 才對得上', '例：福岡組', '代號或暱稱', '＋ 再加一組']) assert.ok(h.includes(t), '缺 ' + t);
+  g.run('addGroup()');
+  assert.ok(!g.el('split-setup').innerHTML.includes('＋ 再加一組'), '第 3 組建立後隱藏');
+});
+
 console.log(`\n${pass} 通過、${fail} 失敗`);
 process.exit(fail ? 1 : 0);

@@ -12,13 +12,15 @@ function makeEl() {
     querySelector() { return makeEl(); }, querySelectorAll() { return []; },
     appendChild() {}, focus() {}, click() {}, contains() { return false; },
     getBoundingClientRect() { return { left: 0, top: 0, width: 0, height: 0 }; },
+    parentNode: { insertBefore() {}, appendChild() {}, removeChild() {} },
   };
   return el;
 }
 
 // appPath：要載入的 generator-app.js（預設是目前的版本）；groupPath：group-trip.js（舊版沒有就略過）
 function loadGenerator({ appPath = path.join(root, 'generator/generator-app.js'),
-                         groupPath = path.join(root, 'generator/group-trip.js') } = {}) {
+                         groupPath = path.join(root, 'generator/group-trip.js'),
+                         uiPath = path.join(root, 'generator/group-ui.js') } = {}) {
   const els = new Map();
   const fixedNow = 1700000000000;
   class FixedDate extends Date {
@@ -42,6 +44,7 @@ function loadGenerator({ appPath = path.join(root, 'generator/generator-app.js')
   sandbox.window = sandbox;
   const ctx = vm.createContext(sandbox);
   if (fs.existsSync(groupPath)) vm.runInContext(fs.readFileSync(groupPath, 'utf8'), ctx, { filename: groupPath });
+  if (fs.existsSync(uiPath)) vm.runInContext(fs.readFileSync(uiPath, 'utf8'), ctx, { filename: uiPath });
   vm.runInContext(fs.readFileSync(appPath, 'utf8'), ctx, { filename: appPath });
   return { ctx, run: code => vm.runInContext(code, ctx), el: id => sandbox.document.getElementById(id) };
 }
