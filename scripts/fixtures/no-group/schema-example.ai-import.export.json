@@ -1,0 +1,845 @@
+{
+  "meta": {
+    "title": "",
+    "shortTitle": "",
+    "heading": "✈️ ",
+    "subtitle": "",
+    "datePill": "",
+    "durationPill": "",
+    "peoplePill": "6人同行",
+    "endDate": "",
+    "endTime": "",
+    "year": 2023,
+    "pin": "0000",
+    "selfDrive": false,
+    "region": "日本",
+    "parkingTerm": "駐車場",
+    "themeColor": "#a8362f",
+    "themeAccent": "#c45a4f",
+    "themeLight": "#e3a89c",
+    "bgColor": "#faf2ec",
+    "bgPale": "#f3e3d8",
+    "storagePrefix": "trip2023",
+    "swCacheKey": "trip2023-v1"
+  },
+  "firebase": {},
+  "members": [
+    {
+      "name": "Claire",
+      "avatar": "🧡"
+    },
+    {
+      "name": "Tony",
+      "avatar": "💙"
+    },
+    {
+      "name": "Wendy",
+      "avatar": "💚"
+    },
+    {
+      "name": "Hua",
+      "avatar": "💛"
+    },
+    {
+      "name": "Jonny",
+      "avatar": "💜"
+    },
+    {
+      "name": "Jennifer",
+      "avatar": "🩷"
+    }
+  ],
+  "days": [
+    {
+      "day": 1,
+      "date": "4/15",
+      "wd": "三",
+      "theme": "抵達仙台",
+      "emoji": "✈️",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v284",
+          "icon": "✈️",
+          "name": "去程航班",
+          "sub": "CI 118 · TPE 桃園 · 08:25 · → SDJ 仙台 · 16:00",
+          "time": "08:25",
+          "map": "",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v281",
+          "icon": "✈️",
+          "name": "桃園機場集合",
+          "sub": "CI118",
+          "time": "08:30",
+          "map": "",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v282",
+          "icon": "🛬",
+          "name": "仙台機場抵達",
+          "sub": "仙台空港",
+          "time": "16:00",
+          "map": "仙台空港",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v283",
+          "icon": "🏨",
+          "name": "Check-in 飯店",
+          "sub": "ホテル京阪仙台",
+          "time": "",
+          "map": "ホテル京阪仙台",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "ホテル京阪仙台",
+        "note": "¥123,400（含4/16）",
+        "paid": false,
+        "map": "ホテル京阪仙台"
+      },
+      "parking": null,
+      "car": null
+    },
+    {
+      "day": 2,
+      "date": "4/16",
+      "wd": "四",
+      "theme": "仙台市區賞櫻",
+      "emoji": "🌸",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v287",
+          "icon": "⛩️",
+          "name": "瑞鳳殿",
+          "sub": "伊達政宗靈廟・賞櫻",
+          "time": "",
+          "map": "瑞鳳殿",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v288",
+          "icon": "🌸",
+          "name": "榴岡公園",
+          "sub": "仙台賞櫻名所",
+          "time": "",
+          "map": "榴岡公園 仙台",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v289",
+          "icon": "⛩️",
+          "name": "仙台東照宮",
+          "sub": "賞櫻",
+          "time": "",
+          "map": "仙台東照宮",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28a",
+          "icon": "🛍️",
+          "name": "仙台市區購物",
+          "sub": "商店街、藥妝、伴手禮",
+          "time": "",
+          "map": "仙台駅",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "ホテル京阪仙台",
+        "note": "¥123,400（含4/15-16 兩晚）",
+        "paid": false,
+        "map": "ホテル京阪仙台"
+      },
+      "parking": null,
+      "car": null
+    },
+    {
+      "day": 3,
+      "date": "4/17",
+      "wd": "五",
+      "theme": "平泉 & 北上夜櫻",
+      "emoji": "🏛️",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v28d",
+          "icon": "🚗",
+          "name": "租車出發",
+          "sub": "7人座×1 ＋ 5人座×1",
+          "time": "09:30",
+          "map": "",
+          "ref": "99921331000 / 99921336800"
+        },
+        {
+          "id": "itloyw3v28e",
+          "icon": "🏛️",
+          "name": "中尊寺金色堂",
+          "sub": "世界文化遺產・平泉",
+          "time": "",
+          "map": "中尊寺金色堂",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28f",
+          "icon": "🌸",
+          "name": "北上展勝地",
+          "sub": "夜櫻名所",
+          "time": "",
+          "map": "北上展勝地",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "ANA Holiday Inn",
+        "note": "¥72,750",
+        "paid": false,
+        "map": "https://maps.app.goo.gl/iBk1aMndmRVf9up29"
+      },
+      "parking": {
+        "lots": [
+          {
+            "name": "中尊寺第1駐車場",
+            "note": "【中尊寺】最靠近入口",
+            "map": "中尊寺第1駐車場 平泉"
+          },
+          {
+            "name": "坂の上駐車場",
+            "note": "【中尊寺】備案",
+            "map": "坂の上駐車場 平泉"
+          },
+          {
+            "name": "展勝地公園駐車場",
+            "note": "【北上展勝地】",
+            "map": "展勝地公園駐車場 北上"
+          },
+          {
+            "name": "Rest House 駐車場",
+            "note": "【北上展勝地】建議15:00前到",
+            "map": "北上展勝地レストハウス"
+          }
+        ],
+        "searchQuery": "北上展勝地 駐車場"
+      },
+      "car": null
+    },
+    {
+      "day": 4,
+      "date": "4/18",
+      "wd": "六",
+      "theme": "青森市區",
+      "emoji": "🐟",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v28i",
+          "icon": "🐟",
+          "name": "古川魚菜市場",
+          "sub": "青森最大早市",
+          "time": "",
+          "map": "青森 古川市場",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28j",
+          "icon": "🏮",
+          "name": "ねぶたの家ワ・ラッセ",
+          "sub": "睡魔祭博物館",
+          "time": "",
+          "map": "ねぶたの家ワ・ラッセ",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28k",
+          "icon": "🍎",
+          "name": "A-FACTORY",
+          "sub": "青森蘋果酒廠・購物",
+          "time": "",
+          "map": "A-FACTORY 青森",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "Fantastic Story（Airbnb）",
+        "note": "¥31,600（含4/19）",
+        "paid": false,
+        "map": "弘前市 Fantastic Story Airbnb"
+      },
+      "parking": {
+        "lots": [
+          {
+            "name": "Paraca 青森古川第一",
+            "note": "【古川市場】",
+            "map": "パラカ青森古川第1"
+          },
+          {
+            "name": "周辺P共通停車場",
+            "note": "【古川市場】備案",
+            "map": "青森市 古川市場 駐車場"
+          },
+          {
+            "name": "A-FACTORY 停車場",
+            "note": "【A-FACTORY】消費折抵",
+            "map": "A-FACTORY 青森 駐車場"
+          }
+        ],
+        "searchQuery": "青森市 駐車場"
+      },
+      "car": null
+    },
+    {
+      "day": 5,
+      "date": "4/19",
+      "wd": "日",
+      "theme": "弘前全日賞櫻",
+      "emoji": "🌸",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v28n",
+          "icon": "🌸",
+          "name": "弘前公園",
+          "sub": "日本最盛名賞櫻勝地",
+          "time": "",
+          "map": "弘前公園",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28o",
+          "icon": "🏮",
+          "name": "津輕藩睡魔村",
+          "sub": "體驗津輕文化",
+          "time": "",
+          "map": "津軽藩ねぷた村",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28p",
+          "icon": "🌙",
+          "name": "弘前公園夜櫻",
+          "sub": "燈光絢麗・夜間特別開放",
+          "time": "夜",
+          "map": "弘前公園",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "Fantastic Story（Airbnb）",
+        "note": "¥31,600（含4/18-19 兩晚）",
+        "paid": false,
+        "map": "弘前市 Fantastic Story Airbnb"
+      },
+      "parking": {
+        "lots": [
+          {
+            "name": "弘前市役所駐車場",
+            "note": "【弘前公園】最佳選擇・建議08:30前到",
+            "map": "弘前市役所 駐車場"
+          },
+          {
+            "name": "市立觀光館地下停車場",
+            "note": "【弘前公園】備案",
+            "map": "弘前市立観光館 駐車場"
+          },
+          {
+            "name": "文化中心停車場",
+            "note": "【弘前公園】備案・近東門",
+            "map": "弘前文化センター 駐車場"
+          },
+          {
+            "name": "津軽藩ねぷた村停車場",
+            "note": "【睡魔村】消費折抵停車費",
+            "map": "津軽藩ねぷた村 駐車場"
+          }
+        ],
+        "searchQuery": "弘前公園 駐車場"
+      },
+      "car": null
+    },
+    {
+      "day": 6,
+      "date": "4/20",
+      "wd": "一",
+      "theme": "松島溫泉・一之坊",
+      "emoji": "♨️",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v28s",
+          "icon": "🚗",
+          "name": "前往松島",
+          "sub": "沿途欣賞風景",
+          "time": "",
+          "map": "",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28t",
+          "icon": "♨️",
+          "name": "松島一之坊",
+          "sub": "入住全包式溫泉度假村",
+          "time": "",
+          "map": "松島一の坊",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28u",
+          "icon": "🛁",
+          "name": "溫泉 & 懷石料理",
+          "sub": "悠閒放鬆日",
+          "time": "",
+          "map": "",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "松島一之坊",
+        "note": "",
+        "paid": true,
+        "map": "松島一の坊"
+      },
+      "parking": {
+        "lots": [],
+        "searchQuery": "松島 駐車場"
+      },
+      "car": null
+    },
+    {
+      "day": 7,
+      "date": "4/21",
+      "wd": "二",
+      "theme": "松島巡禮 & 仙台 Outlet",
+      "emoji": "⛵",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v28x",
+          "icon": "⛵",
+          "name": "松島灣遊船",
+          "sub": "日本三景之一",
+          "time": "",
+          "map": "松島海岸",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28y",
+          "icon": "⛩️",
+          "name": "瑞巖寺",
+          "sub": "伊達政宗菩提寺",
+          "time": "",
+          "map": "瑞巌寺",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v28z",
+          "icon": "🛍️",
+          "name": "仙台泉 Outlet & Tapio",
+          "sub": "最後採買",
+          "time": "",
+          "map": "仙台泉プレミアム・アウトレット",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": {
+        "name": "仙台皇家公園酒店",
+        "note": "",
+        "paid": true,
+        "map": "仙台ロイヤルパークホテル"
+      },
+      "parking": {
+        "lots": [
+          {
+            "name": "瑞巖寺停車場",
+            "note": "¥500/次（MapCode: 110 442 138*54）",
+            "map": "瑞巌寺 駐車場 松島"
+          },
+          {
+            "name": "松島公園第1～5停車場",
+            "note": "備案",
+            "map": "松島公園 駐車場"
+          },
+          {
+            "name": "町営三十刈停車場",
+            "note": "⚠️ 避免：上坡且距景點遠",
+            "warn": true
+          }
+        ],
+        "searchQuery": "松島 駐車場"
+      },
+      "car": null
+    },
+    {
+      "day": 8,
+      "date": "4/22",
+      "wd": "三",
+      "theme": "返家",
+      "emoji": "🏠",
+      "selfDrive": false,
+      "acts": [
+        {
+          "id": "itloyw3v2812",
+          "icon": "🍳",
+          "name": "早餐",
+          "sub": "仙台皇家公園酒店・住宿含早餐",
+          "time": "",
+          "map": "",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v2813",
+          "icon": "⛽",
+          "name": "加油",
+          "sub": "還車前加油",
+          "time": "14:00",
+          "map": "ガソリンスタンド 仙台空港",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v2814",
+          "icon": "🚗",
+          "name": "還車",
+          "sub": "返還租車",
+          "time": "14:30",
+          "map": "",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v2815",
+          "icon": "✈️",
+          "name": "仙台機場起飛",
+          "sub": "CI119 → 桃園 20:50",
+          "time": "17:20",
+          "map": "仙台空港",
+          "ref": ""
+        },
+        {
+          "id": "itloyw3v2816",
+          "icon": "✈️",
+          "name": "回程航班",
+          "sub": "CI 119 · SDJ 仙台 · 17:20 · → TPE 桃園 · 20:50",
+          "time": "17:20",
+          "map": "",
+          "ref": ""
+        }
+      ],
+      "flight": null,
+      "hotel": null,
+      "parking": null,
+      "car": null
+    }
+  ],
+  "hotels": [
+    {
+      "nights": [
+        "4/15",
+        "4/16"
+      ],
+      "name": "ホテル京阪仙台",
+      "loc": "宮城縣・仙台市",
+      "note": "現場付 ¥123,400",
+      "paid": false,
+      "map": "ホテル京阪仙台"
+    },
+    {
+      "nights": [
+        "4/17"
+      ],
+      "name": "ANA Holiday Inn",
+      "loc": "岩手縣・北上市",
+      "note": "現場付 ¥72,750",
+      "paid": false,
+      "map": "https://maps.app.goo.gl/iBk1aMndmRVf9up29"
+    },
+    {
+      "nights": [
+        "4/18",
+        "4/19"
+      ],
+      "name": "Fantastic Story（Airbnb）",
+      "loc": "青森縣・弘前市",
+      "note": "現場付 ¥31,600",
+      "paid": false,
+      "map": "弘前市 Fantastic Story Airbnb"
+    },
+    {
+      "nights": [
+        "4/20"
+      ],
+      "name": "松島一之坊",
+      "loc": "宮城縣・松島",
+      "note": "已刷卡付清",
+      "paid": true,
+      "map": "松島一の坊"
+    },
+    {
+      "nights": [
+        "4/21"
+      ],
+      "name": "仙台皇家公園酒店",
+      "loc": "宮城縣・仙台",
+      "note": "已付款",
+      "paid": true,
+      "map": "仙台ロイヤルパークホテル"
+    }
+  ],
+  "restaurants": {
+    "1": [
+      {
+        "name": "S-PAL 仙台 B1 美食街",
+        "note": "仙台車站地下，到埗當晚覓食方便",
+        "map": "S-PAL仙台 B1"
+      },
+      {
+        "name": "成城石井 / NewDays",
+        "note": "車站內超市，可買零食、飲料備用",
+        "map": "成城石井 仙台駅"
+      }
+    ],
+    "2": [
+      {
+        "name": "Evian Café",
+        "note": "松島附近咖啡廳，網美打卡好去處",
+        "map": "Evian Café 松島"
+      },
+      {
+        "name": "Date Cafe O'rder",
+        "note": "仙台在地輕食咖啡",
+        "map": "Date Cafe Order 仙台"
+      },
+      {
+        "name": "Mamebo",
+        "note": "自家烘焙咖啡廳",
+        "map": "Mamebo 仙台"
+      }
+    ],
+    "3": [
+      {
+        "name": "Cafe Sekimiya",
+        "note": "平泉附近的日式甜點咖啡廳",
+        "map": "Cafe Sekimiya 平泉"
+      },
+      {
+        "name": "うなぎの笹船",
+        "note": "平泉在地鰻魚飯名店",
+        "map": "うなぎの笹船 平泉"
+      },
+      {
+        "name": "平泉芭蕉館",
+        "note": "在地料理定食，松尾芭蕉路線附近",
+        "map": "平泉芭蕉館"
+      },
+      {
+        "name": "焼鳥居酒屋 島鳥",
+        "note": "盛岡燒鳥居酒屋，晚餐推薦",
+        "map": "焼鳥居酒屋島鳥 盛岡"
+      },
+      {
+        "name": "枕流亭",
+        "note": "盛岡在地日式料理",
+        "map": "枕流亭 盛岡"
+      }
+    ],
+    "4": [
+      {
+        "name": "UGUISU",
+        "note": "青森咖啡廳，使用在地食材，環境清新",
+        "map": "UGUISU 青森"
+      },
+      {
+        "name": "おさない",
+        "note": "青森老牌洋食店，帆立貝奶油飯必點",
+        "map": "おさない 青森"
+      }
+    ],
+    "5": [
+      {
+        "name": "PIZZERIA MIA",
+        "note": "弘前人氣義式披薩，現烤窯烤",
+        "map": "PIZZERIA MIA 弘前"
+      },
+      {
+        "name": "食樂處 櫻家",
+        "note": "弘前在地定食，賞櫻季超人氣",
+        "map": "食楽処さくら家 弘前"
+      },
+      {
+        "name": "Kikufuji",
+        "note": "弘前咖啡老店，復古洋館風格",
+        "map": "Kikufuji 弘前"
+      },
+      {
+        "name": "大正浪漫茶室",
+        "note": "弘前公園附近，甜點 & 輕食，賞花絕配",
+        "map": "大正浪漫茶室 弘前"
+      }
+    ],
+    "6": [
+      {
+        "name": "松島一之坊",
+        "note": "住宿含早晚餐，海景懷石料理",
+        "map": "松島一之坊"
+      }
+    ],
+    "7": [
+      {
+        "name": "仙台泉 Outlet / Tapio",
+        "note": "購物之餘可於 Outlet 美食廣場用餐",
+        "map": "仙台泉プレミアムアウトレット"
+      },
+      {
+        "name": "Mamebo",
+        "note": "自家烘焙咖啡廳",
+        "map": "Mamebo 仙台"
+      }
+    ],
+    "8": []
+  },
+  "weatherLocs": {
+    "4/15": [
+      {
+        "lat": 38.26,
+        "lon": 140.88,
+        "label": "仙台",
+        "key": "sendai"
+      }
+    ],
+    "4/16": [
+      {
+        "lat": 38.26,
+        "lon": 140.88,
+        "label": "仙台",
+        "key": "sendai"
+      }
+    ],
+    "4/17": [
+      {
+        "lat": 39.29,
+        "lon": 141.11,
+        "label": "平泉/北上",
+        "key": "kitakami"
+      }
+    ],
+    "4/18": [
+      {
+        "lat": 40.82,
+        "lon": 140.74,
+        "label": "青森",
+        "key": "aomori"
+      },
+      {
+        "lat": 40.6,
+        "lon": 140.47,
+        "label": "弘前",
+        "key": "hirosaki"
+      }
+    ],
+    "4/19": [
+      {
+        "lat": 40.6,
+        "lon": 140.47,
+        "label": "弘前",
+        "key": "hirosaki"
+      }
+    ],
+    "4/20": [
+      {
+        "lat": 40.6,
+        "lon": 140.47,
+        "label": "弘前",
+        "key": "hirosaki"
+      },
+      {
+        "lat": 38.37,
+        "lon": 141.07,
+        "label": "松島",
+        "key": "matsushima"
+      }
+    ],
+    "4/21": [
+      {
+        "lat": 38.32,
+        "lon": 140.88,
+        "label": "仙台泉",
+        "key": "izumi",
+        "fallbackKey": "sendai",
+        "fallbackLabel": "仙台"
+      }
+    ],
+    "4/22": [
+      {
+        "lat": 38.26,
+        "lon": 140.88,
+        "label": "仙台",
+        "key": "sendai"
+      }
+    ]
+  },
+  "checklist": [
+    "護照",
+    "駕照正本",
+    "日文駕照譯本",
+    "Visit Japan Web QR Code",
+    "日幣現金",
+    "信用卡",
+    "國際漫遊開通",
+    "換洗衣物（8天）",
+    "盥洗用品",
+    "個人藥品",
+    "口罩",
+    "充電器 + 行動電源",
+    "雨具",
+    "保暖外套"
+  ],
+  "presetShopping": [
+    "🌙 萩之月（仙台）仙台招牌蛋奶餅乾，造型像月亮",
+    "🫛 ずんだ餅（仙台）毛豆口味麻糬，仙台獨有",
+    "🐟 笹かまぼこ（仙台）竹葉形白魚魚板真空包",
+    "🍎 青森蘋果派（青森）整顆蘋果製作的得獎甜點",
+    "🧃 青森蘋果汁（青森）津輕蘋果100%純汁，甘甜無比",
+    "🍘 南部せんべい（岩手）南部傳統薄脆餅，多種口味",
+    "🦪 松島牡蠣製品（松島）松島特產海鮮伴手禮",
+    "🍡 松島もなか（松島）松島名物最中餅"
+  ],
+  "removedPresets": [],
+  "notes": [
+    {
+      "icon": "🔌",
+      "text": "日本插座電壓 100V，雙孔同台灣，無須轉接頭"
+    },
+    {
+      "icon": "📱",
+      "text": "提前完成 Visit Japan Web 申請，截圖 QR Code 備用"
+    },
+    {
+      "icon": "🚗",
+      "text": "租車須攜帶駕照正本及日文譯本，兩者缺一不可"
+    },
+    {
+      "icon": "🍱",
+      "text": "長輩用餐建議選西京燒、煮付等無刺魚料理"
+    },
+    {
+      "icon": "📶",
+      "text": "出發前確認國際漫遊已開通，或準備 SIM 卡"
+    },
+    {
+      "icon": "🚻",
+      "text": "長途開車前先如廁，日本休息站通常很乾淨"
+    },
+    {
+      "icon": "🌂",
+      "text": "四月東北多雨，建議攜帶折疊傘或輕薄雨衣"
+    }
+  ]
+}

@@ -41,7 +41,7 @@ JSON Schema（嚴格遵守）：
   ],
   "members": [{ "name": "姓名", "avatar": "🧡" }],
   "checklist": ["護照","信用卡"],
-  "notes": []
+  "notes": [{ "icon": "⚠️", "text": "…" }]
 }
 
 ---
@@ -76,7 +76,10 @@ let state = {
   tripText: '',
   jsonPaste: '',
   useFirebase: false,
-  members: [],
+  members: [],                // [{ id, name, avatar }]；id 只在產生器內部用，匯出設定檔時不帶
+  groups: [],                 // 分組旅行：[{ id, name, memberIds, order }]，最多 3 組，只是成員名單的別名
+  splitUp: false,             // D1「有分頭」開關；關閉時 groups 保留但不生效（規則 7）
+  dismissedAlerts: [],        // 判讀提醒「略過」的 key
   days: [],
   hotels: [],
   parsedExtras: {},           // restaurants/weatherLocs/checklist/presetShopping/notes
@@ -158,6 +161,7 @@ function loadState() {
     // 舊草稿/匯入備份可能是舊 day 形狀（acts/flight/hotel）→ 統一遷移成 items 模型
     state.days = migrateDays(state.days);
     state.days.forEach(_orderTimeline);
+    ensureGroupState();
     return true;
   } catch (e) { return false; }
 }
@@ -374,7 +378,14 @@ function switchChecklistSubtab(tab) {
 // ── AI flow ────────────────────────────────────────────────────────
 function buildPrompt() {
   const text = document.getElementById('trip-text').value.trim();
-  return PARSE_PROMPT + (text || '（請使用者把行程貼到這裡）');
+  let head = PARSE_PROMPT;
+  const groups = activeGroups();
+  if (groups.length) {
+    // 分組段落插在 Schema 之前；沒分組時提示詞不動（規則 7）
+    const section = buildGroupSection(groups.map(g => ({ name: g.name, members: g.memberIds.map(memberName) })));
+    head = head.replace(GROUP_PROMPT_ANCHOR, () => section + GROUP_PROMPT_ANCHOR);
+  }
+  return head + (text || '（請使用者把行程貼到這裡）');
 }
 
 function updateTripText() {
@@ -455,15 +466,22 @@ function applyParsedData(d) {
   const year = d.year || new Date().getFullYear();
   const baseKey = (d.tripName || 'trip').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
   state.fields['f-storage-prefix'] = baseKey + year;
-  if (d.members?.length) state.members = [...d.members];
+  const groups = activeGroups();
+  if (d.members?.length) {
+    // 有分組時成員已在 D1 建好（組別指向成員 id），用名字對上並保留 id；沒分組維持原行為
+    state.members = groups.length ? mergeMembers(state.members, d.members) : [...d.members];
+  }
+  ensureMemberIds();
+  d = normalizeImported(d, groups, state.members);   // with／unsure → 內部格式；沒分組時丟掉
   if (d.days?.length) { state.days = d.days.map(fromLegacyDay); state.days.forEach(_orderTimeline); }
   if (d.hotels?.length) state.hotels = [...d.hotels];
+  state.dismissedAlerts = [];
   state.parsedExtras = {
     restaurants: d.restaurants || {},
     weatherLocs: d.weatherLocs || {},
     checklist: d.checklist || [],
     presetShopping: d.presetShopping || [],
-    notes: d.notes || [],
+    notes: normalizeNotes(d.notes),
   };
   // Re-hydrate inputs
   Object.keys(state.fields).forEach(id => {
@@ -474,6 +492,32 @@ function applyParsedData(d) {
   });
   onSelfDriveToggle(true);
   saveState();
+}
+
+// AI 可能把 notes 回成字串陣列；行程 App 與編輯器都讀 { icon, text }
+function normalizeNotes(notes) {
+  return (notes || []).map(n => typeof n === 'string' ? { icon: '⚠️', text: n } : n);
+}
+
+// ── 分組旅行（純函式在 group-trip.js；這裡是碰 state 的部分）──────────
+let _memberSeq = 0;   // 與 genId 的流水號分開，成員 id 不影響其他 id
+function newMemberId() { return 'm' + Date.now().toString(36) + (_memberSeq++).toString(36); }
+function ensureMemberIds() {
+  state.members.forEach(m => { if (!m.id) m.id = newMemberId(); });
+}
+function memberName(id) { return (state.members.find(m => m.id === id) || {}).name || ''; }
+// 讀入舊資料／匯入後呼叫：成員補 id、組別清掉已不存在的成員
+function ensureGroupState() {
+  if (!Array.isArray(state.groups)) state.groups = [];
+  if (!Array.isArray(state.dismissedAlerts)) state.dismissedAlerts = [];
+  ensureMemberIds();
+  const ids = new Set(state.members.map(m => m.id));
+  state.groups.forEach(g => { g.memberIds = (g.memberIds || []).filter(id => ids.has(id)); });
+}
+// 生效中的組別：有開「有分頭」、有組名、至少一位成員
+function activeGroups() {
+  if (!state.splitUp) return [];
+  return (state.groups || []).filter(g => (g.name || '').trim() && g.memberIds.length);
 }
 
 // ── Timeline item model + legacy adapter ───────────────────────────
@@ -600,8 +644,18 @@ function normalizeItem(it) {
     // park: 自駕日是否要查此景點停車場。undefined = 預設要；false = 徒步、不查
     park: it.park === false ? false : undefined,
     location: { query: loc.query || '', url: loc.url || '', verified: !!loc.verified, ...(loc.resolved ? { resolved: loc.resolved } : {}) },
-    data: it.data || {}
+    data: it.data || {},
+    ...groupFields(it)
   };
+}
+
+// 分組欄位（同行名單 with、AI 對不到的字串 withUnknown、沒把握 unsure）：有才帶，沒分組的資料形狀不變
+function groupFields(src) {
+  const o = {};
+  if (src && Array.isArray(src.with) && src.with.length) o.with = [...src.with];
+  if (src && Array.isArray(src.withUnknown) && src.withUnknown.length) o.withUnknown = [...src.withUnknown];
+  if (src && src.unsure === true) o.unsure = true;
+  return o;
 }
 
 function newDay(n) {
@@ -620,6 +674,7 @@ function fromLegacyDay(d) {
     theme: d.theme || '', emoji: d.emoji || '📍',
     selfDrive: !!d.selfDrive,      // 這天是否自駕 → 決定本日景點要不要顯示停車場
     parking: d.parking || null,   // 精選停車場清單原樣透傳（template 已支援渲染）
+    ...groupFields(d),
     items: []
   };
   if (Array.isArray(d.items)) {            // 已是新格式 → pass-through
@@ -632,7 +687,8 @@ function fromLegacyDay(d) {
       id: a.id || genId(), type: 'activity', time: a.time || '',
       icon: a.icon || '📍', title: a.name || '', sub: a.sub || '', ref: a.ref || '',
       park: a.park === false ? false : undefined,
-      location: makeLocation(a.map), data: {}
+      location: makeLocation(a.map), data: {},
+      ...groupFields(a)
     });
   });
   if (d.flight) {
@@ -645,7 +701,8 @@ function fromLegacyDay(d) {
         num: f.num || '', from: f.from || '', fromCity: f.fromCity || '', fromTerminal: f.fromTerminal || '',
         to: f.to || '', toCity: f.toCity || '', toTerminal: f.toTerminal || '',
         dept: f.dept || '', arr: f.arr || '', boarding: f.boarding || ''
-      }
+      },
+      ...groupFields(f)
     });
   }
   if (d.hotel) {
@@ -655,7 +712,8 @@ function fromLegacyDay(d) {
       icon: '🏨', title: h.name || '', sub: '', ref: '',
       park: h.park === false ? false : undefined,
       location: makeLocation(h.map),
-      data: { note: h.note || '', paid: !!h.paid }
+      data: { note: h.note || '', paid: !!h.paid },
+      ...groupFields(h)
     });
   }
   // 租車：legacy 的 car 物件（含訂位號碼 bookings）折進「對應租車活動」的 ref，
@@ -1051,6 +1109,10 @@ function importLoadedConfig(cfg) {
   state.fields['f-firebase'] = cfg.firebase ? JSON.stringify(cfg.firebase, null, 2) : '';
   state.useFirebase = !!(cfg.firebase && cfg.firebase.databaseURL);
   state.members = cfg.members || [];
+  state.groups = [];            // 現有行程 App 還不認得分組，載入既有行程一律當沒分組
+  state.splitUp = false;
+  state.dismissedAlerts = [];
+  ensureMemberIds();
   state.days = (cfg.days || []).map(fromLegacyDay);
   state.days.forEach(_orderTimeline);
   state.hotels = cfg.hotels || [];
@@ -1262,7 +1324,7 @@ function renderMembers() {
 function addMember() {
   const name = document.getElementById('new-name').value.trim();
   if (!name) return;
-  state.members.push({ name, avatar: '' });
+  state.members.push({ id: newMemberId(), name, avatar: '' });
   document.getElementById('new-name').value = '';
   renderMembers();
   saveState();
@@ -2074,10 +2136,10 @@ function collectConfig() {
       swCacheKey: state._loadedSwCacheKey || (pfx + '-v1'),
     },
     firebase,
-    members: state.members,
+    members: state.members.map(({ id, ...m }) => m),   // 內部 id 不輸出（行程 App 還用名字）
     // 總開關關閉時，匯出一律當作非自駕（逐天 selfDrive 仍保留在 state，重開即恢復）
     days: state.days.map(d => toLegacyDay(f['f-self-drive'] ? d : { ...d, selfDrive: false })),
-    hotels: state.hotels,
+    hotels: state.hotels.map(({ with: _w, withUnknown, unsure, ...h }) => h),   // 分組欄位這一包先不輸出
     restaurants: state.parsedExtras.restaurants || {},
     weatherLocs: state.parsedExtras.weatherLocs || {},
     checklist: state.parsedExtras.checklist || [],
