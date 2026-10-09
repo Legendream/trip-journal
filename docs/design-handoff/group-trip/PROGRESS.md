@@ -1,12 +1,22 @@
 # 分組旅行：進度與下次接手
 
-> 最後更新：2026-10-06。新對話開始時，先讀這份，再讀 decisions.md。
+> 最後更新：2026-10-09。新對話開始時，先讀這份，再讀 decisions.md。
 
 ## 現在在哪個階段
 
-設計完成，等實作。brief.md 要求交回的四項都已完成；AI 提示詞 v3 已實測通過；實作交接已寫好（implementation-handoff.md）。
+產生器端（包 1 資料層＋包 2 產生器畫面）已實作，在分支 `feat/group-trip-generator`（PR 待 merge）。行程 App 端、Firebase、舊行程相容還沒做。
 
-下一步 1（AI 提示詞與資料格式）完成：提示詞 v3 經 Gemini 網頁版與 Antigravity 實測皆 27/27，見 ai-prompt.md 第 8 節。
+- AI 提示詞 v3 經 Gemini 網頁版與 Antigravity 實測皆 27/27，見 ai-prompt.md 第 8 節。
+- 測試：`node scripts/test-group-trip.js`（資料層＋畫面片段＋沒分組基準比對，不需瀏覽器）。沒分組基準檔在 `scripts/fixtures/no-group/`，是分組功能加入前（main b6d8c41）的輸出。
+- 程式位置：`generator/group-trip.js`（純函式）、`generator/group-ui.js`（畫面）、`generator/generator-app.js`（掛接）。
+
+實作時的補充決定（設計文件沒寫死的地方）：
+
+- D1「有人分頭行動嗎？」切換列是進入點，所以「全程一起」時步驟 1 也會看到這一列；步驟 2 在「全程一起」時與改前完全相同（除了 M-1 placeholder）。
+- `state.splitUp` 記錄「有分頭」開關；切回「全程一起」時組別保留但不生效，切回來就還在。
+- 載入既有行程（還原路線）時，步驟 1 已填的組別用名字對上載入的成員；對不上的成員從組別拿掉。
+- 成員沒有頭像時（手動建立），摘要與標籤顯示名字。
+- 對不上的組名（A-1）在計算其他提醒時視為「沒人」，避免連帶誤報 A-2／A-4。
 
 ## 檔案地圖
 
@@ -38,9 +48,8 @@
 
 ## 下一步（依優先順序）
 
-1. **包 1 資料層 + 包 2 產生器畫面**：Claude Code，照 implementation-handoff.md。同一個分支、一個 PR，多個 commit（先包 1 再包 2）。
-3. 之後：行程 App 端（D3–D12）、Firebase 資料路徑、舊行程相容（分享網址與備份檔帶組別）。
-4. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
+1. 行程 App 端（D3–D12）、Firebase 資料路徑、舊行程相容（分享網址與備份檔帶組別）。產生器匯出設定檔目前不帶分組欄位，等 App 認得再一起做。
+2. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
 
 ## 隔一段時間再回來時
 
