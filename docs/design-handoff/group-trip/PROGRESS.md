@@ -50,7 +50,13 @@
 
 ## 下一步（依優先順序）
 
-1. 行程 App 端（D3–D12）、Firebase 資料路徑、舊行程相容（分享網址與備份檔帶組別）。產生器匯出設定檔目前不帶分組欄位，等 App 認得再一起做。
+1. **行程 App 端**（D3–D12 畫面已設計好，不必回 Claude Design）＋ Firebase 資料路徑 ＋ 舊行程相容（分享網址與備份檔帶組別）。新對話開頭先**討論再定案**（激盪），定案後才寫實作交接與驗收清單：
+   - 分組資訊怎麼進匯出設定檔、分享連結、還原：同行名單（`with`）、組別、成員 id 的格式；匯出目前用名字當 key、記帳 `payer` 存名字，改 id 要不要一起動。
+   - `restaurants` 用 day 編號當 key、`weatherLocs` 以日期為 key，同一天兩張卡時分不出屬於哪組（ai-prompt.md 第 6 節）。
+   - 分包方式：基本版（身分選擇、我的行程／全部、會合日卡、新增景點）先，進階版（Firebase：換卡同步、集合通知、記帳預設）後。
+   - 規則 7：沒分組的行程，App 端畫面也要與改前一致。
+   - D3–D12 是 2026-10-06 的快照，開工前先逐張核對與 decisions.md 有沒有矛盾（衝突以 decisions 為準）。
+   - App 端做完後，拿掉 `generator/group-ui.js` 的 `groupFeatureOn()` 閘門（目前入口藏在網址 `?groups=1`），分組功能才算對外開放。
 2. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
 
 ## 隔一段時間再回來時
@@ -64,8 +70,8 @@
 
 ## 開新對話時可以這樣說
 
-> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 和 decisions.md，接續分組旅行的下一步。
+行程 App 端（建議用 Opus 或 Fable：開頭有匯出格式與分包的架構討論）：
 
-要直接進實作（Claude Code）：
+> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 和 decisions.md，接續分組旅行的下一步：行程 App 端。先和我討論匯出格式與分包方式，定案後再寫實作交接與驗收清單。
 
-> 請讀 docs/design-handoff/group-trip/implementation-handoff.md，先做包 1、再做包 2（同一個分支、同一個 PR，多個 commit）。先做 Git 檢查，開分支再動手；改程式前先存一份沒分組行程的匯出結果當基準。
+產生器端（包 1、包 2）已在 2026-10-10 合併進 main（PR #5）；`implementation-handoff.md` 是當時的交接，留作紀錄。測試：`node scripts/test-group-trip.js`。
