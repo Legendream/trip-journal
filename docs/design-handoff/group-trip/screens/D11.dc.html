@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>D11 App 新增景點</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.app{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Kaku Gothic ProN","Noto Sans CJK TC",sans-serif;color:#1e0d12;-webkit-font-smoothing:antialiased}
+.ttl{font-size:21px;font-weight:800;letter-spacing:.02em;line-height:1.2}
+.sub{font-size:12px;opacity:.85;margin-top:3px;letter-spacing:.04em}
+.flabel{font-size:12px;font-weight:700;color:#5c3347;margin-bottom:6px;letter-spacing:.04em}
+.finput{width:100%;box-sizing:border-box;padding:11px 14px;border-radius:12px;font-size:16px;font-family:inherit;color:#1e0d12;background:#fff}
+.finput::placeholder{color:#b49aa4}
+.mp{display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:10px;background:#fff;color:#5c3347;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;min-height:40px}
+</style>
+</helmet>
+<div class="app" style="width: 390px; height: 844px; position: relative; overflow: hidden; background: {{bg}}">
+  <div style="color: #fff; padding: 14px 20px 18px; background: linear-gradient(145deg, {{p}} 0%, {{p2}} 55%, {{p3}} 100%)">
+    <div class="ttl">九州・屋久島之旅 2026</div><div class="sub">鹿兒島・福岡・屋久島</div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(30,13,18,.45)"></div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-radius: 24px 24px 0 0; padding: 22px 20px 30px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="font-size: 18px; font-weight: 800">📍 新增景點</span>
+      <button aria-label="關閉" style="width: 34px; height: 34px; border-radius: 50%; border: none; background: {{bg}}; color: #9a7080; font-size: 16px">✕</button>
+    </div>
+    <div>
+      <div class="flabel">哪一天</div>
+      <div class="finput" style="border: 1.5px solid {{pale}}; display: flex; justify-content: space-between">Day 6・11/6（五）<span style="color: #9a7080">▾</span></div>
+    </div>
+    <div>
+      <div class="flabel">同行的人</div>
+      <div role="radiogroup" aria-label="同行的人" style="display: flex; flex-wrap: wrap; gap: 8px">
+        <button class="mp" role="radio" aria-checked="true" style="background: {{p}}; color: #fff; border: 1.5px solid {{p}}">跟這天一樣</button>
+        <button class="mp" role="radio" aria-checked="false" style="border: 1.5px solid {{pale}}">鹿兒島組 <span>🐱🐻</span></button>
+        <button class="mp" role="radio" aria-checked="false" style="border: 1.5px solid {{pale}}">福岡組 <span>🐟🦌</span></button>
+        <button class="mp" role="radio" aria-checked="false" style="border: 1.5px solid {{pale}}">自己選</button>
+      </div>
+    </div>
+    <div>
+      <div class="flabel">景點名稱</div>
+      <input class="finput" type="text" placeholder="例：藏王狐狸村" aria-label="景點名稱" style="border: 1.5px solid {{pale}}">
+    </div>
+    <div>
+      <div class="flabel">時間（選填）</div>
+      <input class="finput" type="text" placeholder="例：15:00" aria-label="時間" style="border: 1.5px solid {{pale}}">
+    </div>
+    <button style="width: 100%; border: none; border-radius: 12px; background: {{p}}; color: #fff; font-size: 16px; font-weight: 700; padding: 16px; font-family: inherit">📍 加入行程</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["赭紅","抹茶綠","湖水綠","櫻花粉","靛藍","藤紫","琥珀黃"],"default":"赭紅"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TH = {'赭紅':['#a8362f','#c45a4f','#e3a89c','#faf2ec','#f3e3d8'],'抹茶綠':['#5d7242','#7d8f5d','#b5c193','#f3f2e6','#e2e3c8'],'湖水綠':['#2e6e72','#4f9094','#94b8b9','#edf3f2','#d4e1de'],'櫻花粉':['#a6586a','#c87d8a','#e3b6bb','#faf0ee','#f1d8da'],'靛藍':['#2c456c','#4d6791','#92a4c2','#ecf0f6','#d4dde9'],'藤紫':['#6a5897','#8a7ab2','#b8aed1','#f0eef6','#ddd8e8'],'琥珀黃':['#b8842a','#d4a04c','#e8c98a','#f7f0dd','#ecdcb6']};
+    const t = TH[this.props.theme ?? '赭紅'] || TH['赭紅'];
+    return { p: t[0], p2: t[1], p3: t[2], bg: t[3], pale: t[4] };
+  }
+}
+</script>
+</body>
+</html>

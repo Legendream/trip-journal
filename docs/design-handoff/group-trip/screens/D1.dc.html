@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>D1 產生器：分組設定</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.gen{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang TC","Noto Sans CJK TC",sans-serif;color:#1c1815;-webkit-font-smoothing:antialiased;line-height:1.55}
+.serif{font-family:"Noto Serif TC","Songti TC",serif}
+.card{background:#faf6ec;border:1px solid #d8cfb8;padding:22px 18px;position:relative}
+.card-tick{position:absolute;top:-1px;left:-1px;width:60px;height:3px;background:#1c1815}
+.ptabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid #1c1815;background:#faf6ec}
+.ptab{padding:12px 4px;text-align:center;font-weight:700;font-size:15px;color:#5a5247;border-right:1px solid #d8cfb8}
+.ptab-sub{font-size:12px;font-weight:500;color:#9a8f7e;margin-top:4px;font-family:-apple-system,sans-serif}
+.astep{border-left:1px solid #d8cfb8;padding-left:22px;margin-left:13px;padding-bottom:22px;position:relative}
+.anum{position:absolute;left:-14px;top:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.atitle{font-size:16px;font-weight:700;margin-bottom:8px}
+.adesc{font-size:15px;color:#5a5247;line-height:1.65;margin:0 0 10px}
+.ta{width:100%;box-sizing:border-box;border:1px solid #d8cfb8;border-bottom:1.5px solid #9a8f7e;background:#faf6ec;padding:12px 14px;font-size:15px;line-height:1.6;color:#1c1815;font-family:inherit;white-space:pre-line;min-height:150px}
+.tog{flex:1;padding:12px 10px;border:1px solid #d8cfb8;border-radius:4px;background:#fbf6e9;font-size:16px;font-weight:700;text-align:center;font-family:inherit;color:#1c1815;cursor:pointer}
+.tog-on{border-color:#a8362f;background:#faecea;box-shadow:0 0 0 3px #faecea;color:#a8362f}
+.hint{font-size:15px;color:#9a8f7e;font-style:italic;line-height:1.6}
+.grp{background:#faf6ec;border:1px solid #d8cfb8;border-radius:4px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.gname{display:flex;align-items:center;gap:8px}
+.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.inp{flex:1;min-width:0;box-sizing:border-box;border:1px solid #d8cfb8;border-bottom:1.5px solid #9a8f7e;background:#faf6ec;padding:10px 12px;font-size:16px;font-family:inherit;color:#1c1815}
+.inp::placeholder{color:#b8b0a0;font-style:italic}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 11px;border-radius:99px;background:#ede5d2;border:1px solid #d8cfb8;font-size:15px;font-weight:600}
+.chip-x{width:22px;height:22px;border:none;background:transparent;border-radius:50%;color:#9a8f7e;font-size:13px;cursor:pointer;padding:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border:1.5px solid #1c1815;background:#faf6ec;color:#1c1815;font-size:15px;font-weight:700;letter-spacing:.12em;cursor:pointer}
+</style>
+</helmet>
+<div class="gen" style="width: 390px; min-height: 1300px; box-sizing: border-box; background: #f6f0e3; padding: 28px 20px 40px; display: flex; flex-direction: column; gap: 22px">
+  <div style="border-top: 1px solid #d8cfb8; padding-top: 16px">
+    <div class="serif" style="font-size: 28px; font-weight: 700; line-height: 1.15">把行程資料貼進來</div>
+    <p style="font-size: 15px; color: #5a5247; margin: 12px 0 0">三種方式結果都一樣，挑順手的就好。</p>
+  </div>
+
+  <div class="card">
+    <div class="card-tick"></div>
+    <div class="serif" style="font-size: 21px; font-weight: 700; letter-spacing: .04em">選擇匯入方式</div>
+    <div style="font-size: 15px; color: #5a5247; margin-top: 4px">差別只在你手上現在有什麼。</div>
+    <div class="ptabs serif" style="margin: 16px 0 22px">
+      <div class="ptab" style="background: #1c1815; color: #faf6ec">用 AI 整理<div class="ptab-sub" style="color: #f3d8d4">推薦 · 最快最省事</div></div>
+      <div class="ptab">手動填寫<div class="ptab-sub">從空白開始</div></div>
+      <div class="ptab" style="border-right: none">修改既有行程<div class="ptab-sub">貼網址或丟檔案還原</div></div>
+    </div>
+
+    <div class="astep">
+      <div class="anum" style="background: #a8362f; color: #fff">①</div>
+      <div class="atitle serif">貼上行程文字草稿</div>
+      <p class="adesc">任何隨手記的格式都可以，不用事先排版；機票與訂房截圖，下一步直接交給 AI 即可。</p>
+      <div class="ta">11/1 鹿兒島組出發
+11/3 福岡組出發
+11/6 鹿兒島組搭機、福岡組搭船到屋久島
+  16:00 飯店大廳集合
+…</div>
+
+      <div style="margin-top: 22px; display: flex; flex-direction: column; gap: 10px">
+        <div class="serif" style="font-size: 16px; font-weight: 700">有人分頭行動嗎？</div>
+        <div style="display: flex; gap: 10px" role="radiogroup" aria-label="有人分頭行動嗎？">
+          <button class="tog" role="radio" aria-checked="false">全程一起</button>
+          <button class="tog tog-on" role="radio" aria-checked="true">有分頭</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px; padding-top: 18px; border-top: 1px solid #e6dfc9; display: flex; flex-direction: column; gap: 12px">
+        <div class="serif" style="font-size: 16px; font-weight: 700; color: #a8362f">各組成員</div>
+        <div class="hint serif">組名照草稿的寫法填，AI 才對得上</div>
+
+        <div class="grp">
+          <div class="gname">
+            <span class="dot" style="background: #782825"></span>
+            <input class="inp" aria-label="組名" placeholder="例：福岡組" value="鹿兒島組">
+            <button class="chip-x" aria-label="刪除這組">✕</button>
+          </div>
+          <div class="chips">
+            <span class="chip">🐱 小貓<button class="chip-x" aria-label="移除小貓">✕</button></span>
+            <span class="chip">🐻 阿熊<button class="chip-x" aria-label="移除阿熊">✕</button></span>
+          </div>
+          <input class="inp" aria-label="成員" placeholder="代號或暱稱">
+        </div>
+
+        <div class="grp">
+          <div class="gname">
+            <span class="dot" style="background: #fff; box-shadow: 0 0 0 2px #782825 inset"></span>
+            <input class="inp" aria-label="組名" placeholder="例：福岡組" value="福岡組">
+            <button class="chip-x" aria-label="刪除這組">✕</button>
+          </div>
+          <div class="chips">
+            <span class="chip">🐟 小魚<button class="chip-x" aria-label="移除小魚">✕</button></span>
+            <span class="chip">🦌 阿鹿<button class="chip-x" aria-label="移除阿鹿">✕</button></span>
+          </div>
+          <input class="inp" aria-label="成員" placeholder="代號或暱稱">
+        </div>
+
+        <sc-if value="{{three}}" hint-placeholder-val="{{ false }}">
+          <div class="grp">
+            <div class="gname">
+              <span class="dot" style="background: #f3d8d4; box-shadow: 0 0 0 2px #782825 inset"></span>
+              <input class="inp" aria-label="組名" placeholder="例：福岡組" value="長崎組">
+              <button class="chip-x" aria-label="刪除這組">✕</button>
+            </div>
+            <input class="inp" aria-label="成員" placeholder="代號或暱稱">
+          </div>
+        </sc-if>
+        <sc-if value="{{canAdd}}" hint-placeholder-val="{{ true }}">
+          <button class="btn" style="align-self: flex-start">＋ 再加一組</button>
+        </sc-if>
+      </div>
+    </div>
+
+    <div class="astep" style="padding-bottom: 0">
+      <div class="anum" style="background: #faf6ec; border: 1.5px solid #d8cfb8; color: #9a8f7e">②</div>
+      <div class="atitle serif">複製提示詞，貼到你常用的 AI</div>
+      <button class="btn" style="width: 100%; background: #a8362f; color: #faf6ec; border-color: #a8362f">📋 複製 Prompt 提示詞</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"threeGroups":{"editor":"boolean","default":false},"$preview":{"width":390,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() { const three = this.props.threeGroups ?? false; return { three: three, canAdd: !three }; }
+}
+</script>
+</body>
+</html>

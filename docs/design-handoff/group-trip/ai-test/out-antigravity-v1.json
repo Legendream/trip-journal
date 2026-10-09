@@ -1,0 +1,641 @@
+{
+  "tripName": "2026 南九州＋屋久島",
+  "shortTitle": "南九州屋久島",
+  "subtitle": "鹿兒島・福岡・屋久島",
+  "year": 2026,
+  "datePill": "2026年11月1－13日",
+  "durationPill": "13天12夜",
+  "days": [
+    {
+      "day": 1,
+      "date": "11/1",
+      "wd": "日",
+      "theme": "抵達鹿兒島",
+      "emoji": "✈️",
+      "with": [
+        "鹿兒島組"
+      ],
+      "acts": [
+        {
+          "icon": "✈️",
+          "name": "桃園飛鹿兒島",
+          "sub": "CI 110",
+          "time": "07:30",
+          "map": "鹿兒島機場"
+        },
+        {
+          "icon": "🛍️",
+          "name": "天文館逛街",
+          "time": null,
+          "map": "天文館"
+        }
+      ],
+      "hotel": {
+        "name": "鹿兒島 Remm",
+        "note": null,
+        "paid": null,
+        "map": "鹿兒島 Remm"
+      },
+      "flight": {
+        "label": "去程航班",
+        "num": "CI 110",
+        "from": "TPE",
+        "fromCity": "桃園",
+        "to": "KOJ",
+        "toCity": "鹿兒島",
+        "dept": "07:30",
+        "arr": "10:00"
+      }
+    },
+    {
+      "day": 2,
+      "date": "11/2",
+      "wd": "一",
+      "theme": "櫻島一日遊",
+      "emoji": "🌋",
+      "with": [
+        "鹿兒島組"
+      ],
+      "acts": [
+        {
+          "icon": "⛴️",
+          "name": "櫻島渡輪",
+          "time": null,
+          "map": "櫻島渡輪"
+        },
+        {
+          "icon": "🔭",
+          "name": "湯之平展望所",
+          "time": null,
+          "map": "湯之平展望所"
+        },
+        {
+          "icon": "🍲",
+          "name": "黑豬肉涮涮鍋",
+          "time": null,
+          "map": "鹿兒島"
+        }
+      ],
+      "hotel": {
+        "name": "鹿兒島 Remm",
+        "note": null,
+        "paid": null,
+        "map": "鹿兒島 Remm"
+      },
+      "flight": null
+    },
+    {
+      "day": 3,
+      "date": "11/3",
+      "wd": "二",
+      "theme": "霧島溫泉",
+      "emoji": "♨️",
+      "with": [
+        "鹿兒島組"
+      ],
+      "acts": [
+        {
+          "icon": "⛩️",
+          "name": "霧島神宮",
+          "time": null,
+          "map": "霧島神宮"
+        },
+        {
+          "icon": "🌊",
+          "name": "丸尾瀑布",
+          "time": null,
+          "map": "丸尾瀑布"
+        }
+      ],
+      "hotel": {
+        "name": "旅行人山莊",
+        "note": null,
+        "paid": null,
+        "map": "旅行人山莊"
+      },
+      "flight": null
+    },
+    {
+      "day": 3,
+      "date": "11/3",
+      "wd": "二",
+      "theme": "抵達福岡",
+      "emoji": "✈️",
+      "with": [
+        "福岡組"
+      ],
+      "acts": [
+        {
+          "icon": "✈️",
+          "name": "桃園飛福岡",
+          "sub": "JX 840",
+          "time": "08:10",
+          "map": "福岡機場"
+        },
+        {
+          "icon": "🛍️",
+          "name": "博多運河城",
+          "time": null,
+          "map": "博多運河城"
+        }
+      ],
+      "hotel": {
+        "name": "博多 Hotel Nikko",
+        "note": null,
+        "paid": null,
+        "map": "博多 Hotel Nikko"
+      },
+      "flight": {
+        "label": "去程航班",
+        "num": "JX 840",
+        "from": "TPE",
+        "fromCity": "桃園",
+        "to": "FUK",
+        "toCity": "福岡",
+        "dept": "08:10",
+        "arr": "11:30"
+      }
+    },
+    {
+      "day": 4,
+      "date": "11/4",
+      "wd": "三",
+      "theme": "指宿與知覽",
+      "emoji": "♨️",
+      "with": [
+        "鹿兒島組"
+      ],
+      "acts": [
+        {
+          "icon": "♨️",
+          "name": "指宿砂浴",
+          "time": null,
+          "map": "指宿砂浴"
+        },
+        {
+          "icon": "🏯",
+          "name": "知覽武家屋敷",
+          "time": null,
+          "map": "知覽武家屋敷"
+        }
+      ],
+      "hotel": null,
+      "flight": null
+    },
+    {
+      "day": 4,
+      "date": "11/4",
+      "wd": "三",
+      "theme": "太宰府與柳川",
+      "emoji": "⛩️",
+      "with": [
+        "福岡組",
+        "阿熊"
+      ],
+      "unsure": true,
+      "acts": [
+        {
+          "icon": "⛩️",
+          "name": "太宰府天滿宮",
+          "time": null,
+          "map": "太宰府天滿宮"
+        },
+        {
+          "icon": "🛶",
+          "name": "柳川遊船",
+          "time": null,
+          "map": "柳川遊船"
+        }
+      ],
+      "hotel": {
+        "name": "博多 Hotel Nikko",
+        "note": null,
+        "paid": null,
+        "map": "博多 Hotel Nikko"
+      },
+      "flight": null
+    },
+    {
+      "day": 5,
+      "date": "11/5",
+      "wd": "四",
+      "theme": "仙巖園",
+      "emoji": "🏯",
+      "with": [
+        "鹿兒島組"
+      ],
+      "acts": [
+        {
+          "icon": "🏯",
+          "name": "仙巖園",
+          "time": null,
+          "map": "仙巖園"
+        }
+      ],
+      "hotel": {
+        "name": "鹿兒島 Remm",
+        "note": null,
+        "paid": null,
+        "map": "鹿兒島 Remm"
+      },
+      "flight": null
+    },
+    {
+      "day": 5,
+      "date": "11/5",
+      "wd": "四",
+      "theme": "門司港與小倉",
+      "emoji": "⚓",
+      "with": [
+        "福岡組"
+      ],
+      "acts": [
+        {
+          "icon": "⚓",
+          "name": "門司港",
+          "time": null,
+          "map": "門司港"
+        },
+        {
+          "icon": "🏯",
+          "name": "小倉城",
+          "time": null,
+          "map": "小倉城"
+        },
+        {
+          "icon": "🍜",
+          "name": "中洲屋台",
+          "time": null,
+          "map": "中洲屋台"
+        }
+      ],
+      "hotel": {
+        "name": "博多 Hotel Nikko",
+        "note": null,
+        "paid": null,
+        "map": "博多 Hotel Nikko"
+      },
+      "flight": null
+    },
+    {
+      "day": 6,
+      "date": "11/6",
+      "wd": "五",
+      "theme": "屋久島會合",
+      "emoji": "🏝️",
+      "acts": [
+        {
+          "icon": "✈️",
+          "name": "鹿兒島飛屋久島",
+          "sub": "JAC 3745",
+          "time": "09:40",
+          "map": "鹿兒島機場",
+          "with": [
+            "鹿兒島組"
+          ]
+        },
+        {
+          "icon": "🚄",
+          "name": "新幹線前往鹿兒島中央",
+          "time": null,
+          "map": "博多站",
+          "with": [
+            "福岡組"
+          ]
+        },
+        {
+          "icon": "⛴️",
+          "name": "Toppy 高速船前往宮之浦港",
+          "sub": "11:30開 14:00到",
+          "time": "11:30",
+          "map": "鹿兒島本港",
+          "with": [
+            "福岡組"
+          ]
+        },
+        {
+          "icon": "📍",
+          "name": "sankara 飯店大廳集合",
+          "time": "16:00",
+          "map": "sankara"
+        }
+      ],
+      "hotel": {
+        "name": "sankara",
+        "note": null,
+        "paid": null,
+        "map": "sankara"
+      },
+      "flight": null
+    },
+    {
+      "day": 7,
+      "date": "11/7",
+      "wd": "六",
+      "theme": "白谷雲水峽",
+      "emoji": "🌲",
+      "acts": [
+        {
+          "icon": "🥾",
+          "name": "白谷雲水峽",
+          "time": null,
+          "map": "白谷雲水峽"
+        }
+      ],
+      "hotel": {
+        "name": "sankara",
+        "note": null,
+        "paid": null,
+        "map": "sankara"
+      },
+      "flight": null
+    },
+    {
+      "day": 8,
+      "date": "11/8",
+      "wd": "日",
+      "theme": "繩文杉健行",
+      "emoji": "🥾",
+      "acts": [
+        {
+          "icon": "🥾",
+          "name": "繩文杉健行",
+          "sub": "約10小時",
+          "time": "04:30",
+          "map": "繩文杉"
+        }
+      ],
+      "hotel": {
+        "name": "sankara",
+        "note": null,
+        "paid": null,
+        "map": "sankara"
+      },
+      "flight": null
+    },
+    {
+      "day": 9,
+      "date": "11/9",
+      "wd": "一",
+      "theme": "平內海中溫泉",
+      "emoji": "♨️",
+      "acts": [
+        {
+          "icon": "♨️",
+          "name": "平內海中溫泉",
+          "time": null,
+          "map": "平內海中溫泉"
+        }
+      ],
+      "hotel": {
+        "name": "sankara",
+        "note": null,
+        "paid": null,
+        "map": "sankara"
+      },
+      "flight": null
+    },
+    {
+      "day": 10,
+      "date": "11/10",
+      "wd": "二",
+      "theme": "開車環島",
+      "emoji": "🚗",
+      "acts": [
+        {
+          "icon": "🚗",
+          "name": "開車環島",
+          "time": null,
+          "map": "屋久島"
+        }
+      ],
+      "hotel": {
+        "name": "sankara",
+        "note": null,
+        "paid": null,
+        "map": "sankara"
+      },
+      "flight": null
+    },
+    {
+      "day": 11,
+      "date": "11/11",
+      "wd": "三",
+      "theme": "千尋瀑布與大川瀑布",
+      "emoji": "🌊",
+      "acts": [
+        {
+          "icon": "🌊",
+          "name": "千尋瀑布",
+          "time": null,
+          "map": "千尋瀑布"
+        },
+        {
+          "icon": "🌊",
+          "name": "大川瀑布",
+          "time": null,
+          "map": "大川瀑布"
+        }
+      ],
+      "hotel": {
+        "name": "sankara",
+        "note": null,
+        "paid": null,
+        "map": "sankara"
+      },
+      "flight": null
+    },
+    {
+      "day": 12,
+      "date": "11/12",
+      "wd": "四",
+      "theme": "屋久島分開",
+      "emoji": "👋",
+      "acts": [
+        {
+          "icon": "⛴️",
+          "name": "Toppy 高速船前往鹿兒島",
+          "time": "09:00",
+          "map": "宮之浦港",
+          "with": [
+            "福岡組"
+          ]
+        },
+        {
+          "icon": "🚄",
+          "name": "新幹線前往福岡",
+          "time": null,
+          "map": "鹿兒島中央站",
+          "with": [
+            "福岡組"
+          ]
+        },
+        {
+          "icon": "🏖️",
+          "name": "一湊海水浴場",
+          "time": null,
+          "map": "一湊海水浴場",
+          "with": [
+            "鹿兒島組"
+          ]
+        },
+        {
+          "icon": "✈️",
+          "name": "福岡飛桃園",
+          "sub": "JX 841",
+          "time": "19:30",
+          "map": "福岡機場",
+          "with": [
+            "福岡組"
+          ]
+        }
+      ],
+      "hotel": {
+        "name": "屋久島 JR Hotel",
+        "note": null,
+        "paid": null,
+        "map": "屋久島 JR Hotel"
+      },
+      "flight": {
+        "label": "回程航班",
+        "num": "JX 841",
+        "from": "FUK",
+        "fromCity": "福岡",
+        "to": "TPE",
+        "toCity": "桃園",
+        "dept": "19:30",
+        "arr": null
+      }
+    },
+    {
+      "day": 13,
+      "date": "11/13",
+      "wd": "五",
+      "theme": "鹿兒島返台",
+      "emoji": "✈️",
+      "with": [
+        "鹿兒島組"
+      ],
+      "acts": [
+        {
+          "icon": "✈️",
+          "name": "屋久島飛鹿兒島",
+          "sub": "JAC 3746",
+          "time": "11:00",
+          "map": "屋久島機場"
+        },
+        {
+          "icon": "✈️",
+          "name": "鹿兒島飛桃園",
+          "sub": "CI 111",
+          "time": "14:30",
+          "map": "鹿兒島機場"
+        }
+      ],
+      "hotel": null,
+      "flight": {
+        "label": "回程航班",
+        "num": "CI 111",
+        "from": "KOJ",
+        "fromCity": "鹿兒島",
+        "to": "TPE",
+        "toCity": "桃園",
+        "dept": "14:30",
+        "arr": null
+      }
+    }
+  ],
+  "hotels": [
+    {
+      "nights": [
+        "11/1",
+        "11/2",
+        "11/5"
+      ],
+      "name": "鹿兒島 Remm",
+      "loc": "鹿兒島",
+      "note": null,
+      "paid": null,
+      "map": "鹿兒島 Remm",
+      "with": [
+        "鹿兒島組"
+      ]
+    },
+    {
+      "nights": [
+        "11/3"
+      ],
+      "name": "旅行人山莊",
+      "loc": "霧島",
+      "note": null,
+      "paid": null,
+      "map": "旅行人山莊",
+      "with": [
+        "鹿兒島組"
+      ]
+    },
+    {
+      "nights": [
+        "11/3",
+        "11/4",
+        "11/5"
+      ],
+      "name": "博多 Hotel Nikko",
+      "loc": "福岡",
+      "note": null,
+      "paid": null,
+      "map": "博多 Hotel Nikko",
+      "with": [
+        "福岡組"
+      ]
+    },
+    {
+      "nights": [
+        "11/6",
+        "11/7",
+        "11/8",
+        "11/9",
+        "11/10",
+        "11/11"
+      ],
+      "name": "sankara",
+      "loc": "屋久島",
+      "note": null,
+      "paid": null,
+      "map": "sankara"
+    },
+    {
+      "nights": [
+        "11/12"
+      ],
+      "name": "屋久島 JR Hotel",
+      "loc": "屋久島",
+      "note": null,
+      "paid": null,
+      "map": "屋久島 JR Hotel",
+      "with": [
+        "鹿兒島組"
+      ]
+    }
+  ],
+  "members": [
+    {
+      "name": "小貓",
+      "avatar": "🐱"
+    },
+    {
+      "name": "阿熊",
+      "avatar": "🐻"
+    },
+    {
+      "name": "小魚",
+      "avatar": "🐟"
+    },
+    {
+      "name": "阿鹿",
+      "avatar": "🦌"
+    }
+  ],
+  "checklist": [],
+  "notes": []
+}

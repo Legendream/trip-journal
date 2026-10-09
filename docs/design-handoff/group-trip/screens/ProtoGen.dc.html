@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>原型 A：產生器改同行名單</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button.gt,button.pbtn,button.avs{position:relative}
+button.gt::after,button.pbtn::after,button.avs::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:44px;transform:translateY(-50%)}
+.gen{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang TC","Noto Sans CJK TC",sans-serif;color:#1c1815;-webkit-font-smoothing:antialiased;line-height:1.55}
+.serif{font-family:"Noto Serif TC","Songti TC",serif}
+.card{background:#faf6ec;border:1px solid #d8cfb8;padding:22px 18px;position:relative}
+.card-tick{position:absolute;top:-1px;left:-1px;width:60px;height:3px;background:#1c1815}
+.dc{border:1px solid #d8cfb8;border-radius:4px;background:#fbf6e9;overflow:hidden}
+.dch{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap}
+.db{background:#1c1815;color:#fff;border-radius:5px;padding:2px 7px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.dth{font-size:15px;font-weight:600;flex:1;min-width:0}
+.gt{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:2px 9px 2px 8px;font-size:13px;font-weight:700;line-height:1.5;white-space:nowrap;border:none;font-family:inherit;cursor:pointer;min-height:28px}
+.gd{width:7px;height:7px;border-radius:50%}
+.pbtn{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 9px;border:1px dashed #9a8f7e;background:transparent;color:#5a5247;font-size:13px;font-family:inherit;cursor:pointer;min-height:28px}
+.avs{display:inline-flex;align-items:center;gap:2px;font-size:15px;padding:2px 8px;border-radius:99px;background:#ede5d2;border:none;cursor:pointer;font-family:inherit;min-height:28px}
+.warn{display:flex;align-items:center;gap:6px;font-size:15px;color:#7a5c14;background:#f5edd6;padding:6px 12px;line-height:1.5}
+.wi{width:16px;height:16px;flex-shrink:0}
+.fixb{flex-shrink:0;border:1.5px solid #7a5c14;background:#fff;color:#7a5c14;font-size:14px;font-weight:700;font-family:inherit;padding:4px 10px;min-height:32px;cursor:pointer}
+.warn{flex-wrap:wrap}
+.warn > span{min-width:11em}
+.pop{margin:4px 0 4px 24px;background:#fff;border:1px solid #1c1815;box-shadow:3px 3px 0 #1c1815;padding:12px;display:flex;flex-direction:column;gap:6px}
+.ropt{display:flex;align-items:center;gap:10px;min-height:40px;padding:2px 4px;border:none;background:none;font-family:inherit;font-size:15px;color:#1c1815;width:100%;text-align:left;cursor:pointer}
+.rdot{width:18px;height:18px;border-radius:50%;border:1.5px solid #9a8f7e;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.rin{width:8px;height:8px;border-radius:50%;background:#1c1815}
+.rav{font-size:14px;letter-spacing:1px;opacity:.85}
+.mp{display:inline-flex;align-items:center;gap:5px;padding:6px 10px;border-radius:99px;font-size:15px;font-weight:600;font-family:inherit;border:1px solid #d8cfb8;background:#faf6ec;color:#5a5247;cursor:pointer;min-height:36px}
+.mp-on{background:#1c1815;color:#faf6ec;border-color:#1c1815}
+.xbtn{width:36px;height:36px;border:none;background:transparent;font-size:16px;color:#5a5247;cursor:pointer}
+</style>
+</helmet>
+<div class="gen" style="width: 390px; min-height: 1000px; box-sizing: border-box; background: #f6f0e3; padding: 28px 20px 40px">
+  <div class="card">
+    <div class="card-tick"></div>
+    <div class="serif" style="font-size: 21px; font-weight: 700; letter-spacing: .04em">每日行程</div>
+    <sc-if value="{{hasWarn}}" hint-placeholder-val="{{ false }}">
+      <div class="warn" style="margin-top: 14px; font-weight: 700; border-left: 3px solid #8a6a1f"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>{{warnCount}} 處需要確認</div>
+    </sc-if>
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px">
+      <sc-for list="{{dates}}" as="d" hint-placeholder-count="4">
+        <div style="display: flex; flex-direction: column; gap: 3px">
+          <sc-for list="{{d.cards}}" as="c" hint-placeholder-count="2">
+            <div style="display: flex; flex-direction: column">
+              <div class="dc" style="border-color: {{c.border}}">
+                <div class="dch">
+                  <span class="db">{{c.date}}</span>
+                  <sc-if value="{{c.isAll}}" hint-placeholder-val="{{ false }}">
+                    <button class="pbtn" aria-label="同行的人：全員" onClick="{{c.toggle}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>▾</button>
+                  </sc-if>
+                  <sc-if value="{{c.isGroup}}" hint-placeholder-val="{{ true }}">
+                    <button class="gt" onClick="{{c.toggle}}" style="background: {{c.bg}}; color: {{c.fg}}; box-shadow: {{c.sh}}"><span class="gd" style="background: {{c.dot}}"></span>{{c.label}} ▾</button>
+                  </sc-if>
+                  <sc-if value="{{c.isCustom}}" hint-placeholder-val="{{ false }}">
+                    <button class="avs" onClick="{{c.toggle}}" aria-label="同行的人">{{c.avatars}} ▾</button>
+                  </sc-if>
+                  <span class="dth">{{c.title}}</span>
+                </div>
+                <sc-for list="{{c.warns}}" as="w" hint-placeholder-count="0">
+                  <div class="warn"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg><span style="flex: 1">{{w.text}}</span><button class="fixb" onClick="{{w.fix}}">{{w.fixLabel}}</button></div>
+                </sc-for>
+              </div>
+              <sc-if value="{{c.isOpen}}" hint-placeholder-val="{{ false }}">
+                <div class="pop">
+                  <div style="display: flex; align-items: center">
+                    <div class="serif" style="font-size: 15px; font-weight: 700; flex: 1">同行的人</div>
+                    <button class="xbtn" aria-label="關閉" onClick="{{c.toggle}}">✕</button>
+                  </div>
+                  <div role="radiogroup" aria-label="同行的人" style="display: flex; flex-direction: column">
+                    <sc-for list="{{c.opts}}" as="o" hint-placeholder-count="4">
+                      <button class="ropt" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}">
+                        <span class="rdot" style="border-color: {{o.ring}}"><sc-if value="{{o.checked}}" hint-placeholder-val="{{ false }}"><span class="rin"></span></sc-if></span>
+                        <span style="flex: 1; font-weight: {{o.weight}}">{{o.label}}</span>
+                        <span class="rav">{{o.avatars}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                  <sc-if value="{{c.showMembers}}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding-left: 32px">
+                      <sc-for list="{{c.members}}" as="m" hint-placeholder-count="4">
+                        <button class="mp" aria-pressed="{{m.on}}" onClick="{{m.flip}}" style="background: {{m.bg}}; color: {{m.fg}}; border-color: {{m.bd}}">{{m.a}} {{m.n}}</button>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+          <sc-if value="{{d.hasMissing}}" hint-placeholder-val="{{ false }}">
+            <div style="border: 1.5px dashed #8a6a1f; border-radius: 4px; background: #f5edd6; padding: 8px 12px; font-size: 15px; color: #7a5c14; display: flex; align-items: center; gap: 6px"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>{{d.missing}}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      cards: [
+        { id: 'c3k', date: '11/3', title: '♨️ 指宿砂浴', m: ['cat', 'bear'] },
+        { id: 'c3f', date: '11/3', title: '✈️ 抵達福岡', m: ['fish', 'deer'] },
+        { id: 'c4k', date: '11/4', title: '⛩️ 霧島神宮', m: ['cat', 'bear'] },
+        { id: 'c4f', date: '11/4', title: '🏯 太宰府', m: ['fish', 'deer'] },
+        { id: 'c5k', date: '11/5', title: '🍠 天文館散策', m: ['cat', 'bear'] },
+        { id: 'c5f', date: '11/5', title: '🛶 柳川遊船', m: ['fish', 'deer'] },
+        { id: 'c6', date: '11/6', title: '🏝️ 屋久島會合', m: null }
+      ],
+      open: null,
+      custom: {}
+    };
+  }
+  renderVals() {
+    const MEM = [{ id: 'cat', a: '🐱', n: '小貓' }, { id: 'bear', a: '🐻', n: '阿熊' }, { id: 'fish', a: '🐟', n: '小魚' }, { id: 'deer', a: '🦌', n: '阿鹿' }];
+    const GR = [{ n: '鹿兒島組', m: ['cat', 'bear'] }, { n: '福岡組', m: ['fish', 'deer'] }];
+    const DEEP = '#782825';
+    const all = MEM.map(x => x.id);
+    const same = (a, b) => a.length === b.length && a.every(x => b.indexOf(x) >= 0);
+    const name = id => MEM.find(x => x.id === id).n;
+    const st = this.state;
+    const setCard = (id, m, custom) => {
+      const cards = st.cards.map(c => c.id === id ? Object.assign({}, c, { m: m }) : c);
+      const cu = Object.assign({}, st.custom); cu[id] = custom;
+      this.setState({ cards: cards, custom: cu, open: custom ? st.open : null });
+    };
+    let warnCount = 0;
+    const dateKeys = [];
+    st.cards.forEach(c => { if (dateKeys.indexOf(c.date) < 0) dateKeys.push(c.date); });
+    const dates = dateKeys.map(dk => {
+      const cs = st.cards.filter(c => c.date === dk);
+      const count = {};
+      cs.forEach(c => (c.m || all).forEach(id => { count[id] = (count[id] || 0) + 1; }));
+      const dups = all.filter(id => count[id] > 1);
+      const missing = all.filter(id => !count[id]);
+      warnCount += dups.length + (missing.length ? 1 : 0);
+      const cards = cs.map(c => {
+        const mm = c.m || all;
+        const gi = c.m ? GR.findIndex(g => same(g.m, c.m)) : -1;
+        const isCustomFlag = !!st.custom[c.id];
+        const isAll = !c.m;
+        const isGroup = !isAll && gi >= 0;
+        const isCustom = !isAll && gi < 0;
+        const plain = c.title.split(' ').slice(1).join(' ');
+        const warns = dups.filter(id => mm.indexOf(id) >= 0).map(id => ({
+          text: name(id) + ' 同一天出現兩次',
+          fixLabel: '只留在' + plain,
+          fix: () => {
+            const cards = st.cards.map(o => (o.date === c.date && o.id !== c.id) ? Object.assign({}, o, { m: (o.m || all).filter(x => x !== id) }) : o);
+            const cu = Object.assign({}, st.custom);
+            cards.forEach(o => { if (o.date === c.date && o.id !== c.id) cu[o.id] = false; });
+            this.setState({ cards: cards, custom: cu });
+          }
+        }));
+        const checkedKey = isCustomFlag ? 'custom' : (isAll ? 'all' : (gi >= 0 ? 'g' + gi : 'custom'));
+        const opt = (key, label, avatars, fn) => ({ label: label, avatars: avatars, checked: checkedKey === key, ring: checkedKey === key ? '#1c1815' : '#9a8f7e', weight: checkedKey === key ? 700 : 400, pick: fn });
+        const opts = [opt('all', '全員', '', () => setCard(c.id, null, false))]
+          .concat(GR.map((g, i) => opt('g' + i, g.n, g.m.map(id => MEM.find(x => x.id === id).a).join(''), () => setCard(c.id, g.m.slice(), false))))
+          .concat([opt('custom', '自己選', '', () => setCard(c.id, mm.slice(), true))]);
+        const members = MEM.map(x => {
+          const on = mm.indexOf(x.id) >= 0;
+          return { a: x.a, n: x.n, on: on, bg: on ? '#1c1815' : '#faf6ec', fg: on ? '#faf6ec' : '#5a5247', bd: on ? '#1c1815' : '#d8cfb8',
+            flip: () => { const next = on ? mm.filter(y => y !== x.id) : mm.concat([x.id]); setCard(c.id, next, true); } };
+        });
+        return {
+          date: c.date, title: c.title, isAll: isAll, isGroup: isGroup, isCustom: isCustom,
+          label: isGroup ? GR[gi].n : '', avatars: mm.map(id => MEM.find(x => x.id === id).a).join(''),
+          bg: gi === 0 ? DEEP : '#fff', fg: gi === 0 ? '#fff' : DEEP, dot: gi === 0 ? '#fff' : DEEP, sh: gi === 0 ? 'none' : '0 0 0 1.5px ' + DEEP + ' inset',
+          border: warns.length ? '#8a6a1f' : '#d8cfb8', warns: warns,
+          isOpen: st.open === c.id, toggle: () => this.setState({ open: st.open === c.id ? null : c.id }),
+          opts: opts, showMembers: checkedKey === 'custom', members: members
+        };
+      });
+      return { cards: cards, hasMissing: missing.length > 0, missing: dk + ' 沒有' + missing.map(name).join('、') + '的行程' };
+    });
+    return { dates: dates, warnCount: warnCount, hasWarn: warnCount > 0 };
+  }
+}
+</script>
+</body>
+</html>

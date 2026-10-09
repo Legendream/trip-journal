@@ -1,0 +1,35 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Main.dc.html": {"h": 1300, "title": "D1 產生器：分組設定", "w": 390, "x": 0, "y": 0},
+    "D2.dc.html": {"h": 1600, "title": "D2 產生器：檢查判讀結果", "w": 390, "x": 470, "y": 0},
+    "D2b.dc.html": {"h": 1180, "title": "D2b 產生器：日卡細節（活動同行、加卡、合併）", "w": 390, "x": 940, "y": 0},
+    "D3.dc.html": {"h": 844, "title": "D3 你是誰", "w": 390, "x": 0, "y": 2020},
+    "D4.dc.html": {"h": 844, "title": "D4 我的行程／全部", "w": 390, "x": 470, "y": 2020},
+    "D5.dc.html": {"h": 844, "title": "D5 會合日卡 11/6", "w": 390, "x": 940, "y": 2020},
+    "D6.dc.html": {"h": 844, "title": "D6 全部檢視 11/3", "w": 390, "x": 1410, "y": 2020},
+    "D7.dc.html": {"h": 844, "title": "D7 集合分頁", "w": 390, "x": 1880, "y": 2020},
+    "D8.dc.html": {"h": 844, "title": "D8 發起集合表單", "w": 390, "x": 2350, "y": 2020},
+    "D9.dc.html": {"h": 844, "title": "D9 未選身分（我只是看看）", "w": 390, "x": 2820, "y": 2020},
+    "D10.dc.html": {"h": 844, "title": "D10 換人（點頭像）", "w": 390, "x": 3290, "y": 2020},
+    "D11.dc.html": {"h": 844, "title": "D11 App 新增景點：同行的人", "w": 390, "x": 3760, "y": 2020},
+    "D12.dc.html": {"h": 844, "title": "D12 App 換卡：這天跟誰走", "w": 390, "x": 4230, "y": 2020},
+    "Colors.dc.html": {"h": 720, "title": "組名標籤配色（主題深淺版，定案）", "w": 1120, "x": 0, "y": 3284},
+    "TagCompare.dc.html": {"h": 760, "title": "【已淘汰，僅供參考】標籤比較：6 色版 vs 主題深淺版", "w": 1120, "x": 1200, "y": 3284},
+    "ProtoGen.dc.html": {"h": 1000, "title": "原型 A：產生器改同行名單", "w": 390, "x": 0, "y": 4444, "is_interactive": true},
+    "ProtoApp.dc.html": {"h": 844, "title": "原型 B：行程 App", "w": 390, "x": 470, "y": 4444, "is_interactive": true}
+  },
+  "createdOnFiles": {"at": "2026-10-05T08:30:00Z", "v": 1},
+  "designSystems": [],
+  "launch": {"view": "canvas"},
+  "notes": {
+    "t1": {"kind": "title1", "maxW": 1330, "text": "產生器", "w": 240, "x": 0, "y": -300},
+    "t2": {"kind": "title1", "maxW": 4620, "text": "行程 App", "w": 240, "x": 0, "y": 1770},
+    "t3": {"kind": "title1", "maxW": 2320, "text": "組名標籤配色", "w": 240, "x": 0, "y": 2984},
+    "t4": {"kind": "title1", "maxW": 860, "text": "可用性測試原型", "w": 240, "x": 0, "y": 4144}
+  },
+  "order": ["Main.dc.html", "D2.dc.html", "D2b.dc.html", "D3.dc.html", "D4.dc.html", "D5.dc.html", "D6.dc.html", "D7.dc.html", "D8.dc.html", "D9.dc.html", "D10.dc.html", "D11.dc.html", "D12.dc.html", "Colors.dc.html", "TagCompare.dc.html", "ProtoGen.dc.html", "ProtoApp.dc.html"],
+  "pages": [],
+  "title": "分組旅行"
+}

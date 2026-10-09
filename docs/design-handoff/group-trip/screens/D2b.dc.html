@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>D2b 產生器：日卡細節</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+button.gt,button.pbtn,button.avs{position:relative}
+button.gt::after,button.pbtn::after,button.avs::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:44px;transform:translateY(-50%)}
+.gen{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang TC","Noto Sans CJK TC",sans-serif;color:#1c1815;-webkit-font-smoothing:antialiased;line-height:1.55}
+.serif{font-family:"Noto Serif TC","Songti TC",serif}
+.card{background:#faf6ec;border:1px solid #d8cfb8;padding:22px 18px;position:relative}
+.card-tick{position:absolute;top:-1px;left:-1px;width:60px;height:3px;background:#1c1815}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:8px 14px;border:1.5px solid #1c1815;background:#faf6ec;color:#1c1815;font-size:15px;font-weight:700;letter-spacing:.08em;white-space:nowrap;font-family:inherit;cursor:pointer}
+.dc{border:1px solid #d8cfb8;border-radius:4px;background:#fbf6e9;overflow:hidden}
+.dch{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap}
+.db{background:#1c1815;color:#fff;border-radius:5px;padding:2px 7px;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+.dth{font-size:15px;font-weight:600;flex:1;min-width:0}
+.chev{font-size:14px;color:#9a8f7e}
+.gt{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:1px 8px 1px 7px;font-size:13px;font-weight:700;line-height:1.5;white-space:nowrap;border:none;font-family:inherit;cursor:pointer}
+.gd{width:7px;height:7px;border-radius:50%}
+.pbtn{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 8px;border:1px dashed #b8b0a0;background:transparent;color:#5a5247;font-size:13px;font-family:inherit;cursor:pointer;min-height:26px}
+.pair{display:flex;flex-direction:column;gap:3px}
+.arow{background:#fbf6e9;border:1px solid #d8cfb8;border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.ar1{display:flex;align-items:center;gap:6px}
+.ai{width:34px;text-align:center;border:1px solid #d8cfb8;border-radius:6px;padding:5px 0;font-size:15px;background:#fbf6e9}
+.an{flex:1;min-width:0;border:1px solid #d8cfb8;border-radius:6px;padding:5px 8px;font-size:15px;font-weight:600;background:#fbf6e9}
+.at{width:56px;border:1px solid #d8cfb8;border-radius:6px;padding:5px 6px;font-size:15px;font-weight:600;color:#a8362f;background:#fbf6e9;font-variant-numeric:tabular-nums}
+.ropt{display:flex;align-items:center;gap:10px;min-height:40px;padding:2px 4px;border:none;background:none;font-family:inherit;font-size:15px;color:#1c1815;width:100%;text-align:left;cursor:pointer}
+.rdot{width:18px;height:18px;border-radius:50%;border:1.5px solid #9a8f7e;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+.rdot-on{border-color:#1c1815}
+.rin{width:8px;height:8px;border-radius:50%;background:#1c1815}
+.rav{font-size:14px;letter-spacing:1px;opacity:.85}
+.pop{background:#fff;border:1px solid #1c1815;box-shadow:3px 3px 0 #1c1815;padding:10px;display:flex;flex-direction:column;gap:8px}
+.mp{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;font-size:14px;font-weight:600;font-family:inherit;border:1px solid #d8cfb8;background:#faf6ec;color:#5a5247;cursor:pointer;min-height:34px}
+.mp-on{background:#1c1815;color:#faf6ec;border-color:#1c1815}
+</style>
+</helmet>
+<div class="gen" style="position: relative; width: 390px; min-height: 1180px; box-sizing: border-box; background: #f6f0e3; padding: 28px 20px 40px; display: flex; flex-direction: column; gap: 22px">
+  <div class="card">
+    <div class="card-tick"></div>
+    <div class="serif" style="font-size: 21px; font-weight: 700; letter-spacing: .04em">每日行程</div>
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 16px">
+
+      <div class="dc" style="border-color: #1c1815">
+        <div class="dch">
+          <span class="db">11/6</span>
+          <span class="dth">🏝️ 屋久島會合</span><span class="chev" style="transform: rotate(90deg)">▸</span>
+        </div>
+        <div style="border-top: 1px solid #e6dfc9; background: #f6f0e3; padding: 12px; display: flex; flex-direction: column; gap: 6px">
+          <div class="arow">
+            <div class="ar1"><span class="ai">✈️</span><span class="an">搭機抵達屋久島</span><span class="at">10:20</span></div>
+            <div><button class="gt" style="background: #782825; color: #fff"><span class="gd" style="background: #fff"></span>鹿兒島組 ▾</button></div>
+          </div>
+          <div class="arow" style="border-color: #1c1815">
+            <div class="ar1"><span class="ai">⛴️</span><span class="an">搭船抵達宮之浦港</span><span class="at">14:00</span></div>
+            <div><button class="gt" style="background: #fff; color: #782825; box-shadow: 0 0 0 1.5px #782825 inset"><span class="gd" style="background: #782825"></span>福岡組 ▾</button></div>
+            <div class="pop">
+              <div class="serif" style="font-size: 15px; font-weight: 700">同行的人</div>
+              <div role="radiogroup" aria-label="同行的人" style="display: flex; flex-direction: column">
+                <button class="ropt" role="radio" aria-checked="false"><span class="rdot"></span><span style="flex: 1">跟這天一樣</span></button>
+                <button class="ropt" role="radio" aria-checked="false"><span class="rdot"></span><span style="flex: 1">鹿兒島組</span><span class="rav">🐱🐻</span></button>
+                <button class="ropt" role="radio" aria-checked="true"><span class="rdot rdot-on"><span class="rin"></span></span><span style="flex: 1; font-weight: 700">福岡組</span><span class="rav">🐟🦌</span></button>
+                <button class="ropt" role="radio" aria-checked="false"><span class="rdot"></span><span style="flex: 1">自己選</span></button>
+              </div>
+            </div>
+          </div>
+          <div class="arow">
+            <div class="ar1"><span class="ai">🛎️</span><span class="an">飯店大廳集合</span><span class="at">16:00</span></div>
+            <div><button class="pbtn" aria-label="同行的人：跟這天一樣">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>▾</button></div>
+          </div>
+          <div class="arow">
+            <div class="ar1"><span class="ai">🍽️</span><span class="an">飯店晚餐</span><span class="at">18:30</span></div>
+            <div><button class="pbtn" aria-label="同行的人：跟這天一樣">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>▾</button></div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px">
+            <button class="btn">這天分頭行動</button>
+          </div>
+        </div>
+      </div>
+
+      <sc-if value="{{notMerged}}" hint-placeholder-val="{{ true }}">
+      <div class="pair">
+        <div class="dc"><div class="dch">
+          <span class="db">11/7</span>
+          <button class="gt" style="background: #782825; color: #fff"><span class="gd" style="background: #fff"></span>鹿兒島組</button>
+          <span class="dth">🌲 白谷雲水峽</span><span class="chev">▸</span>
+        </div></div>
+        <div class="dc"><div class="dch">
+          <span class="db">11/7</span>
+          <button class="gt" style="background: #fff; color: #782825; box-shadow: 0 0 0 1.5px #782825 inset"><span class="gd" style="background: #782825"></span>福岡組</button>
+          <span class="dth">🌲 白谷雲水峽</span><span class="chev">▸</span>
+        </div></div>
+        <button class="btn" style="align-self: flex-start; margin-top: 4px">這天一起行動</button>
+      </div>
+      </sc-if>
+      <sc-if value="{{merged}}" hint-placeholder-val="{{ false }}">
+      <div class="dc"><div class="dch">
+          <span class="db">11/7</span>
+          <button class="pbtn" aria-label="同行的人：全員"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>▾</button>
+          <span class="dth">🌲 白谷雲水峽</span><span class="chev">▸</span>
+        </div></div>
+      </sc-if>
+
+    </div>
+  </div>
+  <sc-if value="{{merged}}" hint-placeholder-val="{{ false }}">
+  <div style="position: absolute; left: 50%; bottom: 40px; transform: translateX(-50%); background: #222; color: #fff; border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; font-size: 15px; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.3)"><span>已合併 11/7 的卡</span><button style="background: none; border: 1.5px solid rgba(255,255,255,.55); color: #fff; border-radius: 4px; padding: 3px 10px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; min-height: 32px">復原</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"merged":{"editor":"boolean","default":false},"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { const m = this.props.merged ?? false; return { merged: m, notMerged: !m }; }
+}
+</script>
+</body>
+</html>
