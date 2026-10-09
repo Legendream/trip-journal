@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>原型 B：行程 App 找別組抵達時間</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.app{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Kaku Gothic ProN","Noto Sans CJK TC",sans-serif;color:#1e0d12;-webkit-font-smoothing:antialiased}
+.ttl{font-size:21px;font-weight:800;letter-spacing:.02em;line-height:1.2}
+.sub{font-size:12px;opacity:.85;margin-top:3px;letter-spacing:.04em}
+.cd{background:rgba(255,255,255,.22);border-radius:14px;padding:8px 14px;text-align:center;flex-shrink:0}
+.pill{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 11px;font-size:12px}
+.seg{flex:1;padding:9px 0;border:none;border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;min-height:40px}
+.me{width:40px;height:40px;border-radius:12px;border:none;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:#fff;color:#6e4a58;box-shadow:0 0 0 1.5px #f3e3d8 inset}
+.card{background:#fff;border-radius:18px;box-shadow:0 2px 12px rgba(30,13,18,.06);overflow:hidden}
+.dh{display:flex;align-items:center;gap:12px;padding:12px 16px;width:100%;border:none;background:none;font-family:inherit;text-align:left;cursor:pointer;color:inherit}
+.badge{width:46px;height:46px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;background:#f3e3d8;color:#a8362f}
+.bn{font-size:10px;font-weight:700;line-height:1}
+.bd{font-size:17px;font-weight:900;line-height:1.1}
+.dt{font-size:15px;font-weight:700;line-height:1.3}
+.dm{font-size:12px;color:#9a7080;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chev{width:20px;height:20px;color:#9a7080;flex-shrink:0}
+.gt{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:1px 8px 1px 6px;font-size:11px;font-weight:700;line-height:1.6;white-space:nowrap}
+.gd{width:6px;height:6px;border-radius:50%}
+.act{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f6eeee}
+.an{font-size:14px;font-weight:600;flex:1;min-width:0}
+.tt{font-size:11px;font-weight:700;border-radius:6px;padding:2px 8px;white-space:nowrap;background:#f3e3d8;color:#a8362f}
+.mbtn{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:12px;border:1.5px solid transparent;font-family:inherit;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(30,13,18,.07);min-height:66px}
+.mav{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:#f3e3d8}
+.nav{height:60px;background:#fff;display:flex;flex-shrink:0;border-top:1px solid #f0e4e4}
+.nb{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;font-size:10px;font-family:inherit;color:#9a7080}
+.nb svg{width:24px;height:24px}
+</style>
+</helmet>
+<div class="app" style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: #faf2ec">
+  <div style="color: #fff; padding: 14px 20px 18px; flex-shrink: 0; background: linear-gradient(145deg, #a8362f 0%, #c45a4f 55%, #e3a89c 100%)">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+      <div><div class="ttl">九州・屋久島之旅 2026</div><div class="sub">鹿兒島・福岡・屋久島</div></div>
+      <div class="cd"><div style="font-size: 26px; font-weight: 900; line-height: 1">27</div><div style="font-size: 10px; opacity: .9; margin-top: 2px">天後出發</div></div>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap"><span class="pill">2026年11月1－13日</span><span class="pill">13天12夜</span><span class="pill">4人同行</span></div>
+  </div>
+
+  <div style="flex: 1; overflow-y: auto; padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; gap: 8px; align-items: center">
+      <div style="flex: 1; display: flex; gap: 6px" role="tablist">
+        <button class="seg" role="tab" aria-selected="{{mineOn}}" onClick="{{goMine}}" style="background: {{mineBg}}; color: {{mineFg}}">我的行程</button>
+        <button class="seg" role="tab" aria-selected="{{allOn}}" onClick="{{goAll}}" style="background: {{allBg}}; color: {{allFg}}">全部</button>
+      </div>
+      <button class="me" aria-label="你是誰？" onClick="{{openSheet}}">
+        <sc-if value="{{hasMe}}" hint-placeholder-val="{{ false }}"><span>{{meAvatar}}</span></sc-if>
+        <sc-if value="{{noMe}}" hint-placeholder-val="{{ true }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"></path></svg></sc-if>
+      </button>
+    </div>
+
+    <sc-for list="{{dates}}" as="d" hint-placeholder-count="5">
+      <div style="display: flex; flex-direction: column; gap: 4px">
+        <sc-for list="{{d.cards}}" as="c" hint-placeholder-count="1">
+          <div class="card">
+            <button class="dh" onClick="{{c.toggle}}" aria-expanded="{{c.open}}">
+              <span class="badge"><span class="bn">Day {{c.day}}</span><span class="bd">{{c.dd}}</span></span>
+              <span style="flex: 1; min-width: 0">
+                <span class="dt" style="display: block">{{c.theme}}</span>
+                <span class="dm">
+                  <sc-if value="{{c.showTag}}" hint-placeholder-val="{{ false }}"><span class="gt" style="background: {{c.bg}}; color: {{c.fg}}; box-shadow: {{c.sh}}"><span class="gd" style="background: {{c.dot}}"></span>{{c.tag}}</span></sc-if>
+                  {{c.meta}}
+                </span>
+              </span>
+              <span style="font-size: 22px">{{c.emoji}}</span>
+              <svg class="chev" style="transform: rotate({{c.rot}}deg)" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </button>
+            <sc-if value="{{c.open}}" hint-placeholder-val="{{ false }}">
+              <div style="border-top: 1px solid #f3e3d8; padding: 4px 16px 6px">
+                <sc-for list="{{c.acts}}" as="a" hint-placeholder-count="3">
+                  <div class="act">
+                    <span style="font-size: 20px">{{a.icon}}</span>
+                    <div style="flex: 1; min-width: 0">
+                      <sc-if value="{{a.showTag}}" hint-placeholder-val="{{ false }}"><span class="gt" style="background: {{a.bg}}; color: {{a.fg}}; box-shadow: {{a.sh}}; margin-bottom: 3px"><span class="gd" style="background: {{a.dot}}"></span>{{a.tag}}</span></sc-if>
+                      <div style="display: flex; align-items: baseline; gap: 8px"><span class="an">{{a.name}}</span><sc-if value="{{a.hasTime}}" hint-placeholder-val="{{ true }}"><span class="tt">{{a.time}}</span></sc-if></div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </sc-for>
+  </div>
+
+  <nav class="nav">
+    <button class="nb" style="color: #a8362f"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg><span>行程</span></button>
+    <button class="nb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path><rect x="9" y="3" width="6" height="4" rx="1"></rect><line x1="9" y1="12" x2="15" y2="12"></line><line x1="9" y1="16" x2="13" y2="16"></line></svg><span>清單</span></button>
+    <button class="nb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span>集合</span></button>
+    <button class="nb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"></rect><path d="M16 13h2"></path><path d="M2 10h20"></path></svg><span>記帳</span></button>
+  </nav>
+
+  <sc-if value="{{sheet}}" hint-placeholder-val="{{ true }}">
+    <div style="position: absolute; inset: 0; background: rgba(30,13,18,.45)"></div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; background: #faf2ec; border-radius: 24px 24px 0 0; padding: 20px 20px 36px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <span style="width: 44px"></span>
+        <div style="font-size: 24px; font-weight: 800">你是誰？</div>
+        <sc-if value="{{canClose}}" hint-placeholder-val="{{ false }}"><button aria-label="關閉" onClick="{{closeSheet}}" style="width: 44px; height: 44px; border-radius: 50%; border: none; background: #f3e3d8; color: #6e4a58; font-size: 16px; cursor: pointer">✕</button></sc-if>
+        <sc-if value="{{cantClose}}" hint-placeholder-val="{{ true }}"><span style="width: 44px"></span></sc-if>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{people}}" as="p" hint-placeholder-count="4">
+          <button class="mbtn" aria-pressed="{{p.on}}" onClick="{{p.pick}}" style="border-color: {{p.bd}}"><span class="mav">{{p.a}}</span><span style="font-size: 15px; font-weight: 700">{{p.n}}</span></button>
+        </sc-for>
+      </div>
+      <button onClick="{{justLook}}" style="align-self: center; background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 600; color: #6e4a58; padding: 12px 16px; min-height: 44px; cursor: pointer">我只是看看</button>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { me: null, sheet: true, everChose: false, view: 'all', open: {} };
+  }
+  renderVals() {
+    const MEM = [{ id: 'cat', a: '🐱', n: '小貓' }, { id: 'bear', a: '🐻', n: '阿熊' }, { id: 'fish', a: '🐟', n: '小魚' }, { id: 'deer', a: '🦌', n: '阿鹿' }];
+    const K = ['cat', 'bear'], F = ['fish', 'deer'];
+    const DEEP = '#782825';
+    const CARDS = [
+      { id: 'd1', day: 1, date: '11/1', wd: '日', theme: '抵達鹿兒島', emoji: '✈️', m: K, acts: [['✈️', '桃園 → 鹿兒島', '09:40'], ['🏨', '鹿兒島中央站飯店', '']] },
+      { id: 'd2', day: 2, date: '11/2', wd: '一', theme: '櫻島一日', emoji: '🌋', m: K, acts: [['⛴️', '櫻島渡輪', '09:00'], ['🌋', '湯之平展望所', '']] },
+      { id: 'd3k', day: 3, date: '11/3', wd: '二', theme: '指宿砂浴', emoji: '♨️', m: K, acts: [['🚃', '指宿之玉手箱', '09:56'], ['♨️', '砂樂', '']] },
+      { id: 'd3f', day: 3, date: '11/3', wd: '二', theme: '抵達福岡', emoji: '✈️', m: F, acts: [['✈️', '桃園 → 福岡', '13:05'], ['🍜', '中洲屋台', '19:00']] },
+      { id: 'd4k', day: 4, date: '11/4', wd: '三', theme: '霧島神宮', emoji: '⛩️', m: K, acts: [['⛩️', '霧島神宮', '10:00']] },
+      { id: 'd4f', day: 4, date: '11/4', wd: '三', theme: '太宰府', emoji: '🏯', m: F, acts: [['🏯', '太宰府天滿宮', '10:30']] },
+      { id: 'd5k', day: 5, date: '11/5', wd: '四', theme: '天文館散策', emoji: '🍠', m: K, acts: [['🍧', '天文館白熊冰', '14:00']] },
+      { id: 'd5f', day: 5, date: '11/5', wd: '四', theme: '柳川遊船', emoji: '🛶', m: F, acts: [['🛶', '柳川遊船', '11:00']] },
+      { id: 'd6', day: 6, date: '11/6', wd: '五', theme: '屋久島會合', emoji: '🏝️', m: null, acts: [['✈️', '搭機抵達', '10:20', K], ['⛴️', '搭船抵達', '14:00', F], ['🛎️', '飯店大廳集合', '16:00'], ['🍽️', '飯店晚餐', '18:30']] },
+      { id: 'd7', day: 7, date: '11/7', wd: '六', theme: '白谷雲水峽', emoji: '🌲', m: null, acts: [['🌲', '白谷雲水峽', '08:00']] }
+    ];
+    const st = this.state;
+    const style = m => {
+      const gi = m === K ? 0 : (m === F ? 1 : -1);
+      return { tag: gi === 0 ? '鹿兒島組' : '福岡組', bg: gi === 0 ? DEEP : '#fff', fg: gi === 0 ? '#fff' : DEEP, dot: gi === 0 ? '#fff' : DEEP, sh: gi === 0 ? 'none' : '0 0 0 1.5px ' + DEEP + ' inset' };
+    };
+    const mine = st.view === 'mine' && st.me;
+    const shown = CARDS.filter(c => !mine || !c.m || c.m.indexOf(st.me) >= 0);
+    const keys = [];
+    shown.forEach(c => { if (keys.indexOf(c.date) < 0) keys.push(c.date); });
+    const dates = keys.map(k => ({
+      cards: shown.filter(c => c.date === k).map(c => {
+        const s = c.m ? style(c.m) : {};
+        const isOpen = !!st.open[c.id];
+        return Object.assign({}, s, {
+          day: c.day, dd: c.date.split('/')[1].padStart(2, '0'), theme: c.theme, emoji: c.emoji,
+          meta: c.date + '（' + c.wd + '）・' + c.acts.length + ' 個景點',
+          showTag: !mine && !!c.m, open: isOpen, rot: isOpen ? 180 : 0,
+          toggle: () => { const o = Object.assign({}, st.open); o[c.id] = !isOpen; this.setState({ open: o }); },
+          acts: c.acts.map(a => Object.assign({ icon: a[0], name: a[1], time: a[2], hasTime: !!a[2], showTag: !!a[3] }, a[3] ? style(a[3]) : {}))
+        });
+      })
+    }));
+    const pick = id => this.setState({ me: id, sheet: false, everChose: true, view: 'mine' });
+    const meObj = MEM.find(x => x.id === st.me);
+    return {
+      dates: dates,
+      mineOn: !!mine, allOn: !mine,
+      mineBg: mine ? '#a8362f' : '#f3e3d8', mineFg: mine ? '#fff' : '#6e4a58',
+      allBg: mine ? '#f3e3d8' : '#a8362f', allFg: mine ? '#6e4a58' : '#fff',
+      goMine: () => { if (st.me) this.setState({ view: 'mine' }); else this.setState({ sheet: true }); },
+      goAll: () => this.setState({ view: 'all' }),
+      hasMe: !!st.me, noMe: !st.me, meAvatar: meObj ? meObj.a : '',
+      openSheet: () => this.setState({ sheet: true }),
+      sheet: st.sheet, canClose: st.everChose || !!st.me, cantClose: !(st.everChose || !!st.me),
+      closeSheet: () => this.setState({ sheet: false }),
+      justLook: () => this.setState({ me: null, sheet: false, everChose: true, view: 'all' }),
+      people: MEM.map(x => ({ a: x.a, n: x.n, on: st.me === x.id, bd: st.me === x.id ? '#a8362f' : 'transparent', pick: () => pick(x.id) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

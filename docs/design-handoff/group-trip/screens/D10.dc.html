@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>D10 換人</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.app{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Kaku Gothic ProN","Noto Sans CJK TC",sans-serif;color:#1e0d12;-webkit-font-smoothing:antialiased}
+.ttl{font-size:21px;font-weight:800;letter-spacing:.02em;line-height:1.2}
+.sub{font-size:12px;opacity:.85;margin-top:3px;letter-spacing:.04em}
+.cd{background:rgba(255,255,255,.22);border-radius:14px;padding:8px 14px;text-align:center;flex-shrink:0}
+.pill{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 11px;font-size:12px}
+.mbtn{display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:12px;border:1.5px solid transparent;font-family:inherit;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(30,13,18,.07);min-height:66px;position:relative}
+.mav{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.mname{font-size:15px;font-weight:700;color:#1e0d12}
+.check{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div class="app" style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: {{bg}}">
+  <div style="color: #fff; padding: 14px 20px 18px; background: linear-gradient(145deg, {{p}} 0%, {{p2}} 55%, {{p3}} 100%)">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+      <div><div class="ttl">九州・屋久島之旅 2026</div><div class="sub">鹿兒島・福岡・屋久島</div></div>
+      <div class="cd"><div style="font-size: 26px; font-weight: 900; line-height: 1">27</div><div style="font-size: 10px; opacity: .9; margin-top: 2px">天後出發</div></div>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap"><span class="pill">2026年11月1－13日</span><span class="pill">13天12夜</span><span class="pill">4人同行</span></div>
+  </div>
+
+  <div style="position: absolute; inset: 0; background: rgba(30,13,18,.45)"></div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; background: {{bg}}; border-radius: 24px 24px 0 0; padding: 20px 20px 36px; display: flex; flex-direction: column; gap: 20px; box-shadow: 0 -8px 30px rgba(30,13,18,.18)">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <span style="width: 44px"></span>
+      <div style="font-size: 24px; font-weight: 800; text-align: center">你是誰？</div>
+      <button aria-label="關閉" style="width: 44px; height: 44px; border-radius: 50%; border: none; background: {{pale}}; color: #6e4a58; font-size: 16px; cursor: pointer">✕</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <button class="mbtn" aria-pressed="true" style="border-color: {{p}}"><span class="mav" style="background: {{pale}}">🐱</span><span class="mname">小貓</span><span class="check" style="background: {{p}}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span></button>
+      <button class="mbtn" aria-pressed="false"><span class="mav" style="background: {{pale}}">🐻</span><span class="mname">阿熊</span></button>
+      <button class="mbtn" aria-pressed="false"><span class="mav" style="background: {{pale}}">🐟</span><span class="mname">小魚</span></button>
+      <button class="mbtn" aria-pressed="false"><span class="mav" style="background: {{pale}}">🦌</span><span class="mname">阿鹿</span></button>
+    </div>
+    <button style="align-self: center; background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 600; color: #6e4a58; padding: 12px 16px; min-height: 44px; cursor: pointer">我只是看看</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["赭紅","抹茶綠","湖水綠","櫻花粉","靛藍","藤紫","琥珀黃"],"default":"赭紅"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TH = {'赭紅':['#a8362f','#c45a4f','#e3a89c','#faf2ec','#f3e3d8'],'抹茶綠':['#5d7242','#7d8f5d','#b5c193','#f3f2e6','#e2e3c8'],'湖水綠':['#2e6e72','#4f9094','#94b8b9','#edf3f2','#d4e1de'],'櫻花粉':['#a6586a','#c87d8a','#e3b6bb','#faf0ee','#f1d8da'],'靛藍':['#2c456c','#4d6791','#92a4c2','#ecf0f6','#d4dde9'],'藤紫':['#6a5897','#8a7ab2','#b8aed1','#f0eef6','#ddd8e8'],'琥珀黃':['#b8842a','#d4a04c','#e8c98a','#f7f0dd','#ecdcb6']};
+    const t = TH[this.props.theme ?? '赭紅'] || TH['赭紅'];
+    return { p: t[0], p2: t[1], p3: t[2], bg: t[3], pale: t[4] };
+  }
+}
+</script>
+</body>
+</html>

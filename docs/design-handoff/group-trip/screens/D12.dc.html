@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<title>D12 App 換卡</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button.gt,button.pbtn,button.avs{position:relative}
+button.gt::after,button.pbtn::after,button.avs::after{content:"";position:absolute;left:-4px;right:-4px;top:50%;height:44px;transform:translateY(-50%)}
+.app{font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Hiragino Kaku Gothic ProN","Noto Sans CJK TC",sans-serif;color:#1e0d12;-webkit-font-smoothing:antialiased}
+.ttl{font-size:21px;font-weight:800;letter-spacing:.02em;line-height:1.2}
+.sub{font-size:12px;opacity:.85;margin-top:3px;letter-spacing:.04em}
+.cd{background:rgba(255,255,255,.22);border-radius:14px;padding:8px 14px;text-align:center;flex-shrink:0}
+.pill{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 11px;font-size:12px}
+.seg{flex:1;padding:9px 0;border:none;border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;min-height:40px}
+.me{width:40px;height:40px;border-radius:12px;border:none;font-size:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.card{background:#fff;border-radius:18px;box-shadow:0 2px 12px rgba(30,13,18,.06)}
+.dh{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.badge{width:46px;height:46px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0}
+.bn{font-size:10px;font-weight:700;line-height:1}
+.bd{font-size:17px;font-weight:900;line-height:1.1}
+.dt{font-size:15px;font-weight:700;line-height:1.3}
+.dm{font-size:12px;color:#9a7080;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chev{width:20px;height:20px;color:#9a7080;flex-shrink:0}
+.gt{display:inline-flex;align-items:center;gap:4px;border-radius:99px;padding:1px 8px 1px 6px;font-size:11px;font-weight:700;line-height:1.6;white-space:nowrap;border:none;font-family:inherit;cursor:pointer}
+.gd{width:6px;height:6px;border-radius:50%}
+.opt{display:flex;align-items:center;gap:12px;width:100%;background:#fff;border-radius:14px;padding:14px;border:1.5px solid transparent;font-family:inherit;text-align:left;cursor:pointer;box-shadow:0 2px 8px rgba(30,13,18,.07);min-height:64px}
+.rdot{width:20px;height:20px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box}
+</style>
+</helmet>
+<div class="app" style="width: 390px; height: 844px; position: relative; overflow: hidden; display: flex; flex-direction: column; background: {{bg}}">
+  <div style="color: #fff; padding: 14px 20px 18px; flex-shrink: 0; background: linear-gradient(145deg, {{p}} 0%, {{p2}} 55%, {{p3}} 100%)">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 12px">
+      <div><div class="ttl">九州・屋久島之旅 2026</div><div class="sub">鹿兒島・福岡・屋久島</div></div>
+      <div class="cd"><div style="font-size: 20px; font-weight: 900; line-height: 1.1">旅途中</div><div style="font-size: 10px; opacity: .9; margin-top: 2px">🌸</div></div>
+    </div>
+    <div style="display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap"><span class="pill">2026年11月1－13日</span><span class="pill">13天12夜</span><span class="pill">4人同行</span></div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 12px 16px 0; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; gap: 8px; align-items: center">
+      <div style="flex: 1; display: flex; gap: 6px">
+        <button class="seg" style="background: {{p}}; color: #fff">我的行程</button>
+        <button class="seg" style="background: {{pale}}; color: #6e4a58">全部</button>
+      </div>
+      <button class="me" aria-label="小貓，換人" style="background: #fff; box-shadow: 0 0 0 1.5px {{pale}} inset">🐱</button>
+    </div>
+
+    <div class="card"><div class="dh">
+      <div class="badge" style="background: {{pale}}"><span class="bn" style="color: {{p}}">Day 2</span><span class="bd" style="color: {{p}}">02</span></div>
+      <div style="flex: 1"><div class="dt">櫻島一日</div><div class="dm">11/2（一）・5 個景點</div></div>
+      <span style="font-size: 22px">🌋</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div></div>
+    <div class="card" style="box-shadow: 0 0 0 2px {{p}}"><div class="dh">
+      <div class="badge" style="background: {{pale}}"><span class="bn" style="color: {{p}}">Day 3</span><span class="bd" style="color: {{p}}">03</span></div>
+      <div style="flex: 1"><div class="dt">指宿砂浴</div><div class="dm"><button class="gt" aria-label="這天跟誰走？目前：鹿兒島組" style="background: {{deep}}; color: #fff"><span class="gd" style="background: #fff"></span>鹿兒島組 ▾</button>11/3（二）・4 個景點</div></div>
+      <span style="font-size: 22px">♨️</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div></div>
+    <div class="card"><div class="dh">
+      <div class="badge" style="background: {{pale}}"><span class="bn" style="color: {{p}}">Day 4</span><span class="bd" style="color: {{p}}">04</span></div>
+      <div style="flex: 1"><div class="dt">霧島神宮</div><div class="dm"><button class="gt" aria-label="這天跟誰走？目前：鹿兒島組" style="background: {{deep}}; color: #fff"><span class="gd" style="background: #fff"></span>鹿兒島組 ▾</button>11/4（三）・4 個景點</div></div>
+      <span style="font-size: 22px">⛩️</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    </div></div>
+  </div>
+
+  <div style="position: absolute; inset: 0; background: rgba(30,13,18,.45)"></div>
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; background: {{bg}}; border-radius: 24px 24px 0 0; padding: 20px 20px 36px; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <div><div style="font-size: 20px; font-weight: 800">這天跟誰走？</div><div style="font-size: 13px; color: #7a6a70; margin-top: 2px">11/3（二）</div></div>
+      <button aria-label="關閉" style="width: 44px; height: 44px; border-radius: 50%; border: none; background: {{pale}}; color: #6e4a58; font-size: 16px">✕</button>
+    </div>
+    <div role="radiogroup" aria-label="這天跟誰走？" style="display: flex; flex-direction: column; gap: 10px">
+      <button class="opt" role="radio" aria-checked="true" style="border-color: {{p}}">
+        <span class="rdot" style="border: 2px solid {{p}}"><span style="width: 10px; height: 10px; border-radius: 50%; background: {{p}}"></span></span>
+        <span style="font-size: 22px">♨️</span>
+        <span style="flex: 1"><span style="display: block; font-size: 15px; font-weight: 700">指宿砂浴</span><span class="gt" style="background: {{deep}}; color: #fff; cursor: default; margin-top: 4px"><span class="gd" style="background: #fff"></span>鹿兒島組</span></span>
+      </button>
+      <button class="opt" role="radio" aria-checked="false">
+        <span class="rdot" style="border: 2px solid #b49aa4"></span>
+        <span style="font-size: 22px">✈️</span>
+        <span style="flex: 1"><span style="display: block; font-size: 15px; font-weight: 700">抵達福岡</span><span class="gt" style="background: #fff; color: {{deep}}; box-shadow: 0 0 0 1.5px {{deep}} inset; cursor: default; margin-top: 4px"><span class="gd" style="background: {{deep}}"></span>福岡組</span></span>
+      </button>
+    </div>
+    <sc-if value="{{basic}}" hint-placeholder-val="{{ false }}">
+      <div style="font-size: 13px; color: #6e4a58; text-align: center; padding-top: 4px">只有這支手機會換</div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["赭紅","抹茶綠","湖水綠","櫻花粉","靛藍","藤紫","琥珀黃"],"default":"赭紅"},"basicMode":{"editor":"boolean","default":false},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const TH = {'赭紅':['#a8362f','#c45a4f','#e3a89c','#faf2ec','#f3e3d8'],'抹茶綠':['#5d7242','#7d8f5d','#b5c193','#f3f2e6','#e2e3c8'],'湖水綠':['#2e6e72','#4f9094','#94b8b9','#edf3f2','#d4e1de'],'櫻花粉':['#a6586a','#c87d8a','#e3b6bb','#faf0ee','#f1d8da'],'靛藍':['#2c456c','#4d6791','#92a4c2','#ecf0f6','#d4dde9'],'藤紫':['#6a5897','#8a7ab2','#b8aed1','#f0eef6','#ddd8e8'],'琥珀黃':['#b8842a','#d4a04c','#e8c98a','#f7f0dd','#ecdcb6']};
+    const hx = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+    const t = TH[this.props.theme ?? '赭紅'] || TH['赭紅'];
+    const deep = '#' + hx(t[0]).map((v, i) => Math.round(v * 0.65 + hx('#1e0d12')[i] * 0.35).toString(16).padStart(2, '0')).join('');
+    return { p: t[0], p2: t[1], p3: t[2], bg: t[3], pale: t[4], deep: deep, basic: this.props.basicMode ?? false };
+  }
+}
+</script>
+</body>
+</html>
