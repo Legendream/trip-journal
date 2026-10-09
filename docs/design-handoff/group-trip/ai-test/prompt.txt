@@ -67,7 +67,7 @@ JSON Schema（嚴格遵守）：
   ],
   "members": [{ "name": "姓名", "avatar": "🧡" }],
   "checklist": ["護照","信用卡"],
-  "notes": []
+  "notes": [{ "icon": "⚠️", "text": "…" }]
 }
 
 ---

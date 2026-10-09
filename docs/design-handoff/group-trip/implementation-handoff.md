@@ -76,7 +76,7 @@
 
 ## 尚未決定（實作時遇到再問 Claire）
 
-- 行程 App 端（D3–D12）、Firebase 路徑、分享網址與備份檔帶組別：之後的包，見 PROGRESS.md 下一步 2、3。
+- 行程 App 端（D3–D12）、Firebase 路徑、分享網址與備份檔帶組別：之後的包，見 PROGRESS.md 下一步 1。
 
 ## 給 Claude Code 的第一句話
 

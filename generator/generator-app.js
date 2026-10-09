@@ -41,7 +41,7 @@ JSON Schema（嚴格遵守）：
   ],
   "members": [{ "name": "姓名", "avatar": "🧡" }],
   "checklist": ["護照","信用卡"],
-  "notes": []
+  "notes": [{ "icon": "⚠️", "text": "…" }]
 }
 
 ---
@@ -76,7 +76,10 @@ let state = {
   tripText: '',
   jsonPaste: '',
   useFirebase: false,
-  members: [],
+  members: [],                // [{ id, name, avatar }]；id 只在產生器內部用，匯出設定檔時不帶
+  groups: [],                 // 分組旅行：[{ id, name, memberIds, order }]，最多 3 組，只是成員名單的別名
+  splitUp: false,             // D1「有分頭」開關；關閉時 groups 保留但不生效（規則 7）
+  dismissedAlerts: [],        // 判讀提醒「略過」的 key
   days: [],
   hotels: [],
   parsedExtras: {},           // restaurants/weatherLocs/checklist/presetShopping/notes
@@ -158,6 +161,7 @@ function loadState() {
     // 舊草稿/匯入備份可能是舊 day 形狀（acts/flight/hotel）→ 統一遷移成 items 模型
     state.days = migrateDays(state.days);
     state.days.forEach(_orderTimeline);
+    ensureGroupState();
     return true;
   } catch (e) { return false; }
 }
@@ -208,6 +212,7 @@ function hydrateUI() {
   onSelfDriveToggle(true);
   updateTripText();
   updateJsonPaste();
+  renderSplitSetup();
   goTo(state.step || 0);
 }
 
@@ -374,7 +379,14 @@ function switchChecklistSubtab(tab) {
 // ── AI flow ────────────────────────────────────────────────────────
 function buildPrompt() {
   const text = document.getElementById('trip-text').value.trim();
-  return PARSE_PROMPT + (text || '（請使用者把行程貼到這裡）');
+  let head = PARSE_PROMPT;
+  const groups = activeGroups();
+  if (groups.length) {
+    // 分組段落插在 Schema 之前；沒分組時提示詞不動（規則 7）
+    const section = buildGroupSection(groups.map(g => ({ name: g.name, members: g.memberIds.map(memberName) })));
+    head = head.replace(GROUP_PROMPT_ANCHOR, () => section + GROUP_PROMPT_ANCHOR);
+  }
+  return head + (text || '（請使用者把行程貼到這裡）');
 }
 
 function updateTripText() {
@@ -438,6 +450,10 @@ function importAiJson() {
     const last = cleaned.lastIndexOf('}');
     if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);
     const data = JSON.parse(cleaned);
+    if (state.splitUp && !(data.days && data.days.length)) {
+      stat.innerHTML = '<div class="status-box status-err">這份 JSON 裡沒有 days（行程），沒有更新任何東西。請確認 AI 回的是完整的行程 JSON。</div>';
+      return;
+    }
     applyParsedData(data);
     document.getElementById('ai-step-3').classList.add('done');
     stat.innerHTML = `<div class="status-box status-ok">✓ 匯入成功！${state.days.length} 天行程、${state.members.length} 位成員、${state.hotels.length} 間住宿。點下方「下一步」確認。</div>`;
@@ -455,15 +471,22 @@ function applyParsedData(d) {
   const year = d.year || new Date().getFullYear();
   const baseKey = (d.tripName || 'trip').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
   state.fields['f-storage-prefix'] = baseKey + year;
-  if (d.members?.length) state.members = [...d.members];
+  const groups = activeGroups();
+  if (d.members?.length) {
+    // 有分組時成員已在 D1 建好（組別指向成員 id），用名字對上並保留 id；沒分組維持原行為
+    state.members = groups.length ? mergeMembers(state.members, d.members) : [...d.members];
+  }
+  ensureMemberIds();
+  d = normalizeImported(d, groups, state.members);   // with／unsure → 內部格式；沒分組時丟掉
   if (d.days?.length) { state.days = d.days.map(fromLegacyDay); state.days.forEach(_orderTimeline); }
   if (d.hotels?.length) state.hotels = [...d.hotels];
+  state.dismissedAlerts = [];
   state.parsedExtras = {
     restaurants: d.restaurants || {},
     weatherLocs: d.weatherLocs || {},
     checklist: d.checklist || [],
     presetShopping: d.presetShopping || [],
-    notes: d.notes || [],
+    notes: normalizeNotes(d.notes),
   };
   // Re-hydrate inputs
   Object.keys(state.fields).forEach(id => {
@@ -473,7 +496,34 @@ function applyParsedData(d) {
     else el.value = state.fields[id] || '';
   });
   onSelfDriveToggle(true);
+  renderSplitSetup();
   saveState();
+}
+
+// AI 可能把 notes 回成字串陣列；行程 App 與編輯器都讀 { icon, text }
+function normalizeNotes(notes) {
+  return (notes || []).map(n => typeof n === 'string' ? { icon: '⚠️', text: n } : n);
+}
+
+// ── 分組旅行（純函式在 group-trip.js；這裡是碰 state 的部分）──────────
+let _memberSeq = 0;   // 與 genId 的流水號分開，成員 id 不影響其他 id
+function newMemberId() { return 'm' + Date.now().toString(36) + (_memberSeq++).toString(36); }
+function ensureMemberIds() {
+  state.members.forEach(m => { if (!m.id) m.id = newMemberId(); });
+}
+function memberName(id) { return (state.members.find(m => m.id === id) || {}).name || ''; }
+// 讀入舊資料／匯入後呼叫：成員補 id、組別清掉已不存在的成員
+function ensureGroupState() {
+  if (!Array.isArray(state.groups)) state.groups = [];
+  if (!Array.isArray(state.dismissedAlerts)) state.dismissedAlerts = [];
+  ensureMemberIds();
+  const ids = new Set(state.members.map(m => m.id));
+  state.groups.forEach(g => { g.memberIds = (g.memberIds || []).filter(id => ids.has(id)); });
+}
+// 生效中的組別：有開「有分頭」、有組名、至少一位成員
+function activeGroups() {
+  if (!state.splitUp) return [];
+  return (state.groups || []).filter(g => (g.name || '').trim() && g.memberIds.length);
 }
 
 // ── Timeline item model + legacy adapter ───────────────────────────
@@ -600,8 +650,18 @@ function normalizeItem(it) {
     // park: 自駕日是否要查此景點停車場。undefined = 預設要；false = 徒步、不查
     park: it.park === false ? false : undefined,
     location: { query: loc.query || '', url: loc.url || '', verified: !!loc.verified, ...(loc.resolved ? { resolved: loc.resolved } : {}) },
-    data: it.data || {}
+    data: it.data || {},
+    ...groupFields(it)
   };
+}
+
+// 分組欄位（同行名單 with、AI 對不到的字串 withUnknown、沒把握 unsure）：有才帶，沒分組的資料形狀不變
+function groupFields(src) {
+  const o = {};
+  if (src && Array.isArray(src.with) && src.with.length) o.with = [...src.with];
+  if (src && Array.isArray(src.withUnknown) && src.withUnknown.length) o.withUnknown = [...src.withUnknown];
+  if (src && src.unsure === true) o.unsure = true;
+  return o;
 }
 
 function newDay(n) {
@@ -620,6 +680,7 @@ function fromLegacyDay(d) {
     theme: d.theme || '', emoji: d.emoji || '📍',
     selfDrive: !!d.selfDrive,      // 這天是否自駕 → 決定本日景點要不要顯示停車場
     parking: d.parking || null,   // 精選停車場清單原樣透傳（template 已支援渲染）
+    ...groupFields(d),
     items: []
   };
   if (Array.isArray(d.items)) {            // 已是新格式 → pass-through
@@ -632,7 +693,8 @@ function fromLegacyDay(d) {
       id: a.id || genId(), type: 'activity', time: a.time || '',
       icon: a.icon || '📍', title: a.name || '', sub: a.sub || '', ref: a.ref || '',
       park: a.park === false ? false : undefined,
-      location: makeLocation(a.map), data: {}
+      location: makeLocation(a.map), data: {},
+      ...groupFields(a)
     });
   });
   if (d.flight) {
@@ -645,7 +707,8 @@ function fromLegacyDay(d) {
         num: f.num || '', from: f.from || '', fromCity: f.fromCity || '', fromTerminal: f.fromTerminal || '',
         to: f.to || '', toCity: f.toCity || '', toTerminal: f.toTerminal || '',
         dept: f.dept || '', arr: f.arr || '', boarding: f.boarding || ''
-      }
+      },
+      ...groupFields(f)
     });
   }
   if (d.hotel) {
@@ -655,7 +718,8 @@ function fromLegacyDay(d) {
       icon: '🏨', title: h.name || '', sub: '', ref: '',
       park: h.park === false ? false : undefined,
       location: makeLocation(h.map),
-      data: { note: h.note || '', paid: !!h.paid }
+      data: { note: h.note || '', paid: !!h.paid },
+      ...groupFields(h)
     });
   }
   // 租車：legacy 的 car 物件（含訂位號碼 bookings）折進「對應租車活動」的 ref，
@@ -1050,7 +1114,15 @@ function importLoadedConfig(cfg) {
   state.activeTheme = matchIdx >= 0 ? matchIdx : -1;
   state.fields['f-firebase'] = cfg.firebase ? JSON.stringify(cfg.firebase, null, 2) : '';
   state.useFirebase = !!(cfg.firebase && cfg.firebase.databaseURL);
+  // 現有行程 App 還不認得分組，載入的設定檔沒有 with。使用者先在步驟 1 填過的組別，
+  // 用名字對到載入的成員（對不上的成員從組別拿掉）
+  const prevGroups = (state.groups || []).map(g => ({ ...g, names: g.memberIds.map(memberName) }));
   state.members = cfg.members || [];
+  ensureMemberIds();
+  state.groups = prevGroups.map(({ names, ...g }) => ({
+    ...g, memberIds: names.map(n => (state.members.find(m => m.name === n) || {}).id).filter(Boolean),
+  }));
+  state.dismissedAlerts = [];
   state.days = (cfg.days || []).map(fromLegacyDay);
   state.days.forEach(_orderTimeline);
   state.hotels = cfg.hotels || [];
@@ -1068,6 +1140,7 @@ function importLoadedConfig(cfg) {
     else el.value = state.fields[id] || '';
   });
   onSelfDriveToggle(true);
+  renderSplitSetup();
   saveState();
 }
 
@@ -1079,6 +1152,7 @@ function escHtml(s) {
 
 function renderStep2() {
   renderMembers();
+  renderGroupMembers();
   renderDays();
   renderExtras();
   updateMissingSummary();
@@ -1262,14 +1336,17 @@ function renderMembers() {
 function addMember() {
   const name = document.getElementById('new-name').value.trim();
   if (!name) return;
-  state.members.push({ name, avatar: '' });
+  state.members.push({ id: newMemberId(), name, avatar: '' });
   document.getElementById('new-name').value = '';
   renderMembers();
+  renderGroupMembers();
   saveState();
 }
 function removeMember(i) {
-  state.members.splice(i, 1);
+  const gone = state.members.splice(i, 1)[0];
+  if (gone) removeMemberFromLists(state, gone.id, gone.name);   // 從所有同行名單拿掉；沒分組時什麼都不會動
   renderMembers();
+  if (groupsGrouped() || _groupEditOpen) { renderGroupMembers(); renderDays(); }
   saveState();
 }
 
@@ -1357,12 +1434,14 @@ function renderDays() {
   // ── 保留 scroll 位置 + 哪些 day 是展開的，避免重繪後頁面跳位 ──────
   const savedScrollY = window.scrollY;
   const openIds = new Set([...document.querySelectorAll('.day-card.open')].map(el => el.id));
+  const gctx = groupRenderContext();   // 沒分組是 null：下面所有分組片段都不產生（規則 7）
+  renderAlertBar(gctx);
 
   if (!state.days.length) {
     c.innerHTML = '<div style="text-align:center;color:var(--ink-3);padding:18px;font-size:var(--fs-fine);">尚未有行程，點下方「新增一天」開始</div>';
     return;
   }
-  c.innerHTML = state.days.map((d, i) => {
+  const cardHtml = state.days.map((d, i) => {
     // 一天的 items 依 type 渲染：activity + flight 都進時間軸，lodging 獨立在下方
     // 所有 handler 用「真實 items 索引」操作 state.days[i].items[idx]
     let acts = '';
@@ -1388,6 +1467,7 @@ function renderDays() {
           <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
           <button class="act-del" onclick="removeAct(${i},${idx})" title="刪除">✕</button>
         </div>
+        ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
         <div class="act-row2">
           <span class="map-label">📍</span>
           <input class="act-map-i" value="${escHtml(mapStr)}" placeholder="地圖連結或地名" oninput="setItemMap(${i},${idx},this.value)">
@@ -1418,6 +1498,7 @@ function renderDays() {
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
             <button class="act-del" onclick="removeFlight(${i})" title="移除">✕</button>
           </div>
+          ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
           <div class="flight-row2">
             <input value="${escHtml(fd.from || '')}" placeholder="TPE" maxlength="4" style="text-transform:uppercase;" oninput="state.days[${i}].items[${idx}].data.from=this.value.toUpperCase();saveState()">
             <input value="${escHtml(fd.fromCity || '')}" placeholder="桃園" oninput="state.days[${i}].items[${idx}].data.fromCity=this.value;saveState()">
@@ -1458,6 +1539,7 @@ function renderDays() {
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
             <button class="act-del" onclick="removeHotel(${i})" title="移除">✕</button>
           </div>
+          ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
           <div class="act-row2">
             <span class="map-label">📍</span>
             <input class="act-map-i" value="${escHtml(hMap)}" placeholder="地圖連結或地名" oninput="setItemMap(${i},${idx},this.value)">
@@ -1478,22 +1560,24 @@ function renderDays() {
         </label>` : '';
     const addFlightBtn = hasFlight ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增機票</button>`;
     const addHotelBtn  = hasHotel  ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addHotel(${i})">＋ 新增住宿</button>`;
-    return `<div class="day-card" id="day-${i}">
+    return `<div class="day-card${gctx && gctx.byDay.has(d.id) ? ' g-warned' : ''}" id="day-${i}">
       <div class="day-card-header" onclick="toggleDay(${i})">
         <span class="day-badge">Day ${d.day || i + 1}</span>
         <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
           <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
           <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}</div>
+          ${gctx ? dayGroupHeadHtml(gctx, d, i) : ''}
         </div>
         <button class="btn-icon-x" onclick="event.stopPropagation();removeDay(${i})" title="刪除這天">✕</button>
         <span class="chevron">▶</span>
       </div>
+      ${gctx ? dayGroupBelowHeaderHtml(gctx, d, i) : ''}
       <div class="day-card-body">
         <div class="grid3" style="margin-bottom:12px;">
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:var(--fs-fine);">日期</label>
-            <input type="text" value="${escHtml(d.date || '')}" placeholder="4/15" oninput="state.days[${i}].date=this.value;saveState()">
+            <input type="text" value="${escHtml(d.date || '')}" placeholder="4/15" oninput="state.days[${i}].date=this.value;saveState()"${gctx ? ' onchange="onDayDateChange()"' : ''}>
           </div>
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:var(--fs-fine);">星期</label>
@@ -1510,9 +1594,11 @@ function renderDays() {
         <button class="btn btn-secondary btn-block btn-sm" onclick="addAct(${i})">＋ 新增活動</button>
         ${addFlightBtn}
         ${addHotelBtn}
+        ${gctx ? dayGroupActionsHtml(gctx, d) : ''}
       </div>
     </div>`;
-  }).join('');
+  });
+  c.innerHTML = gctx ? assembleGroupedCards(gctx, cardHtml) : cardHtml.join('');
   // ── 還原 open state + scroll（避免全量重建後頁面跳位）──────────────
   openIds.forEach(id => document.getElementById(id)?.classList.add('open'));
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
@@ -1532,7 +1618,8 @@ function toggleDay(i) { document.getElementById('day-' + i).classList.toggle('op
 function removeDay(i) {
   if (!confirm('確定刪除 Day ' + (i + 1) + '？')) return;
   state.days.splice(i, 1);
-  state.days.forEach((d, j) => d.day = j + 1);
+  if (groupsGrouped()) renumberDaysByDate(state.days);   // 同日的卡 Day 編號相同
+  else state.days.forEach((d, j) => d.day = j + 1);
   renderDays();
   saveState();
 }
@@ -2074,10 +2161,10 @@ function collectConfig() {
       swCacheKey: state._loadedSwCacheKey || (pfx + '-v1'),
     },
     firebase,
-    members: state.members,
+    members: state.members.map(({ id, ...m }) => m),   // 內部 id 不輸出（行程 App 還用名字）
     // 總開關關閉時，匯出一律當作非自駕（逐天 selfDrive 仍保留在 state，重開即恢復）
     days: state.days.map(d => toLegacyDay(f['f-self-drive'] ? d : { ...d, selfDrive: false })),
-    hotels: state.hotels,
+    hotels: state.hotels.map(({ with: _w, withUnknown, unsure, ...h }) => h),   // 分組欄位這一包先不輸出
     restaurants: state.parsedExtras.restaurants || {},
     weatherLocs: state.parsedExtras.weatherLocs || {},
     checklist: state.parsedExtras.checklist || [],
