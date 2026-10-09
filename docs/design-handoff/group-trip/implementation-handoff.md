@@ -6,8 +6,8 @@
 ## 0. 開工前
 
 - 依全域 CLAUDE.md 的流程做 Git 檢查（分支 → PR → 使用者 merge）。設計文件已在 main（`docs/design-handoff/group-trip/`）。
-- 實作開新分支，從 main 切：`feat/group-trip-data`（包 1）、`feat/group-trip-generator-ui`（包 2）。同一階段相關的工作放同一個 PR，用多個 commit 分段。
-- **規則 7 是最高原則**：沒分組的行程，產生器畫面、提示詞、匯出的設定檔都要跟現在一字不差。每一包都要驗這條。
+- 包 1、包 2 是同一階段、互相依賴，**合成一個分支、一個 PR**（`feat/group-trip-generator`，從 main 切），用多個 commit 分段：先包 1 資料層，再包 2 產生器畫面。
+- **規則 7 是最高原則**：沒分組的行程，產生器畫面、提示詞、匯出的設定檔都要跟現在一字不差。包 1、包 2 的 commit 完成後都要各驗一次這條。
 
 ## 包 1：資料層（不碰畫面）
 
@@ -46,7 +46,7 @@
 
 ## 包 2：產生器畫面
 
-前提：包 1 已 merge。畫面規格在 `screens/`（從 Claude Design 畫布匯出的快照，讀法見 `screens/README.md`），文字與規則在 decisions.md。
+前提：包 1 的 commit 已完成且驗收通過（同一個 PR，不必等 merge）。畫面規格在 `screens/`（從 Claude Design 畫布匯出的快照，讀法見 `screens/README.md`），文字與規則在 decisions.md。
 
 ### 範圍
 
@@ -80,4 +80,4 @@
 
 ## 給 Claude Code 的第一句話
 
-> 請讀 docs/design-handoff/group-trip/implementation-handoff.md，做包 1。先做 Git 檢查，開分支再動手；改程式前先存一份沒分組行程的匯出結果當基準。
+> 請讀 docs/design-handoff/group-trip/implementation-handoff.md，先做包 1、再做包 2（同一個分支、同一個 PR，多個 commit）。先做 Git 檢查，開分支再動手；改程式前先存一份沒分組行程的匯出結果當基準。

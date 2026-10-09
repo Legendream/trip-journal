@@ -38,8 +38,7 @@
 
 ## 下一步（依優先順序）
 
-1. **包 1 資料層**：Claude Code，照 implementation-handoff.md。
-2. **包 2 產生器畫面**：包 1 merge 後。
+1. **包 1 資料層 + 包 2 產生器畫面**：Claude Code，照 implementation-handoff.md。同一個分支、一個 PR，多個 commit（先包 1 再包 2）。
 3. 之後：行程 App 端（D3–D12）、Firebase 資料路徑、舊行程相容（分享網址與備份檔帶組別）。
 4. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
 
@@ -50,7 +49,7 @@
 - 先看這份的「下一步」，再看 `git status`，確認文件都已 commit、在哪個分支。
 - 畫布若有改過，`screens/` 要重新匯出，否則 Claude Code 讀到的是舊版。
 - AI 提示詞若要再改，改 `ai-test/group-section.txt` → `node build-prompt.js` → 用 check.js 重測，通過再改程式。generator-app.js 的 PARSE_PROMPT 若被別的工作改過，也要重跑 build-prompt.js 確認插入點還在。
-- 產生器若在這段期間有別的改動（例如視覺減量），包 1 開工前先 rebase main。
+- 產生器若在這段期間有別的改動（例如視覺減量），開工前先 rebase main。
 
 ## 開新對話時可以這樣說
 
@@ -58,4 +57,4 @@
 
 要直接進實作（Claude Code）：
 
-> 請讀 docs/design-handoff/group-trip/implementation-handoff.md，做包 1。先做 Git 檢查，開分支再動手；改程式前先存一份沒分組行程的匯出結果當基準。
+> 請讀 docs/design-handoff/group-trip/implementation-handoff.md，先做包 1、再做包 2（同一個分支、同一個 PR，多個 commit）。先做 Git 檢查，開分支再動手；改程式前先存一份沒分組行程的匯出結果當基準。
