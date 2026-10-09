@@ -450,6 +450,10 @@ function importAiJson() {
     const last = cleaned.lastIndexOf('}');
     if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);
     const data = JSON.parse(cleaned);
+    if (state.splitUp && !(data.days && data.days.length)) {
+      stat.innerHTML = '<div class="status-box status-err">這份 JSON 裡沒有 days（行程），沒有更新任何東西。請確認 AI 回的是完整的行程 JSON。</div>';
+      return;
+    }
     applyParsedData(data);
     document.getElementById('ai-step-3').classList.add('done');
     stat.innerHTML = `<div class="status-box status-ok">✓ 匯入成功！${state.days.length} 天行程、${state.members.length} 位成員、${state.hotels.length} 間住宿。點下方「下一步」確認。</div>`;
@@ -1573,7 +1577,7 @@ function renderDays() {
         <div class="grid3" style="margin-bottom:12px;">
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:var(--fs-fine);">日期</label>
-            <input type="text" value="${escHtml(d.date || '')}" placeholder="4/15" oninput="state.days[${i}].date=this.value;saveState()"${gctx ? ' onchange="renderDays()"' : ''}>
+            <input type="text" value="${escHtml(d.date || '')}" placeholder="4/15" oninput="state.days[${i}].date=this.value;saveState()"${gctx ? ' onchange="onDayDateChange()"' : ''}>
           </div>
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:var(--fs-fine);">星期</label>

@@ -165,7 +165,7 @@ function computeAlerts(state) {
   const dismissed = new Set(state.dismissed || []);
   const all = _gtIds(members), nameOf = id => (members.find(m => m.id === id) || {}).name || '';
   const alerts = [];
-  const push = (a) => { a.dismissable = a.code !== 'A-1'; if (!(a.dismissable && dismissed.has(a.key))) alerts.push(a); };
+  const push = (a) => { a.dismissable = a.code !== 'A-1' && a.code !== 'A-6'; if (!(a.dismissable && dismissed.has(a.key))) alerts.push(a); };
 
   // 名單只有對不上的組名（A-1）時當成沒人，才不會被當成全員而連帶觸發其他提醒（check.js 同）
   // 跨年：日期依卡片順序往下排，月日突然倒退超過半年就當作進入下一年
@@ -180,6 +180,11 @@ function computeAlerts(state) {
       acts: (d.items || []).filter(it => it.type === 'activity')
         .map(it => ({ it, set: listIdsOf(it, members, set) })),
     };
+  });
+
+  // A-6：日期不是 M/D（不能檢查同行空缺）；空白日期是還沒填，不算
+  days.forEach(d => {
+    if ((d.date || '').trim() && !_gtParseDate(d.date, year)) push({ code: 'A-6', key: `A-6|${d.id}`, dayId: d.id, date: d.date });
   });
 
   // A-1：用了設定裡沒有的組名

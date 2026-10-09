@@ -20,7 +20,8 @@ function makeEl() {
 // appPath：要載入的 generator-app.js（預設是目前的版本）；groupPath：group-trip.js（舊版沒有就略過）
 function loadGenerator({ appPath = path.join(root, 'generator/generator-app.js'),
                          groupPath = path.join(root, 'generator/group-trip.js'),
-                         uiPath = path.join(root, 'generator/group-ui.js') } = {}) {
+                         uiPath = path.join(root, 'generator/group-ui.js'),
+                         search = '' } = {}) {
   const els = new Map();
   const fixedNow = 1700000000000;
   class FixedDate extends Date {
@@ -32,7 +33,7 @@ function loadGenerator({ appPath = path.join(root, 'generator/generator-app.js')
     console, Date: FixedDate, Math, JSON, Array, Object, String, Number, Set, Map, Promise, RegExp, Error,
     setTimeout() { return 0; }, clearTimeout() {}, setInterval() { return 0; },
     localStorage: { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } },
-    navigator: {}, location: { hostname: 'localhost' }, alert() {}, confirm() { return true; },
+    navigator: {}, location: { hostname: 'localhost', search }, alert() {}, confirm() { return true; },
     window: {}, TextDecoder, TextEncoder, atob: s => Buffer.from(s, 'base64').toString('binary'),
     document: {
       getElementById(id) { if (!els.has(id)) els.set(id, makeEl()); return els.get(id); },

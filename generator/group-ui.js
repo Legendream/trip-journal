@@ -182,7 +182,8 @@ function buildAlertRows(alerts) {
     else if (a.code === 'A-3') {
       const r = a3.get(a.date) || { code: 'A-3', keys: [], dismissable: true, names: [], date: a.date };
       r.keys.push(a.key); r.names.push(a.name); a3.set(a.date, r);
-    } else if (a.code === 'A-4') rows.push({ code: 'A-4', keys: [a.key], dismissable: true, text: `${a.groupName} 沒有活動`, dayIds: [a.dayId] });
+    } else if (a.code === 'A-6') rows.push({ code: 'A-6', keys: [a.key], dismissable: false, text: `日期「${a.date}」看不懂，請改成 月/日（例：11/3）`, dayIds: [a.dayId] });
+    else if (a.code === 'A-4') rows.push({ code: 'A-4', keys: [a.key], dismissable: true, text: `${a.groupName} 沒有活動`, dayIds: [a.dayId] });
     else if (a.code === 'A-5') {
       const r = a5.get(a.dayId) || { code: 'A-5', keys: [], dismissable: true, text: 'AI 沒把握，請確認同行的人', dayIds: [a.dayId] };
       r.keys.push(a.key); a5.set(a.dayId, r);
@@ -359,7 +360,19 @@ function addGroup() {
 }
 function setGroupName(gi, v) {
   if (state.groups[gi]) state.groups[gi].name = v;
+  updateGroupNameHints();
   onGroupsEdited();
+}
+// 組名重複或沒填：標紅字提醒（不擋）
+function groupNameHint(k) {
+  const g = state.groups[k];
+  if (!g) return '';
+  const name = (g.name || '').trim();
+  if (!name) return g.memberIds.length ? '還沒填組名，這組不會告訴 AI' : '';
+  return state.groups.some((x, j) => j !== k && (x.name || '').trim() === name) ? '組名和別組重複，AI 和標籤都分不出來' : '';
+}
+function updateGroupNameHints() {
+  document.querySelectorAll('[data-hint]').forEach(el => { el.textContent = groupNameHint(Number(el.getAttribute('data-hint'))); });
 }
 // 組別或成員變了之後，重畫有用到的地方
 function refreshGroupViews() {
@@ -371,7 +384,17 @@ function refreshGroupViews() {
 }
 
 // ── D1：步驟 1「有人分頭行動嗎？」──────────────────────────────────────
+let _splitOffNotice = '';
+// 切回「全程一起」時，若行程裡有同一天兩張以上的卡，說明它們會保留、但不再標示誰跟哪張
+function splitOffNoticeText() {
+  const byDate = new Map();
+  state.days.forEach(d => { if (d.date) byDate.set(d.date, (byDate.get(d.date) || 0) + 1); });
+  const multi = [...byDate].filter(([, n]) => n > 1);
+  if (!multi.length) return '';
+  return `你的行程裡有 ${multi.length} 天分頭走（例如 ${multi[0][0]} 有 ${multi[0][1]} 張卡）。切回「全程一起」後這些卡會保留，但不會標示誰跟哪張。想改成大家一起走，請到步驟 2 按「這天一起行動」。`;
+}
 function setSplitUp(on) {
+  _splitOffNotice = on ? '' : splitOffNoticeText();
   state.splitUp = !!on;
   if (on && !state.groups.length) { state.groups.push(newGroup(), newGroup()); reindexGroups(); }
   refreshGroupViews();
@@ -402,9 +425,18 @@ function gDotStyle(k, ctx) {
   if (kind === 1) return `background:#fff;box-shadow:0 0 0 2px ${ctx.deep} inset`;
   return `background:${ctx.pale};box-shadow:0 0 0 2px ${ctx.deep} inset`;
 }
+// 「有人分頭行動嗎？」入口：行程 App 端還沒支援分組，暫時只在網址帶 ?groups=1 時顯示
+// （已經選了「有分頭」的草稿照常顯示，免得被鎖在裡面）
+let _gFeatureSeen = false;   // 這次開啟頁面期間入口出現過就一直留著，切回「全程一起」才看得到說明、也切得回來
+function groupFeatureOn() {
+  if (state.splitUp || /[?&]groups=1(&|$)/.test((typeof location !== 'undefined' && location.search) || '')) _gFeatureSeen = true;
+  return _gFeatureSeen;
+}
 function renderSplitSetup() {
-  const host = document.getElementById('split-setup');
-  if (!host) return;
+  const ta = document.getElementById('trip-text');
+  if (!ta || !ta.parentNode) return;
+  if (!groupFeatureOn()) { gDropSlot('split-setup'); return; }
+  const host = gSlot('split-setup', ta.parentNode, ta.nextSibling);
   const on = !!state.splitUp;
   const t = gTheme();
   const ctx = { deep: t.deep, pale: t.pale };
@@ -412,7 +444,7 @@ function renderSplitSetup() {
     <div class="g-toggle" role="radiogroup" aria-label="有人分頭行動嗎？">
       <button class="g-tog${on ? '' : ' on'}" role="radio" aria-checked="${!on}" onclick="setSplitUp(false)">全程一起</button>
       <button class="g-tog${on ? ' on' : ''}" role="radio" aria-checked="${on}" onclick="setSplitUp(true)">有分頭</button>
-    </div>`;
+    </div>${!on && _splitOffNotice ? `<div class="g-hint" style="margin-top:10px;">${escHtml(_splitOffNotice)}</div>` : ''}`;
   if (on) {
     html += `<div class="g-split-groups"><div class="g-split-title">各組成員</div><div class="g-hint">組名照草稿的寫法填，AI 才對得上</div>`;
     html += state.groups.map((g, k) => `<div class="g-group" data-gi="${k}">
@@ -421,6 +453,7 @@ function renderSplitSetup() {
           <input class="g-inp" aria-label="組名" placeholder="例：福岡組" value="${escHtml(g.name)}" oninput="setGroupName(${k},this.value)">
           <button class="g-x" aria-label="刪除這組" onclick="deleteGroup(${k})">✕</button>
         </div>
+        <div class="g-bad" data-hint="${k}">${escHtml(groupNameHint(k))}</div>
         ${g.memberIds.length ? `<div class="g-chips">${g.memberIds.map(id => `<span class="g-chip">${escHtml(memberAvatar(memberById(id)))} ${escHtml(memberName(id))}<button class="g-x" aria-label="移除${escHtml(memberName(id))}" onclick="removeGroupMember(${k},'${id}')">✕</button></span>`).join('')}</div>` : ''}
         <input class="g-inp g-member-input" aria-label="成員" placeholder="代號或暱稱"
           onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();addGroupMemberFromInput(${k},this)}"
@@ -471,8 +504,16 @@ function renderGroupMembers() {
           <input class="g-inp" aria-label="組名" placeholder="例：福岡組" value="${escHtml(g.name)}" oninput="setGroupName(${k},this.value)" onchange="renderDays()">
           <button class="g-x" aria-label="刪除這組" onclick="deleteGroup(${k})">✕</button>
         </div>
+        <div class="g-bad" data-hint="${k}">${escHtml(groupNameHint(k))}</div>
         <div class="g-chips">${state.members.map(m => `<button class="g-pill${g.memberIds.includes(m.id) ? ' on' : ''}" aria-pressed="${g.memberIds.includes(m.id)}" onclick="toggleGroupMemberPill(${k},'${m.id}')">${escHtml(memberAvatar(m))} ${escHtml(m.name)}</button>`).join('')}</div>
       </div>`).join('')}
     ${_groupSyncCount ? `<div class="g-synced">${G_OK_SVG}已同步更新 ${_groupSyncCount} 張卡</div>` : ''}
     ${state.groups.length < G_MAX_GROUPS ? `<button class="btn btn-secondary" style="align-self:flex-start;" onclick="addGroup()">＋ 再加一組</button>` : ''}`;
+}
+
+// 分組行程改日期：同一天的卡 Day 編號要相同，依日期重新編號
+function onDayDateChange() {
+  renumberDaysByDate(state.days);
+  renderDays();
+  saveState();
 }

@@ -808,6 +808,8 @@
   .g-tog.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); color: var(--accent); }
   .g-split-groups { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--rule-soft); display: flex; flex-direction: column; gap: 12px; }
   .g-split-title { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 700; color: var(--accent); }
+  .g-bad { font-size: var(--fs-fine); color: var(--err); }
+  .g-bad:empty { display: none; }
   .g-hint { font-size: var(--fs-fine); color: var(--ink-3); font-style: italic; line-height: 1.6; }
   .g-group { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
   .g-gname { display: flex; align-items: center; gap: 8px; }
@@ -1661,7 +1663,6 @@
         <textarea id="trip-text" rows="8"
           placeholder="例：&#10;4/15 (三) 抵達仙台&#10;  10:30 桃園飛仙台 CI-118&#10;  下午 仙台車站、青葉城跡&#10;  晚餐 牛舌利久&#10;  住 仙台國際飯店&#10;..."
           oninput="updateTripText()"></textarea>
-        <div id="split-setup"></div>
       </div>
 
       <div class="ai-step" id="ai-step-2" data-step="2">

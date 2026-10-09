@@ -347,7 +347,7 @@ test('2-1 沒分組：renderDays 不產生任何分組元素；切回「全程�
   assert.ok(!bad(g.el('day-cards').innerHTML));
 });
 test('2-2 D1 分組設定文字（G-1～G-8）', () => {
-  const g = loadGenerator();
+  const g = loadGenerator({ search: '?groups=1' });
   g.run('renderSplitSetup()');
   let h = g.el('split-setup').innerHTML;
   assert.ok(h.includes('有人分頭行動嗎？') && h.includes('全程一起') && h.includes('有分頭'));
@@ -357,6 +357,51 @@ test('2-2 D1 分組設定文字（G-1～G-8）', () => {
   for (const t of ['各組成員', '組名照草稿的寫法填，AI 才對得上', '例：福岡組', '代號或暱稱', '＋ 再加一組']) assert.ok(h.includes(t), '缺 ' + t);
   g.run('addGroup()');
   assert.ok(!g.el('split-setup').innerHTML.includes('＋ 再加一組'), '第 3 組建立後隱藏');
+});
+
+test('入口閘門：沒有 ?groups=1 時不顯示「有人分頭行動嗎？」；已選有分頭的草稿照常顯示', () => {
+  let g = loadGenerator();
+  g.run('renderSplitSetup()');
+  assert.strictEqual(g.el('split-setup').innerHTML, '');
+  g = loadGenerator();
+  g.run('state.splitUp = true; renderSplitSetup()');
+  assert.ok(g.el('split-setup').innerHTML.includes('各組成員'));
+});
+test('切回「全程一起」：同日有 2 張以上的卡時顯示說明，沒有則不顯示', () => {
+  const g = groupedSandbox();
+  g.run('setSplitUp(false)');
+  const h = g.el('split-setup').innerHTML;
+  assert.ok(h.includes('分頭走') && h.includes('這天一起行動'), h);
+  const g2 = loadGenerator({ search: '?groups=1' });
+  g2.run('setSplitUp(true); setSplitUp(false)');
+  assert.ok(!g2.el('split-setup').innerHTML.includes('分頭走'));
+});
+test('組名重複或沒填：顯示提醒', () => {
+  const g = loadGenerator({ search: '?groups=1' });
+  g.run(`setSplitUp(true); const m = findOrCreateMember('甲'); state.groups[0].memberIds.push(m.id); state.groups[1].name = 'X'; state.groups[0].name = '';`);
+  assert.match(g.run('groupNameHint(0)'), /還沒填組名/);
+  g.run(`state.groups[0].name = 'X'`);
+  assert.match(g.run('groupNameHint(0)'), /重複/);
+  assert.strictEqual(g.run('groupNameHint(1)'), '組名和別組重複，AI 和標籤都分不出來');
+  g.run(`state.groups[0].name = 'Y'`);
+  assert.strictEqual(g.run('groupNameHint(0)'), '');
+});
+test('A-6：日期格式看不懂會提醒（空白不算）；分組行程改日期後依日期重新編號', () => {
+  const days = [day('1', '2026-11-01'), day('2', ''), day('3', '11/2')];
+  const al = gt.computeAlerts({ members: MEM, groups: GRP, days, hotels: [], year: 2026 });
+  assert.deepStrictEqual(al.filter(a => a.code === 'A-6').map(a => a.date), ['2026-11-01']);
+  assert.strictEqual(al.find(a => a.code === 'A-6').dismissable, false);
+  const g = groupedSandbox();
+  g.run(`state.days[1].date = state.days[0].date; onDayDateChange();`);
+  const nums = g.run(`state.days.slice(0, 3).map(d => d.day)`);
+  assert.strictEqual(nums[0], nums[1] - 0 === nums[0] ? nums[1] : nums[0]);
+  assert.ok(g.run(`state.days.every((d, i) => i === 0 || d.day === state.days[i-1].day || d.day === state.days[i-1].day + 1)`));
+});
+test('分組模式匯入沒有 days 的 JSON：顯示錯誤，不顯示成功', () => {
+  const g = groupedSandbox();
+  g.el('json-paste').value = '{"tripName":"x"}';
+  g.run('importAiJson()');
+  assert.ok(g.el('ai-import-status').innerHTML.includes('沒有 days'));
 });
 
 console.log(`\n${pass} 通過、${fail} 失敗`);
