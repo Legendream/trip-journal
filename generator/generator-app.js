@@ -212,6 +212,7 @@ function hydrateUI() {
   onSelfDriveToggle(true);
   updateTripText();
   updateJsonPaste();
+  renderSplitSetup();
   goTo(state.step || 0);
 }
 
@@ -491,6 +492,7 @@ function applyParsedData(d) {
     else el.value = state.fields[id] || '';
   });
   onSelfDriveToggle(true);
+  renderSplitSetup();
   saveState();
 }
 
@@ -1108,11 +1110,15 @@ function importLoadedConfig(cfg) {
   state.activeTheme = matchIdx >= 0 ? matchIdx : -1;
   state.fields['f-firebase'] = cfg.firebase ? JSON.stringify(cfg.firebase, null, 2) : '';
   state.useFirebase = !!(cfg.firebase && cfg.firebase.databaseURL);
+  // 現有行程 App 還不認得分組，載入的設定檔沒有 with。使用者先在步驟 1 填過的組別，
+  // 用名字對到載入的成員（對不上的成員從組別拿掉）
+  const prevGroups = (state.groups || []).map(g => ({ ...g, names: g.memberIds.map(memberName) }));
   state.members = cfg.members || [];
-  state.groups = [];            // 現有行程 App 還不認得分組，載入既有行程一律當沒分組
-  state.splitUp = false;
-  state.dismissedAlerts = [];
   ensureMemberIds();
+  state.groups = prevGroups.map(({ names, ...g }) => ({
+    ...g, memberIds: names.map(n => (state.members.find(m => m.name === n) || {}).id).filter(Boolean),
+  }));
+  state.dismissedAlerts = [];
   state.days = (cfg.days || []).map(fromLegacyDay);
   state.days.forEach(_orderTimeline);
   state.hotels = cfg.hotels || [];
@@ -1130,6 +1136,7 @@ function importLoadedConfig(cfg) {
     else el.value = state.fields[id] || '';
   });
   onSelfDriveToggle(true);
+  renderSplitSetup();
   saveState();
 }
 
@@ -1141,6 +1148,7 @@ function escHtml(s) {
 
 function renderStep2() {
   renderMembers();
+  renderGroupMembers();
   renderDays();
   renderExtras();
   updateMissingSummary();
@@ -1327,11 +1335,14 @@ function addMember() {
   state.members.push({ id: newMemberId(), name, avatar: '' });
   document.getElementById('new-name').value = '';
   renderMembers();
+  renderGroupMembers();
   saveState();
 }
 function removeMember(i) {
-  state.members.splice(i, 1);
+  const gone = state.members.splice(i, 1)[0];
+  if (gone) removeMemberFromLists(state, gone.id, gone.name);   // 從所有同行名單拿掉；沒分組時什麼都不會動
   renderMembers();
+  if (groupsGrouped() || _groupEditOpen) { renderGroupMembers(); renderDays(); }
   saveState();
 }
 
@@ -1419,12 +1430,14 @@ function renderDays() {
   // ── 保留 scroll 位置 + 哪些 day 是展開的，避免重繪後頁面跳位 ──────
   const savedScrollY = window.scrollY;
   const openIds = new Set([...document.querySelectorAll('.day-card.open')].map(el => el.id));
+  const gctx = groupRenderContext();   // 沒分組是 null：下面所有分組片段都不產生（規則 7）
+  renderAlertBar(gctx);
 
   if (!state.days.length) {
     c.innerHTML = '<div style="text-align:center;color:var(--ink-3);padding:18px;font-size:var(--fs-fine);">尚未有行程，點下方「新增一天」開始</div>';
     return;
   }
-  c.innerHTML = state.days.map((d, i) => {
+  const cardHtml = state.days.map((d, i) => {
     // 一天的 items 依 type 渲染：activity + flight 都進時間軸，lodging 獨立在下方
     // 所有 handler 用「真實 items 索引」操作 state.days[i].items[idx]
     let acts = '';
@@ -1450,6 +1463,7 @@ function renderDays() {
           <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
           <button class="act-del" onclick="removeAct(${i},${idx})" title="刪除">✕</button>
         </div>
+        ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
         <div class="act-row2">
           <span class="map-label">📍</span>
           <input class="act-map-i" value="${escHtml(mapStr)}" placeholder="地圖連結或地名" oninput="setItemMap(${i},${idx},this.value)">
@@ -1480,6 +1494,7 @@ function renderDays() {
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
             <button class="act-del" onclick="removeFlight(${i})" title="移除">✕</button>
           </div>
+          ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
           <div class="flight-row2">
             <input value="${escHtml(fd.from || '')}" placeholder="TPE" maxlength="4" style="text-transform:uppercase;" oninput="state.days[${i}].items[${idx}].data.from=this.value.toUpperCase();saveState()">
             <input value="${escHtml(fd.fromCity || '')}" placeholder="桃園" oninput="state.days[${i}].items[${idx}].data.fromCity=this.value;saveState()">
@@ -1520,6 +1535,7 @@ function renderDays() {
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
             <button class="act-del" onclick="removeHotel(${i})" title="移除">✕</button>
           </div>
+          ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
           <div class="act-row2">
             <span class="map-label">📍</span>
             <input class="act-map-i" value="${escHtml(hMap)}" placeholder="地圖連結或地名" oninput="setItemMap(${i},${idx},this.value)">
@@ -1540,22 +1556,24 @@ function renderDays() {
         </label>` : '';
     const addFlightBtn = hasFlight ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增機票</button>`;
     const addHotelBtn  = hasHotel  ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addHotel(${i})">＋ 新增住宿</button>`;
-    return `<div class="day-card" id="day-${i}">
+    return `<div class="day-card${gctx && gctx.byDay.has(d.id) ? ' g-warned' : ''}" id="day-${i}">
       <div class="day-card-header" onclick="toggleDay(${i})">
         <span class="day-badge">Day ${d.day || i + 1}</span>
         <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
           <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
           <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}</div>
+          ${gctx ? dayGroupHeadHtml(gctx, d, i) : ''}
         </div>
         <button class="btn-icon-x" onclick="event.stopPropagation();removeDay(${i})" title="刪除這天">✕</button>
         <span class="chevron">▶</span>
       </div>
+      ${gctx ? dayGroupBelowHeaderHtml(gctx, d, i) : ''}
       <div class="day-card-body">
         <div class="grid3" style="margin-bottom:12px;">
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:var(--fs-fine);">日期</label>
-            <input type="text" value="${escHtml(d.date || '')}" placeholder="4/15" oninput="state.days[${i}].date=this.value;saveState()">
+            <input type="text" value="${escHtml(d.date || '')}" placeholder="4/15" oninput="state.days[${i}].date=this.value;saveState()"${gctx ? ' onchange="renderDays()"' : ''}>
           </div>
           <div class="field" style="margin-bottom:0;">
             <label style="font-size:var(--fs-fine);">星期</label>
@@ -1572,9 +1590,11 @@ function renderDays() {
         <button class="btn btn-secondary btn-block btn-sm" onclick="addAct(${i})">＋ 新增活動</button>
         ${addFlightBtn}
         ${addHotelBtn}
+        ${gctx ? dayGroupActionsHtml(gctx, d) : ''}
       </div>
     </div>`;
-  }).join('');
+  });
+  c.innerHTML = gctx ? assembleGroupedCards(gctx, cardHtml) : cardHtml.join('');
   // ── 還原 open state + scroll（避免全量重建後頁面跳位）──────────────
   openIds.forEach(id => document.getElementById(id)?.classList.add('open'));
   window.scrollTo({ top: savedScrollY, behavior: 'instant' });
@@ -1594,7 +1614,8 @@ function toggleDay(i) { document.getElementById('day-' + i).classList.toggle('op
 function removeDay(i) {
   if (!confirm('確定刪除 Day ' + (i + 1) + '？')) return;
   state.days.splice(i, 1);
-  state.days.forEach((d, j) => d.day = j + 1);
+  if (groupsGrouped()) renumberDaysByDate(state.days);   // 同日的卡 Day 編號相同
+  else state.days.forEach((d, j) => d.day = j + 1);
   renderDays();
   saveState();
 }

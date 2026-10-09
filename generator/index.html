@@ -800,6 +800,62 @@
   }
   .chip-del:hover { background: var(--err-soft); color: var(--err); }
   .add-member-row { display: flex; gap: 8px; }
+
+  /* ── 分組旅行（規格：docs/design-handoff/group-trip/）。沒分組時這些元素都不會出現 ── */
+  .g-split-q { margin-top: 22px; font-family: var(--font-serif); font-size: var(--fs-h3); font-weight: 700; }
+  .g-toggle { display: flex; gap: 10px; margin-top: 10px; }
+  .g-tog { flex: 1; padding: 12px 10px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--card); font-size: var(--fs-body); font-weight: 700; font-family: inherit; color: var(--ink); cursor: pointer; text-align: center; }
+  .g-tog.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 3px var(--accent-soft); color: var(--accent); }
+  .g-split-groups { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--rule-soft); display: flex; flex-direction: column; gap: 12px; }
+  .g-split-title { font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 700; color: var(--accent); }
+  .g-hint { font-size: var(--fs-fine); color: var(--ink-3); font-style: italic; line-height: 1.6; }
+  .g-group { background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .g-gname { display: flex; align-items: center; gap: 8px; }
+  .g-inp { flex: 1; min-width: 0; border: 1px solid var(--rule); border-bottom: 1.5px solid var(--ink-3); background: var(--paper-light); padding: 9px 12px; font-size: var(--fs-body); font-family: inherit; color: var(--ink); border-radius: 0; }
+  .g-inp::placeholder { color: var(--ink-4); font-style: italic; }
+  .g-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .g-dot-lg { width: 10px; height: 10px; }
+  .g-chips, .g-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+  .g-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 11px; border-radius: 99px; background: var(--paper-deep); border: 1px solid var(--rule); font-size: var(--fs-fine); font-weight: 600; }
+  .g-x { width: 28px; height: 28px; border: none; background: transparent; border-radius: 50%; color: var(--ink-3); font-size: 13px; padding: 0; cursor: pointer; flex-shrink: 0; }
+  .g-pill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 99px; font-size: var(--fs-fine); font-weight: 600; font-family: inherit; border: 1px solid var(--rule); background: var(--paper-light); color: var(--ink-2); cursor: pointer; min-height: 36px; }
+  .g-pill.on { background: var(--ink); color: var(--paper-light); border-color: var(--ink); }
+  .g-members { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule-soft); display: flex; flex-direction: column; gap: 10px; }
+  .g-members-head { display: flex; align-items: center; gap: 8px; }
+  .g-members-title { flex: 1; font-family: var(--font-serif); font-size: var(--fs-body); font-weight: 700; color: var(--accent); }
+  .g-members-sum { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+  .g-grow { display: flex; align-items: center; gap: 8px; font-size: var(--fs-fine); }
+  .g-synced { font-size: var(--fs-fine); color: #3e5a30; background: var(--ok-soft); padding: 6px 12px; display: flex; align-items: center; gap: 6px; }
+  .g-wi { width: 16px; height: 16px; flex-shrink: 0; vertical-align: -3px; margin-right: 4px; }
+  /* 日卡上的組名標籤：只顯示狀態；點擊範圍擴大到 44px 高，外觀不變 */
+  .g-who-row { margin-top: 4px; }
+  .g-tag, .g-avs, .g-pbtn { position: relative; display: inline-flex; align-items: center; gap: 4px; border: none; font-family: inherit; cursor: pointer; white-space: nowrap; }
+  .g-tag { border-radius: 99px; padding: 1px 8px 1px 7px; font-size: 13px; font-weight: 700; line-height: 1.5; }
+  .g-tag-bad { background: var(--warn-soft); color: #7a5c14; box-shadow: 0 0 0 1.5px var(--warn) inset; }
+  .g-avs { font-size: var(--fs-fine); padding: 1px 6px; border-radius: 99px; background: var(--paper-deep); }
+  .g-pbtn { gap: 3px; border-radius: 99px; padding: 2px 8px; border: 1px dashed var(--ink-3); background: transparent; color: var(--ink-2); font-size: 13px; min-height: 26px; }
+  button.g-tag::after, button.g-avs::after, button.g-pbtn::after { content: ""; position: absolute; left: -4px; right: -4px; top: 50%; height: 44px; transform: translateY(-50%); }
+  .g-item-who { margin-top: 2px; }
+  /* 選擇器：單選 */
+  .g-who-picker { margin: 6px 12px 8px; background: #fff; border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .act-edit-row .g-who-picker { margin: 4px 0; }
+  .g-pick-title { font-family: var(--font-serif); font-size: var(--fs-fine); font-weight: 700; }
+  .g-opt { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 2px 4px; border: none; background: none; font-family: inherit; font-size: var(--fs-fine); color: var(--ink); width: 100%; text-align: left; cursor: pointer; }
+  .g-rdot { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ink-3); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .g-rdot.on { border-color: var(--ink); }
+  .g-rin { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+  .g-rav { font-size: 14px; letter-spacing: 1px; opacity: .85; }
+  /* 判讀提醒 */
+  .g-alert-bar { display: flex; align-items: center; margin: 14px 0 0; font-weight: 700; font-size: var(--fs-fine); color: #7a5c14; background: var(--warn-soft); border-left: 3px solid var(--warn); padding: 6px 12px; }
+  .day-card.g-warned { border-color: var(--warn); }
+  .g-warn { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--fs-fine); color: #7a5c14; background: var(--warn-soft); padding: 6px 12px; line-height: 1.5; }
+  .g-warn > span { min-width: 11em; }
+  .g-fixb { flex-shrink: 0; border: 1.5px solid #7a5c14; background: #fff; color: #7a5c14; font-size: var(--fs-fine); font-weight: 700; font-family: inherit; padding: 4px 10px; min-height: 32px; cursor: pointer; }
+  .g-skip { flex-shrink: 0; border: none; background: transparent; color: #7a5c14; font-size: var(--fs-fine); font-weight: 600; font-family: inherit; text-decoration: underline; text-underline-offset: 2px; padding: 4px 6px; min-height: 32px; cursor: pointer; }
+  .g-a3 { border: 1.5px dashed var(--warn); border-radius: var(--radius); background: var(--warn-soft); margin: 4px 0 10px; }
+  .g-pair { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+  .g-pair > .day-card { margin-bottom: 0; }
+  .g-merge { align-self: flex-start; margin-top: 4px; }
   .day-card {
     border: 1px solid var(--line); border-radius: var(--radius);
     margin-bottom: 8px; overflow: hidden; background: var(--card);
@@ -1605,6 +1661,7 @@
         <textarea id="trip-text" rows="8"
           placeholder="例：&#10;4/15 (三) 抵達仙台&#10;  10:30 桃園飛仙台 CI-118&#10;  下午 仙台車站、青葉城跡&#10;  晚餐 牛舌利久&#10;  住 仙台國際飯店&#10;..."
           oninput="updateTripText()"></textarea>
+        <div id="split-setup"></div>
       </div>
 
       <div class="ai-step" id="ai-step-2" data-step="2">
@@ -1805,7 +1862,7 @@
     </div>
     <div class="member-chips mt-16" id="member-chips"></div>
     <div class="add-member-row">
-      <input type="text" id="new-name" placeholder="輸入姓名" style="flex:1;"
+      <input type="text" id="new-name" placeholder="輸入代號或暱稱" style="flex:1;"
         onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addMember()">
       <button class="btn btn-secondary" onclick="addMember()">＋ 新增</button>
     </div>
@@ -2104,6 +2161,7 @@
 </div>
 
 <script src="group-trip.js?v=20261009a"></script>
+<script src="group-ui.js?v=20261009a"></script>
 <script src="generator-app.js?v=20261009a"></script>
 
 <!-- Undo Toast -->
