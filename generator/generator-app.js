@@ -746,9 +746,12 @@ function fromLegacyDay(d) {
 }
 
 // 匯出收斂點：統一模型 → template 既有格式（location.verified 等編輯器專屬欄位丟棄）
-function toLegacyDay(d) {
+// grouped = true（有分組）時多輸出日卡 id 與各層 `with`（成員 id）；沒分組維持原樣（規則 7）。
+// unsure、withUnknown 只在產生器裡用，不輸出。
+function toLegacyDay(d, grouped) {
   d = d || {};
   const items = d.items || [];
+  const withOf = o => (grouped && o && Array.isArray(o.with) && o.with.length) ? { with: [...o.with] } : {};
   // 航班也進時間軸：icon ✈️，sub 組合航班資訊，time = 起飛時間
   const acts = items.filter(it => it.type === 'activity' || it.type === 'flight').map(it => {
     if (it.type === 'flight') {
@@ -765,26 +768,31 @@ function toLegacyDay(d) {
         id: it.id, icon: '✈️', name: it.title || '班機',
         sub: parts.join(' · '),
         time: fd.dept || it.time || '',
-        map: '', ref: it.ref || ''
+        map: '', ref: it.ref || '',
+        ...withOf(it)
       };
     }
     return {
       id: it.id, icon: it.icon || '📍', name: it.title || '', sub: it.sub || '',
       time: it.time || '', map: locationForExport(it.location), ref: it.ref || '',
-      park: it.park === false ? false : undefined   // 徒步景點不查停車場
+      park: it.park === false ? false : undefined,   // 徒步景點不查停車場
+      ...withOf(it)
     };
   });
   const lItem = items.find(it => it.type === 'lodging');
   const out = {
+    ...(grouped && d.id ? { id: d.id } : {}),   // 分組行程用日卡 id 當卡片識別（同一天可有兩張卡）
     day: d.day || 1, date: d.date || '', wd: d.wd || '',
     theme: d.theme || '', emoji: d.emoji || '📍',
+    ...withOf(d),
     selfDrive: !!d.selfDrive,   // 這天自駕 → template 才在本日景點顯示停車場
     acts,
     flight: null,   // 航班已移入 acts，不再獨立輸出
     hotel: lItem ? {
       name: lItem.title || '', note: lItem.data.note || '',
       paid: !!lItem.data.paid, map: locationForExport(lItem.location),
-      park: lItem.park === false ? false : undefined
+      park: lItem.park === false ? false : undefined,
+      ...withOf(lItem)
     } : null,
     parking: d.parking || null,   // 透傳精選停車場清單（legacy 帶進來的）
     car: null                     // 租車已折進活動 ref，不再用獨立 car 物件
@@ -1114,14 +1122,24 @@ function importLoadedConfig(cfg) {
   state.activeTheme = matchIdx >= 0 ? matchIdx : -1;
   state.fields['f-firebase'] = cfg.firebase ? JSON.stringify(cfg.firebase, null, 2) : '';
   state.useFirebase = !!(cfg.firebase && cfg.firebase.databaseURL);
-  // 現有行程 App 還不認得分組，載入的設定檔沒有 with。使用者先在步驟 1 填過的組別，
-  // 用名字對到載入的成員（對不上的成員從組別拿掉）
   const prevGroups = (state.groups || []).map(g => ({ ...g, names: g.memberIds.map(memberName) }));
   state.members = cfg.members || [];
-  ensureMemberIds();
-  state.groups = prevGroups.map(({ names, ...g }) => ({
-    ...g, memberIds: names.map(n => (state.members.find(m => m.name === n) || {}).id).filter(Boolean),
-  }));
+  ensureMemberIds();   // 設定檔有成員 id 就原樣保留；舊檔沒有才當場補發
+  if (Array.isArray(cfg.groups) && cfg.groups.length) {
+    // 設定檔帶組別：直接採用（組別 id、成員 id、日卡 id、各層 with 都原樣保留）
+    const ids = new Set(state.members.map(m => m.id));
+    state.groups = cfg.groups.map((g, k) => ({
+      id: g.id || ('g' + Date.now().toString(36) + k), name: g.name || '',
+      memberIds: (g.memberIds || []).filter(id => ids.has(id)), order: k,
+    }));
+    state.splitUp = true;
+  } else {
+    // 沒有 groups 的設定檔（舊檔、沒分組）：使用者先在步驟 1 填過的組別，
+    // 用名字對到載入的成員（對不上的成員從組別拿掉）
+    state.groups = prevGroups.map(({ names, ...g }) => ({
+      ...g, memberIds: names.map(n => (state.members.find(m => m.name === n) || {}).id).filter(Boolean),
+    }));
+  }
   state.dismissedAlerts = [];
   state.days = (cfg.days || []).map(fromLegacyDay);
   state.days.forEach(_orderTimeline);
@@ -2126,6 +2144,8 @@ function genPrefix() {
 
 function collectConfig() {
   const f = state.fields;
+  ensureMemberIds();
+  const groups = activeGroups();   // 有生效的組別才輸出分組欄位（規則 7）
   const title = (f['f-title'] || '').trim();
   const shortTitle = title.replace(/\s*\d{4}$/, '').slice(0, 6) || title.slice(0, 6);
   const firstEmoji = state.days[0]?.emoji || '✈️';
@@ -2161,10 +2181,12 @@ function collectConfig() {
       swCacheKey: state._loadedSwCacheKey || (pfx + '-v1'),
     },
     firebase,
-    members: state.members.map(({ id, ...m }) => m),   // 內部 id 不輸出（行程 App 還用名字）
+    members: state.members.map(({ id, ...m }) => ({ id, ...m })),   // 一律帶成員 id（行程 App 與記帳用它認人）
+    ...(groups.length ? { groups: groups.map(g => ({ id: g.id, name: g.name, memberIds: [...g.memberIds] })) } : {}),
     // 總開關關閉時，匯出一律當作非自駕（逐天 selfDrive 仍保留在 state，重開即恢復）
-    days: state.days.map(d => toLegacyDay(f['f-self-drive'] ? d : { ...d, selfDrive: false })),
-    hotels: state.hotels.map(({ with: _w, withUnknown, unsure, ...h }) => h),   // 分組欄位這一包先不輸出
+    days: state.days.map(d => toLegacyDay(f['f-self-drive'] ? d : { ...d, selfDrive: false }, groups.length > 0)),
+    hotels: state.hotels.map(({ with: w, withUnknown, unsure, ...h }) =>
+      (groups.length && Array.isArray(w) && w.length) ? { ...h, with: [...w] } : h),
     restaurants: state.parsedExtras.restaurants || {},
     weatherLocs: state.parsedExtras.weatherLocs || {},
     checklist: state.parsedExtras.checklist || [],
@@ -2468,6 +2490,8 @@ async function downloadZip() {
     stat.innerHTML = '<div class="status-box status-err">JSZip 未載入，請重新整理頁面</div>';
     return;
   }
+  const blocked = exportBlockedHtml();
+  if (blocked) { stat.innerHTML = '<div class="status-box status-err">' + blocked + '</div>'; return; }
   stat.innerHTML = '<div class="status-box status-info"><span class="spinner"></span>&nbsp;打包中…</div>';
   try {
     const { html, cfg } = buildIndexHtml();
@@ -2536,6 +2560,8 @@ async function buildShareUrl() {
   if (!state.fields['f-title']) {
     throw new Error('請先在步驟 2 填入旅程名稱');
   }
+  const blocked = exportBlockedHtml();
+  if (blocked) throw new Error(blocked);   // generateShareUrl 會把訊息放進狀態框
   const json = shareCfgJson();
   const bytes = new TextEncoder().encode(json);
   const compressed = await gzipBytes(bytes);
@@ -2590,7 +2616,7 @@ async function generateShareUrl({ refreshed = false } = {}) {
 // 分享按鈕一律拿依目前行程產生的連結；回傳空字串代表產生失敗
 async function ensureFreshShareUrl() {
   const input = document.getElementById('share-url-input');
-  if (input.value && !shareUrlIsStale()) return input.value;
+  if (input.value && !shareUrlIsStale() && !exportBlockedHtml()) return input.value;
   await generateShareUrl({ refreshed: !!input.value });
   return input.value;
 }
