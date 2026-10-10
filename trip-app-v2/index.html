@@ -212,6 +212,15 @@
       border-top: 1px solid transparent;
     }
     .day-card.open .day-body { max-height: 2000px; border-top-color: var(--border); }
+    /* 分組旅行：組名標籤與同日卡片堆疊（只在設定檔有 groups 時出現） */
+    .gt { display: inline-flex; align-items: center; gap: 4px; border-radius: 99px; padding: 1px 8px 1px 6px; font-size: 11px; font-weight: 700; line-height: 1.6; white-space: nowrap; }
+    .gt-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .gt-av { background: var(--pink-pale); color: var(--text); padding: 1px 8px; }
+    .act-info > .gt, .day-hotel-info > .gt { display: flex; width: max-content; max-width: 100%; margin-bottom: 3px; }
+    .day-meta.has-tag { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .day-card.pair-top { border-radius: 18px 18px 8px 8px; margin-bottom: 4px; }
+    .day-card.pair-mid { border-radius: 8px; margin-bottom: 4px; }
+    .day-card.pair-bot { border-radius: 8px 8px 18px 18px; }
     .act-list { padding: 4px 16px 4px; }
     .act-item {
       display: flex; align-items: flex-start; gap: 10px;
@@ -1265,9 +1274,115 @@ const ITIN_PATH  = _PFX + "/itinerary";
 const NOTES_PATH = _PFX + "/notes";
 const CHECK_KEY = _PFX + "-check-v1";
 
+// ─── 分組旅行（設定檔有 groups 才啟用；沒有就跟改前完全一樣）─────────────
+// 下面「純函式」與 generator/group-trip.js 的同名函式必須一致：
+// scripts/test-group-trip.js 會把 group-pure-begin／end 之間的程式抽出來逐項比對。
+// <group-pure-begin>
+function _gtIds(members) { return (members || []).map(m => m.id); }
+function _gtSortByMembers(ids, members) {
+  const order = new Map(_gtIds(members).map((id, i) => [id, i]));
+  return [...new Set(ids)].sort((a, b) => order.get(a) - order.get(b));
+}
+function sameIdSet(a, b) {
+  if (a.length !== b.length) return false;
+  const s = new Set(a);
+  return b.every(x => s.has(x));
+}
+// 空值 = 全員
+function effectiveIds(withIds, members) {
+  return withIds && withIds.length ? withIds : _gtIds(members);
+}
+// 深色 = 主題主色混入 #1e0d12 35%（七款主題對比皆 ≥ 4.51:1）
+function deepTagColor(themeHex) {
+  const hx = h => [1, 3, 5].map(i => parseInt(String(h).slice(i, i + 2), 16));
+  const base = /^#[0-9a-f]{6}$/i.test(themeHex || '') ? themeHex : '#a8362f';
+  const ink = hx('#1e0d12');
+  return '#' + hx(base).map((v, i) => Math.round(v * 0.65 + ink[i] * 0.35).toString(16).padStart(2, '0')).join('');
+}
+// 第 1 組實心、第 2 組外框、第 3 組淡底加框；回傳標籤本體與圓點的 inline style
+function groupTagStyle(index, deep, pale) {
+  const kind = index % 3;
+  if (kind === 0) return { tag: `background:${deep};color:#fff`, dot: 'background:#fff' };
+  if (kind === 1) return { tag: `background:#fff;color:${deep};box-shadow:0 0 0 1.5px ${deep} inset`, dot: `background:${deep}` };
+  return { tag: `background:${pale || '#f3e3d8'};color:${deep};box-shadow:0 0 0 1.5px ${deep} inset`, dot: `background:${deep}` };
+}
+// 'all'：全員；'group'：恰等於某組；'members'：對不上任何一組（顯示成員頭像）
+function describeList(ids, groups, members) {
+  const all = _gtIds(members);
+  const list = effectiveIds(ids, members);
+  if (sameIdSet(list, all)) return { kind: 'all', ids: all };
+  const i = (groups || []).findIndex(g => sameIdSet(g.memberIds, list));
+  if (i >= 0) return { kind: 'group', index: i, group: groups[i], ids: list };
+  return { kind: 'members', ids: _gtSortByMembers(list, members) };
+}
+// <group-pure-end>
+
+const GROUPS     = (Array.isArray(_CFG.groups) ? _CFG.groups : [])
+  .filter(g => g && g.name && Array.isArray(g.memberIds) && g.memberIds.length);
+const IS_GROUPED = GROUPS.length > 0;                 // 有分組：卡片用日卡 id 識別；沒有：維持用 day
+const GMEMBERS   = MEMBERS.map(m => ({ ...m, id: m.id || m.name }));   // 舊設定檔沒有成員 id：用名字代替
+const _GRP_DEEP  = deepTagColor(_CFG.meta.themeColor);
+const _GRP_PALE  = _CFG.meta.bgPale;
+
+// 卡片識別：分組行程用日卡 id（同一天兩張卡的 day 相同），沒分組維持用 day（已上線行程的資料不受影響）
+function _ck(d) { return IS_GROUPED && d.id ? String(d.id).replace(/[^\w-]/g, "_") : d.day; }
+function _cardByKey(k) { return DAYS.find(x => _ck(x) === k); }
+function _keyLit(k) { return typeof k === "number" ? String(k) : "'" + k + "'"; }   // 放進 onclick 的字面值
+function _keyFromStr(s) {                                                          // <select> 的值 → 卡片 key
+  s = String(s);
+  const d = DAYS.find(x => String(_ck(x)) === s);
+  return d ? _ck(d) : (IS_GROUPED ? s : Number(s));
+}
+function _sameDayCards(day) { return DAYS.filter(x => x.day === day); }
+// 舊資料備援：以 day 存的資料（分組前或中途才改成分組），只有「那天只有一張卡」才沿用
+function _legacyDay(d) { return IS_GROUPED && d.id && _sameDayCards(d.day).length === 1 ? d.day : null; }
+function _byCard(map, d) {
+  const v = map[_ck(d)];
+  if (v !== undefined && v !== null) return v;
+  const ld = _legacyDay(d);
+  return ld != null ? map[ld] : undefined;
+}
+// 旅伴新增的景點屬於哪張卡：有卡片 id 就看卡片 id；只有 day（舊資料、或卡片 id 已不存在）歸到那天的第一張卡
+function _actOnCard(a, d) {
+  if (!IS_GROUPED) return a.day === d.day;
+  if (a.card && DAYS.some(x => _ck(x) === a.card)) return a.card === _ck(d);
+  return a.day === d.day && DAYS.find(x => x.day === d.day) === d;
+}
+// 預設景點的 id：沒有 id 的舊設定檔用「卡片_序號」。同日多卡時用卡片 key，免得兩張卡撞號
+function _actPid(d, a, i) {
+  return a.id || ((IS_GROUPED && _sameDayCards(d.day).length > 1 ? _ck(d) : d.day) + "_" + i);
+}
+function _dayFields(key) {   // 新增景點要存的「屬於哪一天／哪張卡」
+  const d = _cardByKey(key);
+  return IS_GROUPED && d && d.id ? { day: d.day, card: _ck(d) } : { day: key };
+}
+function _tripDayCount() { return IS_GROUPED ? new Set(DAYS.map(d => d.day)).size : DAYS.length; }
+function _memberNames(ids) { return ids.map(id => (GMEMBERS.find(m => m.id === id) || {}).name || "").filter(Boolean); }
+// 同日多卡時，選單裡這張卡的名稱（組名；對不上任何一組就列成員代號）
+function _cardLabel(d) {
+  if (!IS_GROUPED || _sameDayCards(d.day).length < 2) return "";
+  const desc = describeList(d.with, GROUPS, GMEMBERS);
+  if (desc.kind === "group") return desc.group.name;
+  if (desc.kind === "members") return _memberNames(desc.ids).join("、");
+  return "全員";
+}
+// 組名標籤（名單反推）：全員不加；某組 → 組名；對不上 → 成員頭像（沒有頭像就用名字）
+function _listTagHtml(ids) {
+  if (!IS_GROUPED || !ids || !ids.length) return "";
+  const desc = describeList(ids, GROUPS, GMEMBERS);
+  if (desc.kind === "all") return "";
+  if (desc.kind === "group") {
+    const st = groupTagStyle(desc.index, _GRP_DEEP, _GRP_PALE);
+    return `<span class="gt" style="${st.tag}"><span class="gt-dot" style="${st.dot}"></span>${_esc(desc.group.name)}</span>`;
+  }
+  const ms = desc.ids.map(id => GMEMBERS.find(m => m.id === id)).filter(Boolean);
+  const text = ms.length && ms.every(m => m.avatar) ? ms.map(m => m.avatar).join("") : ms.map(m => m.name).join("、");
+  return `<span class="gt gt-av" role="img" aria-label="同行：${_esc(ms.map(m => m.name).join("、"))}">${_esc(text)}</span>`;
+}
+
 // ─── App State ────────────────────────────────────────────────────
 
-let openDays       = new Set();
+let openDays       = new Set();   // 卡片 key（分組行程 = 日卡 id；沒分組 = day）
 let checked        = new Set(JSON.parse(localStorage.getItem(CHECK_KEY) || "[]"));
 let currentMeeting = null;
 let countdownTimer = null;
@@ -1795,7 +1910,7 @@ function wmoIcon(code) { return WMO_ICON[code] || "🌡"; }
 // 地名文字一律不查（2026-09 起）：拿地名丟地理編碼會落在不相干但看似正常的地點
 //（實測「早餐」查到別的城市的餐廳），程式無法分辨對錯。沒有自己地點的景點沿用當天其他地點。
 const _WX_CACHE  = {};        // "lat,lon" → { "M/D": { daily, hours } }
-const _DAY_WX_FALLBACK = {};  // d.date → 當天第一個有位置的 "lat,lon"
+const _DAY_WX_FALLBACK = {};  // 卡片的備援鍵（沒分組 = d.date；分組 = 日卡 id）→ 這張卡第一個有位置的 "lat,lon"
 // 天氣還在載入中（展開短網址＋抓天氣跑完前）：讓已知有地點的景點顯示「載入中」而非直接空白，
 // 避免使用者誤以為天氣功能不見了（實際上只是還沒跑完）。
 let   _wxLoading = true;
@@ -2013,6 +2128,18 @@ function _weatherQueriesByDate() {
   });
   return byDate;
 }
+// 沒有自己地點的景點借用天氣：同日多卡時各借各的（福岡組那張卡不能借到鹿兒島的天氣）
+function _wxFallbackKey(d) { return IS_GROUPED && d.id ? _ck(d) : d.date; }
+function _weatherQueriesByCard() {
+  const byCard = {};                       // 備援鍵 → Set("lat,lon")
+  DAYS.forEach(d => {
+    _dayPlaces(d).forEach(p => {
+      const q = _extractGeoQuery(p.map, p.geo);
+      if (q) (byCard[_wxFallbackKey(d)] || (byCard[_wxFallbackKey(d)] = new Set())).add(q);
+    });
+  });
+  return byCard;
+}
 // 還沒展開、本次開啟也還沒試過的短網址
 function _pendingShortLinks() {
   const out = new Set();
@@ -2042,9 +2169,10 @@ async function _runWeatherPass() {
   if (pending.length) await Promise.all(pending.map(_expandMapLink));
 
   const byDate = _weatherQueriesByDate();
-  // 每天的 fallback（當天第一個有位置的地點）：給當天沒有自己地點的活動借用天氣
-  Object.keys(_DAY_WX_FALLBACK).forEach(k => { if (!byDate[k]) delete _DAY_WX_FALLBACK[k]; });
-  Object.keys(byDate).forEach(date => { _DAY_WX_FALLBACK[date] = [...byDate[date]][0]; });
+  // 每張卡的 fallback（這張卡第一個有位置的地點）：給這張卡沒有自己地點的活動借用天氣
+  const byCard = _weatherQueriesByCard();
+  Object.keys(_DAY_WX_FALLBACK).forEach(k => { if (!byCard[k]) delete _DAY_WX_FALLBACK[k]; });
+  Object.keys(byCard).forEach(k => { _DAY_WX_FALLBACK[k] = [...byCard[k]][0]; });
   const uniqueQ = [...new Set(Object.values(byDate).flatMap(s => [...s]))];
   if (!uniqueQ.length) { _wxLoading = false; renderItinerary({ cardsOnly: true }); return; }
 
@@ -2089,9 +2217,10 @@ function _isoToMD(iso) { return `${parseInt(iso.slice(5, 7))}/${parseInt(iso.sli
 function refreshWeather() {
   if (_pendingShortLinks().length) { loadWeatherCapsules(); return; }
   const byDate = _weatherQueriesByDate();
+  const byCard = _weatherQueriesByCard();
   const needs = Object.entries(byDate).some(([date, qs]) =>
-    [...qs].some(q => { const c = _latLonOf(q); return !(_WX_CACHE[`${c.lat},${c.lon}`] || {})[date]; })
-    || _DAY_WX_FALLBACK[date] !== [...qs][0]);
+    [...qs].some(q => { const c = _latLonOf(q); return !(_WX_CACHE[`${c.lat},${c.lon}`] || {})[date]; }))
+    || Object.entries(byCard).some(([k, qs]) => _DAY_WX_FALLBACK[k] !== [...qs][0]);
   if (needs) loadWeatherCapsules();
 }
 
@@ -2192,7 +2321,7 @@ function _orderDayActs(presetActs, addedActs) {
 function _dayMergedActs(d) {
   const _presetActs = d.acts
     .map((a, i) => {
-      const _pid = a.id || (d.day + "_" + i);
+      const _pid = _actPid(d, a, i);
       const _ov  = itinEdited[_pid];
       const _newMin = _ov ? _timeMin(_ov.time) : -1;
       const _timeMoved = _newMin >= 0 && _newMin !== _timeMin(a.time);
@@ -2200,25 +2329,33 @@ function _dayMergedActs(d) {
     })
     .filter(a => !itinHidden[a._pid]);
   const _addedActs = itinAdded
-    .filter(a => a.day === d.day)
+    .filter(a => _actOnCard(a, d))
     .map(a => ({ ...a, _src: "added" }));
   return _orderDayActs(_presetActs, _addedActs);
 }
 
 // 同上，抽出「當天住宿」的合併邏輯（preset + 覆寫 + 隱藏）供分享圖卡共用。
 function _dayHotelInfo(d) {
-  return hotelHidden[d.day] ? null
-    : ((d.hotel || hotelEdited[d.day]) ? Object.assign({}, d.hotel || {}, hotelEdited[d.day] || {}) : null);
+  const _hh = _byCard(hotelHidden, d), _he = _byCard(hotelEdited, d);
+  return _hh ? null
+    : ((d.hotel || _he) ? Object.assign({}, d.hotel || {}, _he || {}) : null);
 }
 
 function renderItinerary(opts) {
   opts = opts || {};
-  const html  = DAYS.map(d => {
-    const isOpen  = openDays.has(d.day);
+  const html  = DAYS.map((d, _di) => {
+    const _key    = _ck(d);                       // 卡片 key：分組行程 = 日卡 id，沒分組 = day
+    const _kl     = _keyLit(_key);
+    const isOpen  = openDays.has(_key);
     const isToday = isTodayDate(d.date);
     const past    = isPast(d.date) && !isToday;
 
-    const _wxFallback = _DAY_WX_FALLBACK[d.date] || null;
+    const _wxFallback = _DAY_WX_FALLBACK[_wxFallbackKey(d)] || null;
+    // 分組旅行：同一天的卡上下堆疊（間距 4px、相鄰內側圓角 8px）；名單不是全員的卡在日期前加組名標籤
+    const _sameAsPrev = IS_GROUPED && _di > 0 && DAYS[_di - 1].day === d.day && DAYS[_di - 1].date === d.date;
+    const _sameAsNext = IS_GROUPED && _di < DAYS.length - 1 && DAYS[_di + 1].day === d.day && DAYS[_di + 1].date === d.date;
+    const _pairCls    = _sameAsPrev ? (_sameAsNext ? " pair-mid" : " pair-bot") : (_sameAsNext ? " pair-top" : "");
+    const _dayTag     = _listTagHtml(d.with);
     const _mergedActs = _dayMergedActs(d);
     const _canEdit = firebaseReady;
     const actsHtml = _mergedActs.map(a => {
@@ -2244,13 +2381,14 @@ function renderItinerary(opts) {
             ${_mapBtn}${_parkBtn}${_menu}
           </div>` : "";
       const _nm = _userVal ? _esc(a.name) : a.name;
+      const _actTag = _listTagHtml(a.with);   // 活動有自己的同行名單時，標籤放在活動名稱上方
       const _badge = _added
         ? `<span class="act-added-badge">旅伴新增${a.by ? "・" + _esc(a.by) : ""}</span>`
         : (a._edited ? `<span class="act-edited-badge">已修改</span>` : "");
       return `
       <div class="act-item">
         <span class="act-icon">${a.icon || "📍"}</span>
-        <div class="act-info">
+        <div class="act-info">${_actTag}
           <div class="act-head">
             <div class="act-name">${_nm}${_badge}</div>
             ${a.time ? `<span class="time-tag">${a.time}</span>` : ""}
@@ -2268,10 +2406,10 @@ function renderItinerary(opts) {
       const _hParkBtn = (d.selfDrive && _hotel.name && _hotel.park !== false)
         ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(_hotel))}" target="_blank" rel="noopener">🅿️ 停車</a>` : "";
       const _hMenu = _canEdit ? `<span class="slot-menu-wrap">
-          <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('hotel:${d.day}')">⋯</button>
-          ${itinMenuKey === "hotel:" + d.day ? `<div class="act-menu">
-            <button class="act-menu-item" onclick="startEditHotel(${d.day})">✏️ 編輯</button>
-            <button class="act-menu-item danger" onclick="deleteHotel(${d.day})">🗑 刪除</button>
+          <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('hotel:${_key}')">⋯</button>
+          ${itinMenuKey === "hotel:" + _key ? `<div class="act-menu">
+            <button class="act-menu-item" onclick="startEditHotel(${_kl})">✏️ 編輯</button>
+            <button class="act-menu-item danger" onclick="deleteHotel(${_kl})">🗑 刪除</button>
           </div>` : ""}
         </span>` : "";
       const _hActions = (_hMapBtn || _hParkBtn || _hMenu) ? `
@@ -2282,7 +2420,7 @@ function renderItinerary(opts) {
       return `
       <div class="day-hotel">
         <span class="day-hotel-icon">🏨</span>
-        <div class="day-hotel-info">
+        <div class="day-hotel-info">${_listTagHtml(_hotel.with)}
           <div class="day-hotel-name">${_esc(_hotel.name || "")}</div>
           <div class="day-hotel-meta">
             <span class="hotel-paid-badge ${_hotel.paid ? 'paid' : 'unpaid'}">
@@ -2296,7 +2434,7 @@ function renderItinerary(opts) {
         </div>
       </div>`;
     })() : "";
-    const hotelAddHtml = (!_hotel && _canEdit) ? `<button class="slot-add-btn" onclick="startAddHotel(${d.day})">➕ 新增住宿</button>` : "";
+    const hotelAddHtml = (!_hotel && _canEdit) ? `<button class="slot-add-btn" onclick="startAddHotel(${_kl})">➕ 新增住宿</button>` : "";
 
     const restaurantHtml = (() => {
       const rests = RESTAURANTS[d.day];
@@ -2342,15 +2480,15 @@ function renderItinerary(opts) {
     })() : "";
 
     return `
-      <div class="day-card ${isOpen ? "open" : ""}${past ? " is-past" : ""}${isToday ? " day-today" : ""}" data-day="${d.day}">
-        <div class="day-header" onclick="toggleDay(${d.day})">
+      <div class="day-card ${isOpen ? "open" : ""}${past ? " is-past" : ""}${isToday ? " day-today" : ""}${_pairCls}" data-day="${_key}">
+        <div class="day-header" onclick="toggleDay(${_kl})">
           <div class="day-badge ${isToday ? "is-today" : past ? "is-past" : ""}">
             <span class="day-num">Day ${d.day}</span>
             <span class="day-date">${d.date.split("/")[1]}</span>
           </div>
           <div class="day-info">
             <div class="day-theme">${d.theme}</div>
-            <div class="day-meta">${d.date}（${d.wd}）・${_mergedActs.length} 個景點</div>
+            <div class="day-meta${_dayTag ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點</div>
           </div>
           <span class="day-emoji">${d.emoji}</span>
           <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -2359,13 +2497,13 @@ function renderItinerary(opts) {
         </div>
         <div class="day-body">
           <div class="act-list">${actsHtml}</div>
-          ${_canEdit ? `<div class="itin-add-row"><button class="itin-add-btn" onclick="showItinForm(${d.day})">➕ 新增景點</button></div>` : ""}
+          ${_canEdit ? `<div class="itin-add-row"><button class="itin-add-btn" onclick="showItinForm(${_kl})">➕ 新增景點</button></div>` : ""}
           ${hotelHtml}
           ${hotelAddHtml}
           ${carHtml}
           ${parkingHtml}
           ${restaurantHtml}
-          <div class="day-share-row"><button class="day-share-btn" onclick="openDayShare(${d.day})">📤 分享這天${_dayHasShareUpdate(d) ? `<span class="share-updated-badge">已更新</span>` : ""}</button></div>
+          <div class="day-share-row"><button class="day-share-btn" onclick="openDayShare(${_kl})">📤 分享這天${_dayHasShareUpdate(d) ? `<span class="share-updated-badge">已更新</span>` : ""}</button></div>
         </div>
       </div>`;
   }).join("");
@@ -2416,8 +2554,8 @@ function _graphemes(text) {
 
 // 單日分享：改用行程海報（drawShowcaseCanvas 的 day scope），
 // 跟「製作行程海報」共用同一顆 overlay／canvas，見下面 Showcase Poster 區塊。
-function openDayShare(day) {
-  const d = DAYS.find(x => x.day === day);
+function openDayShare(day) {   // day = 卡片 key
+  const d = _cardByKey(day);
   if (!d) return;
   if (!_dayMergedActs(d).length) { alert("該日尚無行程內容"); return; }
   _showcaseScope   = "day";
@@ -2444,7 +2582,7 @@ async function _copyLinkToClipboard(inputId, btnId) {
 }
 
 // ─── 單日行程分享：已更新提示（跟上次分享時的內容快照比對） ──────────
-function _daySnapshotKey(day) { return _PFX + "-share-snapshot-" + day; }
+function _daySnapshotKey(key) { return _PFX + "-share-snapshot-" + key; }   // key = 卡片 key（沒分組 = day）
 function _daySnapshot(d) {
   const acts  = _dayMergedActs(d).map(a => ({ n: a.name, t: a.time, s: a.sub, r: a.ref }));
   const hotel = _dayHotelInfo(d);
@@ -2452,12 +2590,16 @@ function _daySnapshot(d) {
 }
 function _dayHasShareUpdate(d) {
   let saved;
-  try { saved = localStorage.getItem(_daySnapshotKey(d.day)); } catch (e) { return false; }
+  try {
+    saved = localStorage.getItem(_daySnapshotKey(_ck(d)));
+    // 中途才改成分組：那天只有一張卡時，沿用分組前以 day 存的快照
+    if (saved == null && _legacyDay(d) != null) saved = localStorage.getItem(_daySnapshotKey(_legacyDay(d)));
+  } catch (e) { return false; }
   if (saved == null) return false; // 從未分享過，沒有比較基準
   return saved !== _daySnapshot(d);
 }
-function _markDayShared(day) {
-  const d = DAYS.find(x => x.day === day);
+function _markDayShared(day) {   // day = 卡片 key
+  const d = _cardByKey(day);
   if (!d) return;
   try { localStorage.setItem(_daySnapshotKey(day), _daySnapshot(d)); } catch (e) {}
 }
@@ -2516,7 +2658,7 @@ function closeShowcaseShare() {
   document.getElementById("showcase-overlay").classList.remove("visible");
 }
 function setShowcaseDay(dayStr) {
-  _showcaseDay = Number(dayStr);
+  _showcaseDay = _keyFromStr(dayStr);   // 卡片 key
   renderShowcaseOverlay();
 }
 function _setShowcasePhotoUrl(url) {
@@ -2562,9 +2704,9 @@ function renderShowcaseOverlay() {
   let fieldsHtml = "";
   if (_showcaseScope === "day") {
     const withContent = _showcaseDaysWithContent();
-    if (!withContent.some(d => d.day === _showcaseDay)) _showcaseDay = withContent[0].day;
+    if (!withContent.some(d => _ck(d) === _showcaseDay)) _showcaseDay = _ck(withContent[0]);
     const dayOptions = withContent
-      .map(d => `<option value="${d.day}" ${d.day === _showcaseDay ? "selected" : ""}>Day ${d.day}・${_esc(d.theme)}</option>`)
+      .map(d => `<option value="${_ck(d)}" ${_ck(d) === _showcaseDay ? "selected" : ""}>Day ${d.day}${_cardLabel(d) ? "・" + _esc(_cardLabel(d)) : ""}・${_esc(d.theme)}</option>`)
       .join("");
     fieldsHtml = `
       <div class="showcase-day-row">
@@ -2889,14 +3031,14 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
   };
 
   if (scope === "day") {
-    const d = DAYS.find(x => x.day === day);
+    const d = _cardByKey(day);
     if (!d) { ctx.setTransform(1, 0, 0, 1, 0, 0); return; }
     const acts  = _dayMergedActs(d).map(a => a.name).filter(Boolean);
     const hotel = _dayHotelInfo(d);
     const hotelName = hotel && hotel.name;
     const cap = (caption || "").trim();
     const dateText = `${d.date}（${d.wd}）`;
-    const totalText = `／ ${DAYS.length} 天`;
+    const totalText = `／ ${_tripDayCount()} 天`;
 
     if (!photoImg) {
       drawBar();
@@ -2959,7 +3101,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
     drawBar();
     const title = layoutTitle(tripTitle, [56, 67], [48, 58]);
     const subY = drawTitle(title, 64) + 12;
-    const sub = first && last ? `${first.date}（${first.wd}）→ ${last.date}（${last.wd}）・${DAYS.length} 天` : `${DAYS.length} 天`;
+    const sub = first && last ? `${first.date}（${first.wd}）→ ${last.date}（${last.wd}）・${_tripDayCount()} 天` : `${_tripDayCount()} 天`;
     setFont(26, 600);
     put(clamp(sub, 26, 600, CW, 1)[0], PAD, subY, 36, DIM);
     const top = subY + 76, avail = LIMIT - top;
@@ -3063,14 +3205,14 @@ function sendShowcaseShare() {
   const canvas = document.getElementById("showcase-canvas");
   if (!canvas) return;
   const isDay = _showcaseScope === "day";
-  const d = isDay ? DAYS.find(x => x.day === _showcaseDay) : null;
-  const label = isDay ? `day${_showcaseDay}` : "trip";
+  const d = isDay ? _cardByKey(_showcaseDay) : null;
+  const label = isDay ? `day${d ? d.day : _showcaseDay}` : "trip";
   const fileName = `poster-${label}-${Date.now()}.png`;
   const title = (_CFG.meta && _CFG.meta.title) || "我的行程";
   // 單日是傳給同行旅伴看今天的行程，分享文字不附生成器首頁連結；
   // 整趟是給非同行者看的展示海報，才附回訪入口。
   const shareText = isDay
-    ? `Day ${d ? d.day : _showcaseDay}・${(d && d.theme) || title}`
+    ? `Day ${d ? d.day : _showcaseDay}${d && _cardLabel(d) ? "・" + _cardLabel(d) : ""}・${(d && d.theme) || title}`
     : `${title}\n${SHOWCASE_HOMEPAGE_URL}`;
   const afterDelivered = () => { if (isDay) { _markDayShared(_showcaseDay); renderItinerary({ cardsOnly: true }); } };
 
@@ -3179,9 +3321,9 @@ function doUndo() {
 }
 
 // ─── 住宿編輯 ─────────────────────────────────────────────────────
-function _hotelSeed(day) {
-  const d = DAYS.find(x => x.day === day);
-  const b = Object.assign({}, (d && d.hotel) || {}, hotelEdited[day] || {});
+function _hotelSeed(day) {   // day = 卡片 key
+  const d = _cardByKey(day);
+  const b = Object.assign({}, (d && d.hotel) || {}, (d && _byCard(hotelEdited, d)) || {});
   return { name: b.name || "", note: b.note || "", paid: !!b.paid,
            map: (b.map && b.map !== b.name) ? b.map : "" };
 }
@@ -3235,26 +3377,33 @@ function submitHotel() {
   const v = _hotelFormVals();
   const name = v.name.trim();
   if (!name) { alert("請輸入住宿名稱"); return; }
-  const day = hotelFormDay;
-  
+  const day = hotelFormDay;   // 卡片 key
+  const _hd = _cardByKey(day), _ld = _hd ? _legacyDay(_hd) : null;
   _dbRef(ITIN_PATH + "/hotelHidden/" + day).remove();
+  if (_ld != null) _dbRef(ITIN_PATH + "/hotelHidden/" + _ld).remove();   // 分組前以 day 存的「已隱藏」也要解除，否則新住宿看不到
   _dbRef(ITIN_PATH + "/hotelEdited/" + day).set({
     name, note: v.note.trim(), paid: !!v.paid, map: _resolveMapStr(v.map) || name,
   });
   hideHotelForm();
   _maybeShowLocalEditToast();
 }
-function deleteHotel(day) {
+function deleteHotel(day) {   // day = 卡片 key
   itinMenuKey = null;
   if (!firebaseReady) return;
-  const d = DAYS.find(x => x.day === day);
+  const d = _cardByKey(day);
   const hadPreset = !!(d && d.hotel);
-  const prev = hotelEdited[day] || null;
-  const cur = Object.assign({}, (d && d.hotel) || {}, hotelEdited[day] || {});
+  const _he = d ? _byCard(hotelEdited, d) : undefined;
+  const prev = _he || null;
+  const cur = Object.assign({}, (d && d.hotel) || {}, _he || {});
+  const ld = d ? _legacyDay(d) : null;
 
   if (hadPreset) _dbRef(ITIN_PATH + "/hotelHidden/" + day).set(true);
-  else _dbRef(ITIN_PATH + "/hotelEdited/" + day).remove();
-  _trashDelete("已刪除住宿", { kind: "hotel", day: day, label: cur.name || "住宿", hadPreset: hadPreset, data: hadPreset ? null : prev });
+  else {
+    _dbRef(ITIN_PATH + "/hotelEdited/" + day).remove();
+    if (ld != null) _dbRef(ITIN_PATH + "/hotelEdited/" + ld).remove();   // 分組前以 day 存的修改也一併清掉，否則刪不掉
+  }
+  // 最近刪除：day 留給畫面顯示（第幾天）；card 存卡片 key，還原時寫回同一張卡（沒分組沒有 card，行為不變）
+  _trashDelete("已刪除住宿", { kind: "hotel", day: d ? d.day : day, ...(IS_GROUPED && d ? { card: day } : {}), label: cur.name || "住宿", hadPreset: hadPreset, data: hadPreset ? null : prev });
   _maybeShowLocalEditToast();
 }
 
@@ -3268,7 +3417,11 @@ function _doRestore(t) {
   
   if (t.kind === "act-added") { if (t.data) _dbRef(ITIN_PATH + "/added").push(t.data); }
   else if (t.kind === "act-preset") { _dbRef(ITIN_PATH + "/hidden/" + t.pid).remove(); }
-  else if (t.kind === "hotel")  { if (t.hadPreset) _dbRef(ITIN_PATH + "/hotelHidden/" + t.day).remove();  else if (t.data) _dbRef(ITIN_PATH + "/hotelEdited/" + t.day).set(t.data); }
+  else if (t.kind === "hotel")  {
+    const hk = t.card != null ? t.card : t.day;   // 分組行程存的是卡片 key
+    if (t.hadPreset) _dbRef(ITIN_PATH + "/hotelHidden/" + hk).remove();
+    else if (t.data) _dbRef(ITIN_PATH + "/hotelEdited/" + hk).set(t.data);
+  }
 }
 function restoreFromTrash(key) {
   if (!firebaseReady) return;
@@ -3282,7 +3435,7 @@ function restoreFromTrash(key) {
 function _presetByPid(pid) {
   for (const d of DAYS) {
     for (let i = 0; i < d.acts.length; i++) {
-      if ((d.acts[i].id || (d.day + "_" + i)) === pid) return { day: d.day, idx: i, act: d.acts[i] };
+      if (_actPid(d, d.acts[i], i) === pid) return { day: d.day, idx: i, act: d.acts[i] };
     }
   }
   return null;
@@ -3346,7 +3499,7 @@ function _findItinItem(id) {
            map: (m.map && m.map !== m.name) ? m.map : "", geo: m.geo || "" };
 }
 
-function showItinForm(day) {
+function showItinForm(day) {   // day = 卡片 key
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
   itinEditTarget = null;
   itinFormDay  = day;
@@ -3459,14 +3612,16 @@ function renderItinFormBody() {
   const iconBtns = ITIN_ICONS.map(ic =>
     `<button class="member-pill${itinFormIcon===ic?" selected":""}" onclick="selectItinIcon('${ic}')" style="font-size:18px">${ic}</button>`
   ).join("");
-  const dayOpts = DAYS.map(d =>
-    `<option value="${d.day}"${d.day===itinFormDay?" selected":""}>Day ${d.day}・${d.date}（${d.wd}）</option>`
-  ).join("");
+  // 一張卡一個選項；同日多卡時後面加組名（Day 3・11/3（二）・福岡組）
+  const dayOpts = DAYS.map(d => {
+    const lb = _cardLabel(d);
+    return `<option value="${_ck(d)}"${_ck(d)===itinFormDay?" selected":""}>Day ${d.day}・${d.date}（${d.wd}）${lb ? "・" + _esc(lb) : ""}</option>`;
+  }).join("");
   // 編輯模式不顯示「哪一天」：原地修改、避免動到 edited 的 day 索引
   const daySel = isEdit ? "" : `
     <div class="form-row">
       <div class="form-label">哪一天</div>
-      <select class="form-input" id="itin-day-input" onchange="itinFormDay=parseInt(this.value,10)">${dayOpts}</select>
+      <select class="form-input" id="itin-day-input" onchange="itinFormDay=_keyFromStr(this.value)">${dayOpts}</select>
     </div>`;
   document.getElementById("itin-form-body").innerHTML = `
     ${daySel}
@@ -3531,7 +3686,7 @@ function submitItinAct() {
   } else {
     const by = localStorage.getItem("meetingName") || "";
     _dbRef(ITIN_PATH + "/added").push({
-      day:  itinFormDay,
+      ..._dayFields(itinFormDay),   // 沒分組 = { day }；分組 = { day, card }（卡片 id）
       icon: itinFormIcon,
       name,
       sub:  v.sub.trim(),

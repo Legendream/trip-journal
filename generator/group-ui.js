@@ -34,6 +34,15 @@ function gYear() {
 function gAlerts(groups) {
   return computeAlerts({ members: state.members, groups, days: state.days, hotels: state.hotels, year: gYear(), dismissed: state.dismissedAlerts });
 }
+// 還有不能略過的提醒（A-1 找不到組名、A-6 日期看不懂）時，擋下下載與分享（app-handoff 決定 6-5）。
+// 回傳要顯示的 HTML（含連回步驟 2）；沒事回傳空字串。沒分組不檢查（規則 7）。
+function exportBlockedHtml() {
+  const groups = activeGroups();
+  if (!groups.length) return '';
+  const n = gAlerts(groups).filter(a => !a.dismissable).length;
+  if (!n) return '';
+  return `還有 ${n} 處需要確認，確認後才能下載或分享。<a href="#" onclick="goTo(1);return false;" style="color:inherit;text-decoration:underline;">回步驟 2 處理</a>`;
+}
 // 在 parent 裡確保有一個 id 的容器（沒分組時不留空元素，畫面才跟以前完全一樣）
 function gSlot(id, parent, before) {
   let el = document.getElementById(id);

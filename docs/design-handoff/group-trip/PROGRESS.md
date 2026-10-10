@@ -1,10 +1,10 @@
 # 分組旅行：進度與下次接手
 
-> 最後更新：2026-10-09。新對話開始時，先讀這份，再讀 decisions.md。
+> 最後更新：2026-10-10。新對話開始時，先讀這份，再讀 decisions.md。
 
 ## 現在在哪個階段
 
-產生器端（包 1 資料層＋包 2 產生器畫面）已實作，在分支 `feat/group-trip-generator`（PR 待 merge）。行程 App 端、Firebase、舊行程相容還沒做。
+產生器端（包 1、包 2）已於 2026-10-10 合併進 main（PR #5）。行程 App 端的格式與分包已討論定案（decisions.md 第 10 節），實作交接與驗收清單在 app-handoff.md，Claire 已確認，可以開工。包 3–5 都還沒實作。
 
 - AI 提示詞 v3 經 Gemini 網頁版與 Antigravity 實測皆 27/27，見 ai-prompt.md 第 8 節。
 - 測試：`node scripts/test-group-trip.js`（資料層＋畫面片段＋沒分組基準比對，不需瀏覽器）。沒分組基準檔在 `scripts/fixtures/no-group/`，是分組功能加入前（main b6d8c41）的輸出。
@@ -27,7 +27,8 @@
 | brief.md | 原始需求 |
 | decisions.md | 所有設計決策：資料結構、標籤規格、產生器流程、判讀提醒、App 換卡、規則 9–15、定稿文字（G/P/R/A/H 編號）、D4–D6 取捨、既有文字修改 |
 | ai-prompt.md | AI 提示詞分組段落、`with`／`unsure` 欄位、匯入轉換、判讀提醒計算定義、待拍板事項 |
-| implementation-handoff.md | **給 Claude Code 的實作交接**：包 1 資料層、包 2 產生器畫面，範圍與驗收 |
+| implementation-handoff.md | 包 1 資料層、包 2 產生器畫面的實作交接（已完成，留作紀錄） |
+| app-handoff.md | **給 Claude Code 的實作交接**：行程 App 端包 3–5 的資料格式、範圍、驗收清單、待確認事項 |
 | screens/ | 畫布畫面原始檔快照（Claude Code 讀這裡，打不開 claude.ai 畫布） |
 | ai-test/ | 實測工具：範例草稿、組好的提示詞、預期答案、檢查腳本 |
 | test-report.md | 設計走查結果：5 個任務、10 項發現與處理狀態（3 項待真人驗證） |
@@ -50,8 +51,12 @@
 
 ## 下一步（依優先順序）
 
-1. 行程 App 端（D3–D12）、Firebase 資料路徑、舊行程相容（分享網址與備份檔帶組別）。產生器匯出設定檔目前不帶分組欄位，等 App 認得再一起做。
-2. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
+1. **包 3**：資料通道＋同日多卡（匯出／還原／分享連結帶組別、App 卡片識別改造、堆疊與標籤）。
+2. **包 4**：身分與個人檢視（你是誰、我的行程／全部、換卡存手機）。
+3. **包 5**：進階版 Firebase（多個集合＋通知誰、換卡同步、記帳），最後拿掉 `generator/group-ui.js` 的 `groupFeatureOn()` 閘門，分組功能才算對外開放。
+4. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
+
+一包一個分支、一個 PR，前一包 merge 後再開下一包。
 
 ## 隔一段時間再回來時
 
@@ -64,8 +69,8 @@
 
 ## 開新對話時可以這樣說
 
-> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 和 decisions.md，接續分組旅行的下一步。
+做包 3（spec 已明確，用 Sonnet 即可）：
 
-要直接進實作（Claude Code）：
+> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 和 app-handoff.md，做包 3。先做 Git 檢查、從 main 開分支；動手前先用 main 的樣板存一份沒分組行程的 App 輸出與截圖當基準。
 
-> 請讀 docs/design-handoff/group-trip/implementation-handoff.md，先做包 1、再做包 2（同一個分支、同一個 PR，多個 commit）。先做 Git 檢查，開分支再動手；改程式前先存一份沒分組行程的匯出結果當基準。
+測試：`node scripts/test-group-trip.js`。

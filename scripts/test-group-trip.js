@@ -10,9 +10,14 @@ const FIX = path.join(root, 'scripts/fixtures/no-group');
 const readJson = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 
 let pass = 0, fail = 0;
+const pendingTests = [];   // 非同步測試（回傳 Promise）
 function test(name, fn) {
-  try { fn(); pass++; console.log('✓ ' + name); }
-  catch (e) { fail++; console.log('✗ ' + name + '\n    ' + String(e.message).split('\n').join('\n    ')); }
+  const ok = () => { pass++; console.log('✓ ' + name); };
+  const bad = e => { fail++; console.log('✗ ' + name + '\n    ' + String(e.message).split('\n').join('\n    ')); };
+  try {
+    const r = fn();
+    if (r && typeof r.then === 'function') pendingTests.push(r.then(ok, bad)); else ok();
+  } catch (e) { bad(e); }
 }
 
 // 以 ai-test 的組別（用名字）建立產生器狀態，再匯入 AI 回傳的 JSON（走真正的 applyParsedData）
@@ -119,8 +124,8 @@ test('1-9b 分組開關關閉時，即使 groups 還在也不影響提示詞', (
   assert.ok(!g.run('buildPrompt()').includes('分組規則'));
 });
 
-// ── 1-10：成員 id ───────────────────────────────────────────────
-test('1-10 舊資料補成員 id；匯出仍用名字、不輸出分組欄位', () => {
+// ── 1-10：成員 id（2026-10-10 起匯出一律帶成員 id；沒分組仍不輸出分組欄位）────────
+test('1-10 舊資料補成員 id；匯出帶成員 id、沒分組時不輸出分組欄位', () => {
   const g = loadGenerator();
   const legacy = { step: 1, members: [{ name: '甲', avatar: '🐱' }, { name: '乙', avatar: '' }], days: [], hotels: [] };
   g.ctx.__legacy = JSON.stringify(legacy);
@@ -128,22 +133,25 @@ test('1-10 舊資料補成員 id；匯出仍用名字、不輸出分組欄位', 
   const ids = g.run('state.members.map(m => m.id)');
   assert.ok(ids.every(Boolean) && new Set(ids).size === 2, '每位成員都有不同的 id');
   const cfg = JSON.parse(JSON.stringify(g.run('collectConfig()')));
-  assert.deepStrictEqual(cfg.members, legacy.members);
-  assert.ok(!JSON.stringify(cfg).includes('"id":"m'));
+  assert.deepStrictEqual(cfg.members, legacy.members.map((m, i) => ({ id: ids[i], ...m })));
+  for (const k of ['"with"', '"groups"', '"memberIds"']) assert.ok(!JSON.stringify(cfg).includes(k), '不應輸出 ' + k);
 });
-test('1-10b 分組資料不會流進匯出設定檔', () => {
+test('1-10b 內部旗標不流進匯出設定檔（unsure、withUnknown）', () => {
   const { g } = importAi(path.join(AI, 'reference.json'));
   const cfg = JSON.stringify(g.run('collectConfig()'));
-  for (const k of ['"with"', '"withUnknown"', '"unsure"', '"groups"', '"memberIds"']) assert.ok(!cfg.includes(k), '不應輸出 ' + k);
-  assert.ok(!/"id":"m/.test(cfg), '成員 id 不應輸出');
+  for (const k of ['"withUnknown"', '"unsure"', '"dismissedAlerts"']) assert.ok(!cfg.includes(k), '不應輸出 ' + k);
 });
 
 // ── 1-2、1-3：規則 7（沒分組跟改前一樣）──────────────────────────
-test('1-2 schema-example.json 匯入→匯出，與改前基準一字不差（匯入設定檔、AI 匯入兩條路線）', () => {
+// 3-1：匯出一律多了 members[].id（2026-10-10 定案）；拿掉它以後要與改前基準一字不差
+const stripMemberIds = txt => { const c = JSON.parse(txt); c.members.forEach(m => delete m.id); return JSON.stringify(c, null, 2) + '\n'; };
+test('3-1 沒分組：schema-example.json 匯入→匯出，拿掉 members[].id 後與改前基準一字不差；每位成員都有 id', () => {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gt-'));
   capture(path.join(root, 'generator/generator-app.js'), tmp);
   for (const f of ['schema-example.export.json', 'schema-example.ai-import.export.json']) {
-    assert.strictEqual(fs.readFileSync(path.join(tmp, f), 'utf8'), fs.readFileSync(path.join(FIX, f), 'utf8'), f + ' 與基準不同');
+    const now = fs.readFileSync(path.join(tmp, f), 'utf8');
+    JSON.parse(now).members.forEach(m => assert.ok(m.id, f + '：成員沒有 id'));
+    assert.strictEqual(stripMemberIds(now), fs.readFileSync(path.join(FIX, f), 'utf8'), f + ' 與基準不同');
   }
 });
 test('1-3 沒分組時 buildPrompt() 與基準只差 notes 範例那一行', () => {
@@ -404,5 +412,140 @@ test('分組模式匯入沒有 days 的 JSON：顯示錯誤，不顯示成功', 
   assert.ok(g.el('ai-import-status').innerHTML.includes('沒有 days'));
 });
 
-console.log(`\n${pass} 通過、${fail} 失敗`);
-process.exit(fail ? 1 : 0);
+
+// ═══ 包 3：資料通道＋同日多卡 ═══════════════════════════════════════════
+const clone = o => JSON.parse(JSON.stringify(o));
+// 用設定檔走一次真正的 importLoadedConfig，回傳產生器實例
+function restoreConfig(cfg) {
+  const g = loadGenerator();
+  g.ctx.__cfg = clone(cfg);
+  g.run('importLoadedConfig(__cfg)');
+  return g;
+}
+const exportOf = g => clone(g.run('collectConfig()'));
+const alertsOf = (g, year) => clone(g.run(`computeAlerts({ members: state.members, groups: activeGroups(), days: state.days, hotels: state.hotels, year: ${year || 2026}, dismissed: state.dismissedAlerts })`));
+const refExport = () => exportOf(importAi(path.join(AI, 'reference.json')).g);
+
+test('3-2 分組行程匯出：有 groups；日卡有 id；with 全是成員 id；沒有 unsure、withUnknown', () => {
+  const cfg = refExport();
+  const ids = new Set(cfg.members.map(m => m.id));
+  assert.ok(cfg.members.every(m => m.id), '成員都有 id');
+  assert.deepStrictEqual(cfg.groups.map(g => g.name), ['鹿兒島組', '福岡組']);
+  cfg.groups.forEach(g => { assert.ok(g.id); g.memberIds.forEach(id => assert.ok(ids.has(id), '組別成員 id 對得上成員')); });
+  assert.ok(cfg.days.every(d => d.id), '每張日卡有 id');
+  assert.strictEqual(new Set(cfg.days.map(d => d.id)).size, cfg.days.length, '日卡 id 不重複');
+  const withs = [];
+  cfg.days.forEach(d => { withs.push(d.with, d.hotel && d.hotel.with); d.acts.forEach(a => withs.push(a.with)); });
+  cfg.hotels.forEach(h => withs.push(h.with));
+  const given = withs.filter(Boolean);
+  assert.ok(given.length > 0, '應該有 with');
+  given.forEach(w => { assert.ok(Array.isArray(w) && w.length); w.forEach(id => assert.ok(ids.has(id), 'with 必須是成員 id：' + id)); });
+  const txt = JSON.stringify(cfg);
+  for (const k of ['"unsure"', '"withUnknown"', '"dismissedAlerts"']) assert.ok(!txt.includes(k), '不應輸出 ' + k);
+  // 11/3 兩張卡都在，各自帶名單
+  const d3 = cfg.days.filter(d => d.date === '11/3');
+  assert.strictEqual(d3.length, 2);
+  assert.notDeepStrictEqual(d3[0].with, d3[1].with);
+});
+test('3-3 來回一致：匯出 → 還原 → 再匯出，兩次結果相同；提醒清單也相同', () => {
+  const imported = importAi(path.join(AI, 'reference.json'));
+  const e1 = exportOf(imported.g);
+  const g1 = restoreConfig(e1), e2 = exportOf(g1);
+  const noSw = c => { const o = clone(c); delete o.meta.swCacheKey; return o; };   // 載入設定檔 = 新版部署，快取版號 +1（既有行為）
+  assert.deepStrictEqual(noSw(e2), noSw(e1));
+  const g2 = restoreConfig(e2);
+  assert.deepStrictEqual(noSw(exportOf(g2)), noSw(e2));
+  assert.deepStrictEqual(alertsOf(g2), alertsOf(g1));
+  // 還原後提醒只比「匯入 AI 回傳當下」少 A-5：unsure 是 AI 的判讀旗標，不寫進設定檔
+  const lost = imported.alerts.filter(a => a.code !== 'A-5');
+  assert.deepStrictEqual(alertsOf(g1).map(a => a.key).sort(), lost.map(a => a.key).sort());
+  assert.strictEqual(g1.run('state.splitUp'), true);
+});
+test('3-4 還原同一份匯出檔兩次，成員 id、日卡 id 都不變', () => {
+  const e1 = refExport();
+  for (let i = 0; i < 2; i++) {
+    const g = restoreConfig(e1);
+    assert.deepStrictEqual(clone(g.run('state.members.map(m => m.id)')), e1.members.map(m => m.id));
+    assert.deepStrictEqual(clone(g.run('state.days.map(d => d.id)')), e1.days.map(d => d.id));
+    assert.deepStrictEqual(clone(g.run('state.groups.map(x => x.id)')), e1.groups.map(x => x.id));
+  }
+});
+test('3-5 沒有 groups、沒有成員 id 的舊設定檔：可還原、可匯出；匯出補成員 id、不輸出分組欄位', () => {
+  const old = readJson(path.join(root, 'scripts/demo-config.json'));
+  old.members.forEach(m => assert.ok(!('id' in m)));
+  const g = restoreConfig(old);
+  const out = exportOf(g);
+  assert.ok(out.members.every(m => m.id));
+  assert.ok(!('groups' in out));
+  assert.ok(out.days.every(d => !('id' in d) && !('with' in d)));
+  assert.strictEqual(g.run('state.splitUp'), false);
+});
+test('3-5b 載入設定檔時，步驟 1 已填的組別仍用名字對上載入的成員（沒有 groups 的檔）', () => {
+  const g = loadGenerator();
+  g.run(`state.splitUp = true; state.members = [{ name: 'Claire', avatar: '' }, { name: 'Tony', avatar: '' }];
+    ensureMemberIds(); state.groups = [{ id: 'g1', name: 'A', order: 0, memberIds: [state.members[1].id] }];`);
+  g.ctx.__cfg = readJson(path.join(root, 'generator/schema-example.json'));
+  g.run('importLoadedConfig(__cfg)');
+  assert.deepStrictEqual(clone(g.run('state.groups[0].memberIds.map(memberName)')), ['Tony']);
+});
+test('3-13c 有 A-1／A-6 時下載與分享都被擋下並顯示「還有 n 處需要確認」；修正後可正常匯出', async () => {
+  const bad = importAi(path.join(AI, 'reference.json'), out => {
+    out.days.find(d => (d.with || []).includes('福岡組')).with = ['福岡團'];
+    out.days[0].date = '十一月一日';
+  });
+  const g = bad.g;
+  const html = g.run('exportBlockedHtml()');
+  assert.ok(/還有 2 處需要確認/.test(html), html);
+  assert.ok(html.includes('goTo(1)'), '連回步驟 2');
+  // 下載
+  g.ctx.window.JSZip = function () { throw new Error('不該走到打包'); };
+  g.el('download-status').innerHTML = '';
+  g.el('f-title').value = 'x'; g.run(`state.fields['f-title'] = 'x'`);
+  g.run('downloadZip()');
+  assert.ok(g.el('download-status').innerHTML.includes('還有 2 處需要確認'));
+  // 分享
+  let err = null;
+  try { g.run('buildShareUrl()').catch(e => { err = e; }); await new Promise(r => setImmediate(r)); } catch (e) { err = e; }
+  assert.ok(err && err.message.includes('還有 2 處需要確認'), '分享連結被擋下');
+  // 修正後：沒有擋下
+  const ok = importAi(path.join(AI, 'reference.json'));
+  assert.strictEqual(ok.g.run('exportBlockedHtml()'), '');
+  // 只有可略過的提醒（A-5）不擋
+  assert.ok(ok.alerts.some(a => a.code === 'A-5'));
+  // 沒分組不檢查
+  assert.strictEqual(loadGenerator().run('exportBlockedHtml()'), '');
+});
+test('3-14 組名標籤文字對比：七款主題三種外觀皆 ≥ 4.5:1', () => {
+  const g = loadGenerator();
+  const themes = clone(g.run('THEMES'));
+  assert.strictEqual(themes.length, 7);
+  const lum = hex => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  themes.forEach(t => {
+    const deep = gt.deepTagColor(t.color);
+    const rows = [['實心 白字／深底', '#ffffff', deep], ['外框 深字／白底', deep, '#ffffff'], ['淡底加框 深字／淡底', deep, t.pale], ['成員頭像 文字／淡底', '#1e0d12', t.pale]];
+    rows.forEach(([n, fg, bg]) => assert.ok(ratio(fg, bg) >= 4.5, `${t.name} ${n} = ${ratio(fg, bg).toFixed(2)}`));
+  });
+});
+
+// App 樣板裡複製的純函式，要跟 generator/group-trip.js 的結果一致（兩邊各維護一份，靠這條保證不分岔）
+test('3-0 App 樣板與 group-trip.js 的名單換算／標籤配色／名單反推結果一致', () => {
+  const vm = require('vm');
+  const src = fs.readFileSync(path.join(root, 'generator/template-src.html'), 'utf8');
+  const m = /\/\/ <group-pure-begin>([\s\S]*?)\/\/ <group-pure-end>/.exec(src);
+  assert.ok(m, '找不到 group-pure 區段');
+  const ctx = vm.createContext({});
+  vm.runInContext(m[1], ctx);
+  const members = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  const groups = [{ memberIds: ['a', 'b'] }, { memberIds: ['c', 'd'] }, { memberIds: ['a', 'c', 'd'] }];
+  const lists = [undefined, [], ['a', 'b', 'c', 'd'], ['d', 'c', 'b', 'a'], ['a', 'b'], ['b', 'a'], ['c', 'd'], ['a', 'c', 'd'], ['a'], ['d', 'a'], ['b', 'c', 'd']];
+  lists.forEach(l => assert.deepStrictEqual(clone(ctx.describeList(l, groups, members)), clone(gt.describeList(l, groups, members)), JSON.stringify(l)));
+  ['#a8362f', '#5d7242', '#2e6e72', '#a6586a', '#2c456c', '#6a5897', '#b8842a', '', 'x', null].forEach(h => assert.strictEqual(ctx.deepTagColor(h), gt.deepTagColor(h), String(h)));
+  [0, 1, 2, 3, 4, 5].forEach(i => assert.deepStrictEqual(clone(ctx.groupTagStyle(i, '#782825', '#f3e3d8')), clone(gt.groupTagStyle(i, '#782825', '#f3e3d8'))));
+  assert.deepStrictEqual(clone(ctx.groupTagStyle(1, '#782825')), clone(gt.groupTagStyle(1, '#782825')));
+});
+
+Promise.all(pendingTests).then(() => {
+  console.log(`\n${pass} 通過、${fail} 失敗`);
+  process.exit(fail ? 1 : 0);
+});
