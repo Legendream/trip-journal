@@ -4,7 +4,7 @@
 
 ## 現在在哪個階段
 
-產生器端（包 1、包 2）已於 2026-10-10 合併進 main（PR #5）。行程 App 端的格式與分包已討論定案（decisions.md 第 10 節），實作交接與驗收清單在 app-handoff.md。包 3（資料通道＋同日多卡）已於 2026-10-10 合併（PR #6）。包 4（身分與個人檢視）已實作在分支 `feat/group-trip-app-identity`，PR 待 merge。包 5 還沒做。
+產生器端（包 1、包 2）已於 2026-10-10 合併進 main（PR #5）。行程 App 端的格式與分包已討論定案（decisions.md 第 10 節），實作交接與驗收清單在 app-handoff.md。包 3（資料通道＋同日多卡）已於 2026-10-10 合併（PR #6）。包 4（身分與個人檢視）已實作並通過驗收（含獨立驗收），在本機分支 `feat/group-trip-app-identity`，**尚未 push**。Claire 決定包 4 與包 5 合成同一個 PR，等包 5 做完一起開。包 5 還沒做，接手說明見 package-5-handoff.md。
 
 - AI 提示詞 v3 經 Gemini 網頁版與 Antigravity 實測皆 27/27，見 ai-prompt.md 第 8 節。
 - 測試：`node scripts/test-group-trip.js`（資料層＋畫面片段＋沒分組基準比對，不需瀏覽器）。沒分組基準檔在 `scripts/fixtures/no-group/`，是分組功能加入前（main b6d8c41）的輸出。
@@ -44,6 +44,8 @@
 | decisions.md | 所有設計決策：資料結構、標籤規格、產生器流程、判讀提醒、App 換卡、規則 9–15、定稿文字（G/P/R/A/H 編號）、D4–D6 取捨、既有文字修改 |
 | ai-prompt.md | AI 提示詞分組段落、`with`／`unsure` 欄位、匯入轉換、判讀提醒計算定義、待拍板事項 |
 | implementation-handoff.md | 包 1 資料層、包 2 產生器畫面的實作交接（已完成，留作紀錄） |
+| package-5-handoff.md | **包 5 接手說明**：現況、包 4 留下的接口、驗證障礙（Firebase 模擬不跨頁）、待決定事項 |
+| verify-tools/ | headless Chrome 驗證腳本（包 4 用，包 5 沿用） |
 | app-handoff.md | **給 Claude Code 的實作交接**：行程 App 端包 3–5 的資料格式、範圍、驗收清單、待確認事項 |
 | screens/ | 畫布畫面原始檔快照（Claude Code 讀這裡，打不開 claude.ai 畫布） |
 | ai-test/ | 實測工具：範例草稿、組好的提示詞、預期答案、檢查腳本 |
@@ -68,11 +70,11 @@
 ## 下一步（依優先順序）
 
 1. ~~**包 3**：資料通道＋同日多卡~~（已合併，PR #6）。
-2. **包 4**：身分與個人檢視（你是誰、我的行程／全部、換卡存手機）——已實作，待 merge。
+2. ~~**包 4**：身分與個人檢視~~——已實作並驗收，與包 5 同一個 PR。
 3. **包 5**：進階版 Firebase（多個集合＋通知誰、換卡同步、記帳），最後拿掉 `generator/group-ui.js` 的 `groupFeatureOn()` 閘門，分組功能才算對外開放。
 4. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
 
-一包一個分支、一個 PR，前一包 merge 後再開下一包。
+原訂一包一個分支、一個 PR；2026-10-11 Claire 決定包 4 與包 5 合成同一個 PR（包 5 從包 4 的分支切出，多個 commit 分段）。
 
 ## 隔一段時間再回來時
 
@@ -85,8 +87,8 @@
 
 ## 開新對話時可以這樣說
 
-做包 5（spec 已明確，用 Sonnet 即可；包 4 要先 merge）：
+做包 5（spec 已明確，用 Sonnet 即可；從包 4 的分支切出，不必等 merge）：
 
-> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 和 app-handoff.md，做包 5。先做 Git 檢查、從 main 開分支 `feat/group-trip-app-sync`；動手前先用 main 的樣板存一份沒分組行程的 App 輸出與截圖當基準。
+> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md、package-5-handoff.md 和 app-handoff.md，做包 5。先做 Git 檢查，從 `feat/group-trip-app-identity` 開 `feat/group-trip-app-sync`；動手前先照 verify-tools/README.md 存基準。完成後包 4＋包 5 一起開一個 PR（push 前先問我）。
 
 測試：`node scripts/test-group-trip.js`。
