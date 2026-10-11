@@ -225,6 +225,7 @@
     .view-bar { display: flex; gap: 8px; align-items: center; padding: 12px 16px 2px; }
     .view-bar .checklist-tabs { flex: 1; padding: 0; background: transparent; }
     .view-bar .checklist-tab-btn { min-height: 44px; }
+    .view-empty { margin: 24px 16px; padding: 20px 16px; text-align: center; font-size: 14px; color: var(--text-2); background: #fff; border-radius: 14px; }
     .me-btn {
       width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; border: none;
       background: #fff; box-shadow: 0 0 0 1.5px var(--pink-pale) inset;
@@ -2633,8 +2634,10 @@ function renderItinerary(opts) {
         </div>
       </div>`;
   }).join("");
+  const _emptyMine = (_filtering() && !_list.length)
+    ? `<div class="view-empty">這趟行程裡沒有排到你。可以切到「全部」看大家的行程。</div>` : "";
   const _wrap = document.getElementById("day-cards-wrap");
-  if (opts.cardsOnly && _wrap) { _wrap.innerHTML = html; return; }
+  if (opts.cardsOnly && _wrap) { _wrap.innerHTML = html + _emptyMine; return; }
   // 分組行程：頂部「我的行程／全部」切換列＋頭像鈕；沒分組但有 Firebase：頭像鈕放在海報按鈕右側（決定 6-2）
   const _meBtn = _whoEnabled() ? _meButtonHtml() : "";
   const _viewBar = (IS_GROUPED && _meBtn) ? `<div class="view-bar">
@@ -2645,7 +2648,7 @@ function renderItinerary(opts) {
   const _poster = (_meBtn && !IS_GROUPED)
     ? `<div class="showcase-entry-row has-me"><button class="showcase-entry-btn" onclick="openShowcaseShare()">🖼️ 製作行程海報</button>${_meBtn}</div>`
     : `<div class="showcase-entry-row"><button class="showcase-entry-btn" onclick="openShowcaseShare()">🖼️ 製作行程海報</button></div>`;
-  document.getElementById("tab-itinerary").innerHTML = `${_viewBar}${_poster}<div id="day-cards-wrap">${html}</div><div id="itin-trash-wrap"></div>`;
+  document.getElementById("tab-itinerary").innerHTML = `${_viewBar}${_poster}<div id="day-cards-wrap">${html}${_emptyMine}</div><div id="itin-trash-wrap"></div>`;
   renderTrash();
   if (opts.keepScroll && _keepTop !== null) document.getElementById("app-content").scrollTop = _keepTop;
   else scrollToTodayCard();
@@ -3783,12 +3786,28 @@ function toggleItinWithMember(i) {
   if (at >= 0) itinFormWithIds.splice(at, 1); else itinFormWithIds.push(id);
   renderItinFormBody();
 }
+function _itinFormCard() {   // 這筆景點目前屬於哪張卡（新增：選的那張；編輯：原本的卡）
+  let d = _cardByKey(itinFormDay);
+  if (!d && itinEditTarget && itinEditTarget.kind === "added") {
+    const a = itinAdded.find(x => x._key === itinEditTarget.key);
+    if (a && a.card != null) d = _cardByKey(a.card);
+  }
+  return d || _sameDayCards(itinFormDay)[0] || null;
+}
 function _itinWithValue() {   // null = 跟這天一樣；否則成員 id 陣列
   if (!IS_GROUPED) return null;
-  if (itinFormWithMode === "custom") return _gtSortByMembers(itinFormWithIds, GMEMBERS);
-  const m = /^g(\d+)$/.exec(itinFormWithMode);
-  const g = m && GROUPS[Number(m[1])];
-  return g ? _gtSortByMembers(g.memberIds, GMEMBERS) : null;
+  let ids = null;
+  if (itinFormWithMode === "custom") ids = _gtSortByMembers(itinFormWithIds, GMEMBERS);
+  else {
+    const m = /^g(\d+)$/.exec(itinFormWithMode);
+    const g = m && GROUPS[Number(m[1])];
+    ids = g ? _gtSortByMembers(g.memberIds, GMEMBERS) : null;
+  }
+  if (!ids) return null;
+  // 選到的名單跟那天一樣：視為「跟這天一樣」，不另外存（免得多一個重複的組名標籤）
+  const card = _itinFormCard();
+  if (card && sameIdSet(ids, effectiveIds(card.with, GMEMBERS))) return null;
+  return ids;
 }
 function _itinWithHtml() {
   if (!IS_GROUPED) return "";
