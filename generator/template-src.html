@@ -249,7 +249,7 @@
     }
     .who-btn[aria-pressed="true"] { border-color: var(--pink); }
     .who-av { width: 42px; height: 42px; border-radius: 10px; background: var(--pink-pale); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .who-name { font-size: 15px; font-weight: 700; color: var(--text); word-break: break-all; }
+    .who-name { font-size: 15px; font-weight: 700; color: var(--text); word-break: break-all; padding-right: 18px; }
     .who-check { position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--pink); display: flex; align-items: center; justify-content: center; }
     .who-skip { display: block; margin: 0 auto; background: none; border: none; font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text-2); padding: 12px 16px; min-height: 44px; cursor: pointer; }
     .swap-sub { font-size: 13px; color: var(--text-2); margin-top: 2px; }
@@ -1256,14 +1256,14 @@
 
 <!-- 你是誰（分組行程、或有 Firebase 的行程；第一次開啟或從頭像鈕打開） -->
 <div class="exp-overlay" id="who-overlay" onclick="if(event.target===this)closeWho()">
-  <div class="exp-form-sheet" role="dialog" aria-label="你是誰？">
+  <div class="exp-form-sheet" role="dialog" aria-modal="true" aria-label="你是誰？">
     <div id="who-body"></div>
   </div>
 </div>
 
 <!-- 這天跟誰走？（我的行程裡換卡，基本版只存這支手機） -->
 <div class="exp-overlay" id="swap-overlay" onclick="if(event.target===this)closeSwap()">
-  <div class="exp-form-sheet" role="dialog" aria-label="這天跟誰走？">
+  <div class="exp-form-sheet" role="dialog" aria-modal="true" aria-label="這天跟誰走？">
     <div id="swap-body"></div>
   </div>
 </div>
@@ -2452,6 +2452,7 @@ function _dayHotelInfo(d) {
 
 function renderItinerary(opts) {
   opts = opts || {};
+  const _keepTop = opts.keepScroll && document.getElementById("app-content") ? document.getElementById("app-content").scrollTop : null;
   const _list = _viewCards();   // 我的行程時只有我的卡；其他情況就是全部
   const html  = _list.map((d, _di) => {
     const _key    = _ck(d);                       // 卡片 key：分組行程 = 日卡 id，沒分組 = day
@@ -2623,15 +2624,16 @@ function renderItinerary(opts) {
   const _meBtn = _whoEnabled() ? _meButtonHtml() : "";
   const _viewBar = (IS_GROUPED && _meBtn) ? `<div class="view-bar">
       <div class="checklist-tabs" role="group" aria-label="行程檢視">
-        <button class="checklist-tab-btn${VIEW === "mine" && _meMember() ? " active" : ""}" onclick="setView('mine')">我的行程</button>
-        <button class="checklist-tab-btn${VIEW === "all" || !_meMember() ? " active" : ""}" onclick="setView('all')">全部</button>
+        <button class="checklist-tab-btn${VIEW === "mine" && _meMember() ? " active" : ""}" aria-pressed="${VIEW === "mine" && !!_meMember()}" onclick="setView('mine')">我的行程</button>
+        <button class="checklist-tab-btn${VIEW === "all" || !_meMember() ? " active" : ""}" aria-pressed="${VIEW === "all" || !_meMember()}" onclick="setView('all')">全部</button>
       </div>${_meBtn}</div>` : "";
   const _poster = (_meBtn && !IS_GROUPED)
     ? `<div class="showcase-entry-row has-me"><button class="showcase-entry-btn" onclick="openShowcaseShare()">🖼️ 製作行程海報</button>${_meBtn}</div>`
     : `<div class="showcase-entry-row"><button class="showcase-entry-btn" onclick="openShowcaseShare()">🖼️ 製作行程海報</button></div>`;
   document.getElementById("tab-itinerary").innerHTML = `${_viewBar}${_poster}<div id="day-cards-wrap">${html}</div><div id="itin-trash-wrap"></div>`;
   renderTrash();
-  scrollToTodayCard();
+  if (opts.keepScroll && _keepTop !== null) document.getElementById("app-content").scrollTop = _keepTop;
+  else scrollToTodayCard();
 }
 
 // ─── 身分與換卡（分組旅行包 4） ────────────────────────────────────────
@@ -2639,7 +2641,7 @@ function renderItinerary(opts) {
 function _meButtonHtml() {
   const m = _meMember();
   const label = m ? `${m.name}，換人` : (ME === "none" ? "我只是看看，換人" : "你是誰？");
-  const face = m ? _esc(m.avatar || m.name.slice(0, 1)) : "👤";
+  const face = m ? _esc(m.avatar || Array.from(m.name)[0] || "👤") : "👤";
   return `<button class="me-btn" aria-label="${_esc(label)}" onclick="openWho(true)">${face}</button>`;
 }
 
@@ -2657,7 +2659,7 @@ function renderWho() {
   const btns = GMEMBERS.map((m, i) => {
     const on = ME === m.id;
     return `<button class="who-btn" aria-pressed="${on}" onclick="chooseWho(${i})">
-      <span class="who-av">${_esc(m.avatar || "")}</span><span class="who-name">${_esc(m.name)}</span>
+      <span class="who-av">${_esc(m.avatar || Array.from(m.name)[0] || "")}</span><span class="who-name">${_esc(m.name)}</span>
       ${on ? `<span class="who-check"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>` : ""}
     </button>`;
   }).join("");
@@ -2717,7 +2719,7 @@ function chooseSwap(day, i) {
   OVERRIDES[ME][day] = _ck(c);
   _lsWrite(OVR_KEY, JSON.stringify(OVERRIDES));
   closeSwap();
-  renderItinerary();
+  renderItinerary({ keepScroll: true });
   updateCountdown();
 }
 
@@ -3660,6 +3662,12 @@ function _trashWhen(ts) {
   const mm = Math.floor(diff / 60000);    if (mm > 0) return mm + " 分鐘前";
   return "剛剛";
 }
+// 最近刪除的 Day 編號：照目前檢視（我的行程 = 個人編號）；找不到那張卡就用存下來的全團編號
+function _trashDayNo(t) {
+  const k = t.card != null ? t.card : (t.data && t.data.card != null ? t.data.card : null);
+  const d = (k != null ? _cardByKey(k) : null) || (t.day ? _sameDayCards(t.day)[0] : null);
+  return d ? _dispDay(d) : (t.day || "?");
+}
 function renderTrash() {
   const wrap = document.getElementById("itin-trash-wrap");
   if (!wrap) return;
@@ -3672,7 +3680,7 @@ function renderTrash() {
         <span class="trash-icon">${icon}</span>
         <div class="trash-info">
           <div class="trash-name">${_esc(t.label || "項目")}</div>
-          <div class="trash-meta">Day ${t.day || "?"}・${_trashWhen(t.deletedAt)}刪除</div>
+          <div class="trash-meta">Day ${_trashDayNo(t)}・${_trashWhen(t.deletedAt)}刪除</div>
         </div>
         <button class="trash-restore-btn" onclick="restoreFromTrash('${t._key}')">↩︎ 復原</button>
       </div>`;
@@ -4939,9 +4947,10 @@ function updateCountdown() {
   const start = _first ? _parseTripDate(_first.date) : null;
   let endBoundary = _tripEndBoundary();
   if (_mine.length && endBoundary) {
+    // 跟「全團最後一張卡」的日期比（不是 meta.endDate：回程日沒排成一天時 endDate 會晚於最後一張卡）
     const lastMine = _parseTripDate(_mine[_mine.length - 1].date);
-    const teamEnd = new Date(endBoundary); teamEnd.setHours(0, 0, 0, 0);
-    if (lastMine && !isNaN(lastMine) && lastMine < teamEnd) { endBoundary = new Date(lastMine); endBoundary.setHours(23, 59, 59, 999); }
+    const teamLast = days.map(d => _parseTripDate(d.date)).filter(x => x && !isNaN(x)).reduce((a, b) => (a && a > b ? a : b), null);
+    if (lastMine && !isNaN(lastMine) && teamLast && lastMine < teamLast) { endBoundary = new Date(lastMine); endBoundary.setHours(23, 59, 59, 999); }
   }
   if (!start || isNaN(start) || !endBoundary) {
     if (wrap) wrap.style.display = "none";
