@@ -545,6 +545,38 @@ test('3-0 App 樣板與 group-trip.js 的名單換算／標籤配色／名單反
   assert.deepStrictEqual(clone(ctx.groupTagStyle(1, '#782825')), clone(gt.groupTagStyle(1, '#782825')));
 });
 
+// 包 4：個人檢視的純函式（我的卡、換卡、Day 編號）。瀏覽器行為另有驗收清單 4-1～4-17
+test('4-0 我的行程：名單含我的卡；換卡以換到的那張為準；Day 編號從我的第一張卡起算', () => {
+  const vm = require('vm');
+  const src = fs.readFileSync(path.join(root, 'generator/template-src.html'), 'utf8');
+  const pure = /\/\/ <group-pure-begin>([\s\S]*?)\/\/ <group-pure-end>/.exec(src);
+  const view = /\/\/ <group-view-begin>([\s\S]*?)\/\/ <\/group-view-end>/.exec(src);
+  assert.ok(pure && view, '找不到 group-pure／group-view 區段');
+  const ctx = vm.createContext({});
+  vm.runInContext(pure[1] + view[1], ctx);
+  const members = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }];
+  const cards = [
+    { id: 'c1', day: 1, with: ['a', 'b'] },
+    { id: 'c3a', day: 3, with: ['a', 'b'] }, { id: 'c3b', day: 3, with: ['c', 'd'] },
+    { id: 'c4a', day: 4, with: ['a', 'b'] }, { id: 'c4b', day: 4, with: ['c', 'd'] },
+    { id: 'c6', day: 6 },
+    { id: 'c7', day: 7, with: ['a', 'b'] },
+  ];
+  const keyOf = c => c.id;
+  const ids = (me, ovr) => ctx.viewCardsFor(cards, members, me, ovr, keyOf).map(c => c.id).join();
+  assert.strictEqual(ids('a', {}), 'c1,c3a,c4a,c6,c7');
+  assert.strictEqual(ids('c', {}), 'c3b,c4b,c6');                       // 沒寫 with = 全員
+  assert.strictEqual(ids('a', { a: { 4: 'c4b' } }), 'c1,c3a,c4b,c6,c7'); // 換卡：只影響那一天
+  assert.strictEqual(ids('c', { a: { 4: 'c4a' } }), 'c3b,c4b,c6');      // 別人的換卡不影響我
+  assert.strictEqual(ids('a', { a: { 4: 'nope' } }), 'c1,c3a,c4a,c6,c7'); // 換到的卡不存在 → 退回名單
+  assert.strictEqual(ids('a', { a: { 3: 'c4b' } }), 'c1,c3a,c4a,c6,c7'); // 卡片不在那天 → 不採用
+  assert.strictEqual(ids('zzz', {}), '');                                 // 不在成員名單裡的人什麼都沒有（App 會先重問「你是誰」）
+  assert.strictEqual(ctx.displayDayNo(3, 3), 1);
+  assert.strictEqual(ctx.displayDayNo(6, 3), 4);
+  assert.strictEqual(ctx.displayDayNo(3, null), 3);
+  assert.strictEqual(ctx.displayDayNo(3, undefined), 3);
+});
+
 Promise.all(pendingTests).then(() => {
   console.log(`\n${pass} 通過、${fail} 失敗`);
   process.exit(fail ? 1 : 0);
