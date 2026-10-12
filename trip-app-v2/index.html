@@ -801,6 +801,13 @@
 
     /* Action row below active meeting */
     .meeting-actions { display: flex; gap: 8px; }
+    .meeting-item { margin-bottom: 16px; }
+    .meeting-small { background: #fff; border: 1px solid var(--border, #eadde2); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
+    .meeting-small-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .meeting-small-time { font-size: 15px; font-weight: 700; color: var(--text); }
+    .meeting-mute { font-size: 14px; margin-left: auto; opacity: 0.7; }
+    .meeting-small .meeting-msg { margin-top: 6px; }
+    .meeting-small .meeting-by { margin-top: 2px; }
 
     /* Firebase setup instructions */
     .setup-card {
@@ -1329,7 +1336,9 @@ const WEATHER_LOCS   = _CFG.weatherLocs;
 
 const FIREBASE_CONFIG = _CFG.firebase;
 const _PFX    = _CFG.meta.storagePrefix;
-const DB_PATH  = _PFX + "/meeting";
+const MEET_PATH = _PFX + "/meetings";          // 集合：<key> → 一筆，可多筆並存（包 5）
+const LEGACY_MEET_PATH = _PFX + "/meeting";    // 舊的單一集合：只讀，有資料時當成一筆「通知全員、誰都能取消」
+const OVR_PATH  = _PFX + "/overrides";         // 換卡（有 Firebase 時）：<成員id>/<day> → 卡片 key
 const EXP_PATH  = _PFX + "/expenses";
 const ITIN_PATH  = _PFX + "/itinerary";
 const NOTES_PATH = _PFX + "/notes";
@@ -1470,6 +1479,126 @@ function viewCardsFor(cards, members, meId, overrides, keyOf) {
 function displayDayNo(day, firstDay) { return firstDay === null || firstDay === undefined ? day : day - firstDay + 1; }
 // </group-view-end>
 
+// ─── 分組旅行包 5：集合、換卡同步、記帳的純函式 ──────────────────────────
+// scripts/test-group-trip.js 會把 sync-pure-begin／end 之間的程式抽出來測試。
+// <sync-pure-begin>
+const MEET_GRACE_MS = 30 * 60000;   // 過了集合時間這麼久就自動收起
+// 集合時間只有 HH:MM：以「設定當下」之後最近的那個時刻為準（半夜設早上的集合 → 隔天）；
+// 舊資料沒有 setAt 就當作今天
+function meetingTarget(m, nowMs) {
+  const t = /^\s*(\d{1,2}):(\d{2})\s*$/.exec((m && m.time) || "");
+  if (!t) return NaN;
+  const base = new Date((m && m.setAt) || nowMs);
+  const d = new Date(base);
+  d.setHours(+t[1], +t[2], 0, 0);
+  if (m && m.setAt && d.getTime() < base.getTime() - 60000) d.setDate(d.getDate() + 1);
+  return d.getTime();
+}
+function meetingVisible(m, nowMs) { const t = meetingTarget(m, nowMs); return !isNaN(t) && nowMs < t + MEET_GRACE_MS; }
+// notify 沒有 = 全員；沒選身分的人視為每個集合都有通知他
+function meetingNotifies(m, meId) {
+  const n = m && m.notify;
+  if (!Array.isArray(n) || !n.length) return true;
+  if (!meId || meId === "none") return true;
+  return n.indexOf(meId) >= 0;
+}
+// 發起者欄位是空的（未選身分的人發起、舊路徑的資料）誰都能取消
+function meetingCanCancel(m, meId) { return !m.setBy || m.setBy === meId; }
+function meetingCanUpdate(m, meId) { return meetingCanCancel(m, meId) || meetingNotifies(m, meId); }
+// 新路徑的多筆＋舊路徑的一筆 → 依集合時間排序的清單（_key 是新路徑的 key；舊的是 "__legacy"）
+function meetingList(map, legacy, nowMs) {
+  const out = [];
+  Object.keys(map || {}).forEach(k => { const v = map[k]; if (v && typeof v === "object") out.push(Object.assign({}, v, { _key: k })); });
+  if (legacy && typeof legacy === "object" && legacy.time) {
+    out.push({ time: legacy.time, message: legacy.message || "", setBy: "", setByName: legacy.setBy || "", setAt: legacy.setAt, _key: "__legacy" });
+  }
+  return out.sort((a, b) => (meetingTarget(a, nowMs) - meetingTarget(b, nowMs)) || ((a.setAt || 0) - (b.setAt || 0)));
+}
+// 橫幅：時間最近、且有通知我的那一筆（還沒到的優先；都過了就取最近過的）
+function pickBannerMeeting(list, meId, nowMs) {
+  const mine = list.filter(m => meetingVisible(m, nowMs) && meetingNotifies(m, meId));
+  const up = mine.filter(m => meetingTarget(m, nowMs) >= nowMs);
+  if (up.length) return up[0];
+  return mine.length ? mine[mine.length - 1] : null;
+}
+// 換卡後某張卡上的人（有換卡紀錄的人以換到的那張為準）。同一天只有一張卡就是原名單
+function cardRoster(cards, members, d, overrides, keyOf) {
+  const base = effectiveIds(d.with, members);
+  const same = cards.filter(c => c.day === d.day);
+  if (same.length < 2 || !overrides) return base;
+  const key = String(keyOf(d));
+  const out = [];
+  members.forEach(m => {
+    const o = overrides[m.id] && overrides[m.id][d.day];
+    const valid = o !== undefined && o !== null && same.some(c => String(keyOf(c)) === String(o));
+    if (valid ? String(o) === key : base.indexOf(m.id) >= 0) out.push(m.id);
+  });
+  return out;
+}
+// 某成員在 day 那天的同行名單（套用換卡；多張卡取聯集）。沒有那天、或他那天沒有卡 → null（呼叫端當全員）
+function memberDayList(cards, members, meId, overrides, keyOf, day) {
+  if (day === null || day === undefined || !meId || meId === "none") return null;
+  const mine = viewCardsFor(cards, members, meId, overrides, keyOf).filter(c => c.day === day);
+  if (!mine.length) return null;
+  const set = new Set();
+  mine.forEach(c => cardRoster(cards, members, c, overrides, keyOf).forEach(id => set.add(id)));
+  return set.size ? _gtSortByMembers([...set], members) : null;
+}
+// Firebase 的 key 不能有 . $ # [ ] /
+function fbKey(s) { return String(s).replace(/[.$#\[\]\/]/g, "_"); }
+// 記帳的付款人／分擔者：對得上成員 id 就當 id；對不上就當名字找成員；再找不到用當時存的名字（names）或原字串
+function resolveWho(val, members, names) {
+  const ms = members || [];
+  const m = ms.find(x => x.id === val) || ms.find(x => x.name === val);
+  if (m) return { key: m.id, name: m.name, member: m };
+  const n = (names && names[fbKey(val)]) || String(val);
+  return { key: String(val), name: n, member: null };
+}
+// 結算：以成員為單位（同一人的新舊紀錄合併）。回傳 { txns: [{from, to, amount}], names: { key: 顯示名稱 } }
+function settleExpenses(expenses, members) {
+  const bal = {}, names = {};
+  (members || []).forEach(m => { bal[m.id] = 0; names[m.id] = m.name; });
+  expenses.forEach(e => {
+    const payer = resolveWho(e.payer, members, e.names);
+    const seen = new Set();
+    const who = (Array.isArray(e.forWhom) ? e.forWhom : []).map(v => resolveWho(v, members, e.names))
+      .filter(w => !seen.has(w.key) && seen.add(w.key));
+    if (!who.length) return;
+    if (!(payer.key in names)) names[payer.key] = payer.name;
+    who.forEach(w => { if (!(w.key in names)) names[w.key] = w.name; });
+    const share = e.amount / who.length;
+    who.forEach(w => { bal[w.key] = (bal[w.key] || 0) - share; });
+    bal[payer.key] = (bal[payer.key] || 0) + e.amount;
+  });
+  Object.keys(bal).forEach(k => { bal[k] = Math.round(bal[k]); });
+  const creditors = Object.entries(bal).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  const debtors   = Object.entries(bal).filter(([, v]) => v < 0).sort((a, b) => a[1] - b[1]);
+  const txns = [];
+  let ci = 0, di = 0;
+  while (ci < creditors.length && di < debtors.length) {
+    const amount = Math.min(creditors[ci][1], -debtors[di][1]);
+    if (amount > 0) txns.push({ from: debtors[di][0], to: creditors[ci][0], amount });
+    creditors[ci][1] -= amount;
+    debtors[di][1]   += amount;
+    if (creditors[ci][1] <= 0) ci++;
+    if (debtors[di][1]  >= 0) di++;
+  }
+  return { txns, names };
+}
+// Firebase 讀回來的換卡：key 是數字時可能變成陣列，統一轉成 { 成員id: { day: 卡片key } }
+function normOverrides(v) {
+  const out = {};
+  if (!v || typeof v !== "object") return out;
+  Object.keys(v).forEach(mid => {
+    const o = v[mid], r = {};
+    if (Array.isArray(o)) o.forEach((x, i) => { if (x !== null && x !== undefined) r[i] = x; });
+    else if (o && typeof o === "object") Object.keys(o).forEach(k => { if (o[k] !== null && o[k] !== undefined) r[k] = o[k]; });
+    if (Object.keys(r).length) out[mid] = r;
+  });
+  return out;
+}
+// </sync-pure-end>
+
 const ME_KEY   = _PFX + "-me-v1";          // 成員 id；"none" = 我只是看看；沒有 = 還沒問過
 const VIEW_KEY = _PFX + "-view-v1";        // "mine" | "all"
 const OVR_KEY  = _PFX + "-overrides-v1";   // { <成員id>: { <day>: <卡片key> } }（換卡，基本版）
@@ -1500,25 +1629,44 @@ function _viewFirstDay() {
 function _dispDay(d) { return displayDayNo(d.day, _viewFirstDay()); }
 // 我的行程裡，同一天有兩張以上卡的日子才顯示標籤、而且可以點
 function _switchable(d) { return _filtering() && _sameDayCards(d.day).length >= 2; }
+// 有 Firebase 時換卡是全員共享的：卡片標籤由換卡後的名單反推（沒有換卡 = 原本的 with，輸出與以前相同）
+function _tagIds(d) {
+  if (!FB_ENABLED || !IS_GROUPED || _sameDayCards(d.day).length < 2) return d.with;
+  const base = effectiveIds(d.with, GMEMBERS);
+  const now = cardRoster(DAYS, GMEMBERS, d, OVERRIDES, _ck);
+  return sameIdSet(base, now) ? d.with : now;
+}
 function _dayTagHtml(d) {
-  if (_filtering()) return _switchable(d) ? _listTagHtml(d.with, d.day) : "";
-  return _listTagHtml(d.with);
+  const ids = _tagIds(d);
+  if (Array.isArray(ids) && !ids.length && IS_GROUPED && _sameDayCards(d.day).length > 1 && !_filtering()) {
+    return `<span class="gt gt-av">這張卡目前沒有人</span>`;
+  }
+  if (_filtering()) return _switchable(d) ? _listTagHtml(ids, d.day) : "";
+  return _listTagHtml(ids);
 }
 
 // ─── App State ────────────────────────────────────────────────────
 
 let openDays       = new Set();   // 卡片 key（分組行程 = 日卡 id；沒分組 = day）
 let checked        = new Set(JSON.parse(localStorage.getItem(CHECK_KEY) || "[]"));
-let currentMeeting = null;
+let meetingsRaw    = {};     // meetings/<key> → 集合（可多筆並存）
+let legacyMeeting  = null;   // 舊路徑 meeting 的單一集合（只讀）
 let countdownTimer = null;
-let alarmFiredForTime = null; // track which meeting time has already triggered the alarm
+let alarmFired     = new Set();   // 已經響過的集合（key|時間|設定時刻），更新時間後會重新響
 let showForm       = false;
+let meetEditKey    = null;   // 正在更新的集合 key（"__legacy" = 舊路徑那一筆）；null = 新增
+let meetNotifyMode = "all", meetNotifyIds = [];   // mode: "all" | "g<組別序號>" | "custom"
+let meetDraft      = null;   // 表單重繪時保留已填的 { time, msg, by }
+let meetNotifyTouched = false;   // 使用者動過「通知誰」就不再自動套預設
 let firebaseReady  = false;
 
 let allExpenses     = [];
 let expFormCurrency = "JPY";
-let expFormPayer    = "";
-let expFormForWhom  = new Set(MEMBERS.map(m => m.name));
+let expFormPayer    = "";                       // 成員 id（舊紀錄對不上成員時是原字串）
+let expFormForWhom  = new Set(GMEMBERS.map(m => m.id));
+let expFormExtra    = [];                       // 編輯舊紀錄時，已經不在成員名單裡的人 [{key, name}]
+let expForWhomTouched = false;                  // 使用者動過分擔名單就不再隨付款人換預設
+let expFormNames    = {};
 let expShowSettle   = false;
 let expEditKey      = null;
 
@@ -1645,17 +1793,9 @@ function initFirebase() {
   try {
     firebase.initializeApp(FIREBASE_CONFIG);
     
-    _dbRef(DB_PATH).on("value", snap => {
-      const prev = currentMeeting;
-      currentMeeting = snap.val();
-      // Reset alarm if meeting changed or cleared
-      if (!currentMeeting || (prev && prev.time !== currentMeeting.time)) {
-        alarmFiredForTime = null;
-      }
-      updateMeetingBanner();
-      renderMeeting();
-      adjustLayout();
-    });
+    _dbRef(MEET_PATH).on("value", snap => { meetingsRaw = snap.val() || {}; refreshMeetings(); });
+    _dbRef(LEGACY_MEET_PATH).on("value", snap => { legacyMeeting = snap.val(); refreshMeetings(); });
+    _dbRef(OVR_PATH).on("value", snap => { _onOverridesSnap(normOverrides(snap.val())); });
     _dbRef(EXP_PATH).on("value", snap => {
       const data = snap.val() || {};
       allExpenses = Object.entries(data).map(([key, val]) => ({ ...val, _key: key }))
@@ -1719,28 +1859,64 @@ function initItinSync() {
   renderItinerary({ cardsOnly: true });
 }
 
-function setMeeting(time, message, setBy) {
-  if (!firebaseReady) return;
-  _dbRef(DB_PATH).set({
-    time, message: message || "", setBy: setBy || "", setAt: Date.now()
-  });
+// ─── Meetings（多筆並存） ─────────────────────────────────────────────
+
+function _meId() { return _meMember() ? ME : null; }
+function _allMeetings() {
+  const now = Date.now();
+  return meetingList(meetingsRaw, legacyMeeting, now).filter(m => meetingVisible(m, now));
+}
+function _bannerMeeting() { return pickBannerMeeting(_allMeetings(), ME, Date.now()); }
+function _meetByName(m) {
+  const w = m.setBy ? resolveWho(m.setBy, GMEMBERS, null) : null;
+  return (w && w.member) ? w.name : (m.setByName || "");
 }
 
-function clearMeeting() {
+let _meetSig = "";
+// 集合有變動（資料更新、或有集合過了時間自動收起）→ 橫幅、通知點、集合分頁一起重畫
+function refreshMeetings() {
+  _meetSig = _meetSignature();
+  const b = _bannerMeeting();
+  updateMeetingBanner();
+  renderMeeting();
+  adjustLayout();
+  _syncAlarmNotif(b);
+  if (_allMeetings().length || legacyMeeting || Object.keys(meetingsRaw).length) startCountdownTick();
+}
+function _meetSignature() {
+  const b = _bannerMeeting();
+  return _allMeetings().map(m => m._key + "|" + m.time + "|" + (m.setAt || "")).join(",") + "#" + (b ? b._key : "");
+}
+
+function _newMeetingRecord(time, message, notifyIds, orig, byName) {
+  const me = _meMember();
+  const rec = {
+    time, message: message || "",
+    setBy:     orig ? (orig.setBy || "") : (me ? me.id : ""),
+    setByName: orig ? (orig.setByName || "") : (me ? me.name : (byName || "")),
+    setAt: Date.now()
+  };
+  if (notifyIds && notifyIds.length) rec.notify = notifyIds;
+  return rec;
+}
+function setMeeting(rec, key) {
   if (!firebaseReady) return;
-  cancelAlarmNotif();
-  _dbRef(DB_PATH).remove();
+  if (key && key !== "__legacy") { _dbRef(MEET_PATH + "/" + key).set(rec); return; }
+  _dbRef(MEET_PATH).push(rec);
+  if (key === "__legacy") _dbRef(LEGACY_MEET_PATH).remove();   // 更新舊路徑那一筆 = 搬到新路徑
+}
+function clearMeeting(key) {
+  if (!firebaseReady) return;
+  if (key === "__legacy") _dbRef(LEGACY_MEET_PATH).remove();
+  else _dbRef(MEET_PATH + "/" + key).remove();
 }
 
 // ─── Countdown Logic ──────────────────────────────────────────────
 
-function calcCountdown(timeStr) {
-  const [h, m] = timeStr.split(":").map(Number);
-  const now    = new Date();
-  const target = new Date(now);
-  target.setHours(h, m, 0, 0);
-  if (target <= now) return null; // passed
-  const diff = target - now;
+function calcCountdown(m) {
+  const now = Date.now();
+  const diff = meetingTarget(m, now) - now;
+  if (!(diff > 0)) return null; // passed
   const hh   = Math.floor(diff / 3600000);
   const mm   = Math.floor((diff % 3600000) / 60000);
   const ss   = Math.floor((diff % 60000) / 1000);
@@ -1754,27 +1930,32 @@ function fmtCountdown(c) {
 }
 
 function startCountdownTick() {
-  if (countdownTimer) clearInterval(countdownTimer);
+  if (countdownTimer) return;
   countdownTimer = setInterval(() => {
-    if (!currentMeeting) return;
-    const c = calcCountdown(currentMeeting.time);
-
-    // Update banner
+    const now = Date.now();
+    if (_meetSignature() !== _meetSig) { refreshMeetings(); }   // 有集合過了時間自動收起
+    const list = _allMeetings();
+    const b = _bannerMeeting();
     const bannerCD = document.getElementById("banner-countdown");
-    if (bannerCD) bannerCD.textContent = c ? `距集合 ${fmtCountdown(c)}` : "已過集合時間";
-
-    // Update meeting tab clock (if visible)
-    const clock = document.getElementById("meeting-clock");
-    if (clock) {
-      clock.textContent = fmtCountdown(c);
-      clock.className   = "meeting-clock" + (c ? "" : " passed");
+    if (bannerCD) {
+      const c = b ? calcCountdown(b) : null;
+      bannerCD.textContent = b ? (c ? `距集合 ${fmtCountdown(c)}` : "已過集合時間") : "";
     }
-
-    // Trigger alarm once when countdown first reaches zero
-    if (!c && alarmFiredForTime !== currentMeeting.time) {
-      alarmFiredForTime = currentMeeting.time;
-      triggerAlarm();
-    }
+    list.forEach(m => {
+      const c = calcCountdown(m);
+      const clock = document.querySelector(`.meeting-clock[data-mkey="${m._key}"]`);
+      if (clock) {
+        clock.textContent = fmtCountdown(c);
+        clock.className   = "meeting-clock" + (c ? "" : " passed");
+      }
+      // 通知我的集合到時：響鈴一次
+      const t = meetingTarget(m, now);
+      const id = m._key + "|" + m.time + "|" + (m.setAt || "");
+      if (meetingNotifies(m, ME) && now >= t && now < t + 5 * 60000 && !alarmFired.has(id)) {
+        alarmFired.add(id);
+        triggerAlarm(m);
+      }
+    });
   }, 1000);
 }
 
@@ -1783,27 +1964,25 @@ function startCountdownTick() {
 function updateMeetingBanner() {
   const banner = document.getElementById("meeting-banner");
   const dot    = document.getElementById("meeting-dot");
+  const m = _bannerMeeting();
 
-  if (!currentMeeting) {
+  if (!m) {
     banner.classList.remove("visible");
     dot.classList.remove("visible");
     document.getElementById("banner-countdown").textContent = "";
     document.getElementById("banner-sub").textContent = "";
-    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     return;
   }
 
   banner.classList.add("visible");
   dot.classList.add("visible");
 
-  const c = calcCountdown(currentMeeting.time);
+  const c = calcCountdown(m);
   document.getElementById("banner-countdown").textContent = c ? `距集合 ${fmtCountdown(c)}` : "已過集合時間";
 
-  let sub = `${currentMeeting.time} 集合`;
-  if (currentMeeting.message) sub += `・${currentMeeting.message}`;
+  let sub = `${m.time} 集合`;
+  if (m.message) sub += `・${m.message}`;
   document.getElementById("banner-sub").textContent = sub;
-
-  startCountdownTick();
 }
 
 // ─── Alarm ────────────────────────────────────────────────────────
@@ -1831,7 +2010,7 @@ function playAlarm() {
   } catch (e) {}
 }
 
-function triggerAlarm() {
+function triggerAlarm(m) {
   playAlarm();
   if ("vibrate" in navigator) {
     navigator.vibrate([400, 200, 400, 200, 600]);
@@ -1844,10 +2023,22 @@ function triggerAlarm() {
     banner.addEventListener("animationend", () => banner.classList.remove("alarm-flash"), { once: true });
   }
   // Show system notification if page is in background
-  if (typeof Notification !== "undefined" && Notification.permission === "granted" && currentMeeting) {
-    const body = currentMeeting.message || "現在出發！";
+  if (typeof Notification !== "undefined" && Notification.permission === "granted" && m) {
+    const body = m.message || "現在出發！";
     new Notification("🔔 集合時間到！", { body, tag: "meeting-alarm", requireInteraction: true });
   }
+}
+
+// 系統通知排程只排「橫幅那一筆」（時間最近、通知我的）；那一筆變了就重排，沒有了就取消
+let _alarmScheduledFor = null;
+function _syncAlarmNotif(b) {
+  const t = b ? meetingTarget(b, Date.now()) : null;
+  const upcoming = b && t > Date.now() ? t : null;
+  const sig = upcoming ? upcoming + "|" + (b.message || "") : null;
+  if (sig === _alarmScheduledFor) return;
+  _alarmScheduledFor = sig;
+  if (upcoming) scheduleAlarmNotif(upcoming, b.message);
+  else cancelAlarmNotif();
 }
 
 async function requestNotifPermission() {
@@ -1857,13 +2048,9 @@ async function requestNotifPermission() {
   }
 }
 
-async function scheduleAlarmNotif(timeStr, message) {
+async function scheduleAlarmNotif(timestamp, message) {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
-  const [h, m] = timeStr.split(":").map(Number);
-  const target = new Date();
-  target.setHours(h, m, 0, 0);
-  const timestamp = target.getTime();
-  if (timestamp <= Date.now()) return;
+  if (!(timestamp > Date.now())) return;
 
   // Try Notification Triggers API (Chrome Android)
   if (typeof TimestampTrigger !== "undefined" && navigator.serviceWorker) {
@@ -1987,21 +2174,89 @@ function toggleDay(n) {
 
 // ─── Meeting Form Actions ─────────────────────────────────────────
 
-function showMeetingForm() { showForm = true;  renderMeeting(); }
-function hideMeetingForm() { showForm = false; renderMeeting(); }
+function _todayDay() {   // 今天是行程的第幾天（day 編號）；不在行程內 = null
+  const d = DAYS.find(x => x.date && isTodayDate(x.date));
+  return d ? d.day : null;
+}
+// 通知誰的預設：我當天日卡的同行名單（套用換卡）；沒選身分、不在行程內、沒分組 = 全員（null）
+function _meetDefaultNotify() {
+  if (!IS_GROUPED) return null;
+  return memberDayList(DAYS, GMEMBERS, _meId(), OVERRIDES, _ck, _todayDay());
+}
+function _meetModeFromIds(ids) {
+  meetNotifyIds = [];
+  if (!ids || !ids.length || sameIdSet(ids, GMEMBERS.map(m => m.id))) { meetNotifyMode = "all"; return; }
+  const i = GROUPS.findIndex(g => sameIdSet(g.memberIds, ids));
+  if (i >= 0) { meetNotifyMode = "g" + i; return; }
+  meetNotifyMode = "custom"; meetNotifyIds = ids.slice();
+}
+function _meetNotifyValue() {   // null = 全員（不存 notify）
+  if (!IS_GROUPED) return null;
+  let ids = null;
+  if (meetNotifyMode === "custom") ids = _gtSortByMembers(meetNotifyIds, GMEMBERS);
+  else {
+    const mm = /^g(\d+)$/.exec(meetNotifyMode);
+    const g = mm && GROUPS[Number(mm[1])];
+    ids = g ? _gtSortByMembers(g.memberIds, GMEMBERS) : null;
+  }
+  if (!ids || sameIdSet(ids, GMEMBERS.map(m => m.id))) return null;
+  return ids;
+}
+function _meetCaptureDraft() {
+  const t = document.getElementById("m-time");
+  if (!t || _meetFormKey !== (meetEditKey || "new")) return;
+  const g = id => { const e = document.getElementById(id); return e ? e.value : ""; };
+  meetDraft = { time: g("m-time"), msg: g("m-msg"), by: g("m-by") };
+}
+let _meetFormKey = null;   // 目前畫面上那張表單是哪一筆（"new" 或集合 key）
+function showMeetingForm(key) {
+  meetEditKey = key || null;
+  meetDraft = null;
+  const m = key ? _allMeetings().find(x => x._key === key) : null;
+  _meetModeFromIds(m ? m.notify : _meetDefaultNotify());
+  meetNotifyTouched = !!m;   // 更新既有集合：以原本的通知對象為準
+  showForm = true;
+  renderMeeting();
+}
+function hideMeetingForm() { showForm = false; meetEditKey = null; meetDraft = null; meetNotifyTouched = false; _meetFormKey = null; renderMeeting(); }
+function setMeetNotify(mode) {
+  _meetCaptureDraft();
+  meetNotifyTouched = true;
+  // 從「各組／全員」切到「自己選」：先帶入原本的名單，方便補人（規則 11）
+  if (mode === "custom" && meetNotifyMode !== "custom") meetNotifyIds = (_meetNotifyValue() || GMEMBERS.map(m => m.id)).slice();
+  meetNotifyMode = mode;
+  renderMeeting();
+}
+function toggleMeetNotify(i) {
+  const id = GMEMBERS[i] && GMEMBERS[i].id;
+  if (!id) return;
+  _meetCaptureDraft();
+  meetNotifyTouched = true;
+  const at = meetNotifyIds.indexOf(id);
+  if (at >= 0) meetNotifyIds.splice(at, 1); else meetNotifyIds.push(id);
+  renderMeeting();
+}
 
 function submitMeeting() {
   const time = document.getElementById("m-time").value;
   if (!time) { alert("請選擇集合時間"); return; }
-  const msg  = document.getElementById("m-msg").value.trim();
-  const by   = document.getElementById("m-by").value.trim();
-  if (by) localStorage.setItem("meetingName", by);
+  const msg = document.getElementById("m-msg").value.trim();
+  const me  = _meMember();
+  const byEl = document.getElementById("m-by");
+  const by  = (!me && byEl) ? byEl.value.trim() : "";
+  if (by) { try { localStorage.setItem("meetingName", by); } catch (e) {} }
+  if (IS_GROUPED && meetNotifyMode === "custom" && !meetNotifyIds.length) { alert("請選擇通知對象"); return; }
+  const notify = _meetNotifyValue();
+  const key  = meetEditKey;
+  const orig = key ? _allMeetings().find(x => x._key === key) : null;
+  const rec = _newMeetingRecord(time, msg, notify, orig, by);
   // 先收表單再寫入：寫入會觸發 value 監聽器重繪（Firebase 本機寫入／模擬後端都可能
-  // 同步觸發），若之後才設 showForm=false，那次重繪仍帶著表單、且不會再重繪。
-  showForm = false;
-  setMeeting(time, msg, by);
-  requestNotifPermission().then(() => scheduleAlarmNotif(time, msg));
+  // 同步觸發），若之後才收表單，那次重繪仍帶著表單、且不會再重繪。
+  showForm = false; meetEditKey = null; meetDraft = null; meetNotifyTouched = false; _meetFormKey = null;
+  setMeeting(rec, key);
+  requestNotifPermission().then(() => { _alarmScheduledFor = null; _syncAlarmNotif(_bannerMeeting()); });
 }
+function cancelMeetingBy(key) { clearMeeting(key); }
 
 // ─── Layout ───────────────────────────────────────────────────────
 
@@ -2635,7 +2890,7 @@ function renderItinerary(opts) {
       </div>`;
   }).join("");
   const _emptyMine = (_filtering() && !_list.length)
-    ? `<div class="view-empty">這趟行程裡沒有排到你。可以切到「全部」看大家的行程。</div>` : "";
+    ? `<div class="view-empty">「我的行程」目前沒有內容。切到「全部」，就能看到大家的行程。</div>` : "";
   const _wrap = document.getElementById("day-cards-wrap");
   if (opts.cardsOnly && _wrap) { _wrap.innerHTML = html + _emptyMine; return; }
   // 分組行程：頂部「我的行程／全部」切換列＋頭像鈕；沒分組但有 Firebase：頭像鈕放在海報按鈕右側（決定 6-2）
@@ -2699,12 +2954,36 @@ function chooseWho(i) {
   closeWho();
   renderItinerary();
   updateCountdown();
+  if (FB_ENABLED) refreshMeetings();   // 橫幅、集合分頁依「通知我的」重畫；通知誰的預設也跟著身分
 }
 function setView(v) {
   if (v === "mine" && !_meMember()) { openWho(true); return; }   // 還沒選身分：先問「你是誰」
   VIEW = v;
   _lsWrite(VIEW_KEY, VIEW);
   renderItinerary();
+}
+
+// 有 Firebase：換卡以雲端為準。這支手機上既有的換卡（包 4 存在手機上的）第一次連上時補寫進去一次
+let _ovrSynced = false;
+function _onOverridesSnap(remote) {
+  if (!_ovrSynced) {
+    _ovrSynced = true;
+    Object.keys(OVERRIDES).forEach(mid => {
+      const mine = OVERRIDES[mid];
+      if (!mine || typeof mine !== "object") return;
+      Object.keys(mine).forEach(day => {
+        if (remote[mid] && remote[mid][day] !== undefined) return;   // 雲端已有就不蓋掉（可能是別台更新的）
+        if (!remote[mid]) remote[mid] = {};
+        remote[mid][day] = mine[day];
+        _dbRef(OVR_PATH + "/" + mid + "/" + day).set(mine[day]);
+      });
+    });
+    _lsWrite(OVR_KEY, null);
+  }
+  OVERRIDES = remote;
+  renderItinerary({ keepScroll: true });
+  updateCountdown();
+  renderMeeting();
 }
 
 // 「這天跟誰走？」：我的行程裡，同一天有兩張以上卡時，點標籤換成另一張（基本版只存這支手機）
@@ -2726,7 +3005,7 @@ function openSwap(day) {
       <button class="msg-close-btn" aria-label="關閉" style="width:44px;height:44px" onclick="closeSwap()">✕</button>
     </div>
     <div role="radiogroup" aria-label="這天跟誰走？">${opts}</div>
-    <div class="swap-note">只有這支手機會換</div>`;
+    ${FB_ENABLED ? "" : `<div class="swap-note">只有這支手機會換</div>`}`;
   document.getElementById("swap-overlay").classList.add("visible");
 }
 function closeSwap() { document.getElementById("swap-overlay").classList.remove("visible"); }
@@ -2735,7 +3014,8 @@ function chooseSwap(day, i) {
   if (!c || !_meMember()) return;
   if (!OVERRIDES[ME] || typeof OVERRIDES[ME] !== "object") OVERRIDES[ME] = {};
   OVERRIDES[ME][day] = _ck(c);
-  _lsWrite(OVR_KEY, JSON.stringify(OVERRIDES));
+  if (FB_ENABLED) _dbRef(OVR_PATH + "/" + ME + "/" + day).set(_ck(c));   // 後存的為準，所有人的畫面一起更新
+  else _lsWrite(OVR_KEY, JSON.stringify(OVERRIDES));
   closeSwap();
   renderItinerary({ keepScroll: true });
   updateCountdown();
@@ -4583,58 +4863,110 @@ function renderMeeting() {
     return;
   }
 
+  // 表單重繪（資料更新、按了通知誰的選項）時保留已填的內容
+  _meetCaptureDraft();
+  const list = _allMeetings();
+  const mine = list.filter(m => meetingNotifies(m, ME));
+  const others = list.filter(m => !meetingNotifies(m, ME));
+  const meId = ME;
   let html = "";
 
-  // Active meeting display
-  if (currentMeeting && !showForm) {
-    const c = calcCountdown(currentMeeting.time);
-    html += `
-      <div class="meeting-active-card">
-        <div class="meeting-label">🔔 集合通知</div>
-        <div class="meeting-clock${c ? "" : " passed"}" id="meeting-clock">${fmtCountdown(c)}</div>
-        <div class="meeting-time-row">
-          <span>⏰</span>
-          <span>${currentMeeting.time} 集合</span>
-        </div>
-        ${currentMeeting.message ? `<div class="meeting-msg">📍 ${currentMeeting.message}</div>` : ""}
-        ${currentMeeting.setBy   ? `<div class="meeting-by">由 ${currentMeeting.setBy} 設定</div>` : ""}
-      </div>
-      <div class="meeting-actions">
-        <button class="btn btn-outline" onclick="showMeetingForm()">✏️ 更新時間</button>
-        <button class="btn btn-danger"  onclick="clearMeeting()">✕ 取消集合</button>
+  const actions = m => {
+    const canU = meetingCanUpdate(m, meId), canC = meetingCanCancel(m, meId);
+    if (!canU && !canC) return "";
+    return `<div class="meeting-actions">
+        ${canU ? `<button class="btn btn-outline" onclick="showMeetingForm('${m._key}')">✏️ 更新時間</button>` : ""}
+        ${canC ? `<button class="btn btn-danger" onclick="cancelMeetingBy('${m._key}')">✕ 取消集合</button>` : ""}
       </div>`;
-  }
+  };
+  const byLine = m => { const n = _meetByName(m); return n ? `<div class="meeting-by">由 ${_esc(n)} 設定</div>` : ""; };
+
+  // 通知我的集合：大卡，依時間先後
+  mine.forEach(m => {
+    const c = calcCountdown(m);
+    html += `
+      <div class="meeting-item">
+        <div class="meeting-active-card">
+          <div class="meeting-label">🔔 集合通知</div>
+          <div class="meeting-clock${c ? "" : " passed"}" data-mkey="${_esc(m._key)}">${fmtCountdown(c)}</div>
+          <div class="meeting-time-row">
+            <span>⏰</span>
+            <span>${_esc(m.time)} 集合</span>
+          </div>
+          ${m.message ? `<div class="meeting-msg">📍 ${_esc(m.message)}</div>` : ""}
+          ${byLine(m)}
+        </div>
+        ${actions(m)}
+      </div>`;
+  });
+
+  // 沒通知我的集合：小卡，帶對象標籤與不響鈴圖示
+  others.forEach(m => {
+    html += `
+      <div class="meeting-item">
+        <div class="meeting-small">
+          <div class="meeting-small-head">
+            <span class="meeting-small-time">${_esc(m.time)} 集合</span>
+            ${_listTagHtml(m.notify)}
+            <span class="meeting-mute" role="img" aria-label="不響鈴" title="不響鈴">🔕</span>
+          </div>
+          ${m.message ? `<div class="meeting-msg">📍 ${_esc(m.message)}</div>` : ""}
+          ${byLine(m)}
+        </div>
+        ${actions(m)}
+      </div>`;
+  });
 
   // No meeting
-  if (!currentMeeting && !showForm) {
+  if (!list.length && !showForm) {
     html += `
       <div class="meeting-empty">
         <div class="meeting-empty-icon">🔕</div>
         <div class="meeting-empty-text">目前無集合通知</div>
-        <div class="meeting-empty-sub">設定後所有人的手機即時顯示倒數</div>
+        ${IS_GROUPED ? "" : `<div class="meeting-empty-sub">設定後所有人的手機即時顯示倒數</div>`}
       </div>`;
   }
 
-  // Form
-  if (showForm || !currentMeeting) {
-    const savedName = localStorage.getItem("meetingName") || "";
-    const currTime  = currentMeeting ? currentMeeting.time : "";
-    const currMsg   = currentMeeting ? currentMeeting.message : "";
+  // Form（沒有任何集合時直接顯示；有集合時由底下的「＋ 設定集合時間」打開）
+  const formOpen = showForm || !list.length;
+  // 新表單：通知誰預設是我當天那張卡的人（身分或換卡變了、使用者還沒動過，就跟著更新預設）
+  if (formOpen && !meetEditKey && !meetNotifyTouched) _meetModeFromIds(_meetDefaultNotify());
+  if (formOpen) {
+    const editing = meetEditKey ? list.find(x => x._key === meetEditKey) : null;
+    const me = _meMember();
+    let savedName = ""; try { savedName = localStorage.getItem("meetingName") || ""; } catch (e) {}
+    const d = meetDraft || {};
+    const currTime = d.time !== undefined ? d.time : (editing ? editing.time : "");
+    const currMsg  = d.msg  !== undefined ? d.msg  : (editing ? editing.message : "");
+    const currBy   = d.by   !== undefined ? d.by   : savedName;
+    const pill = (mode, inner) => `<button type="button" class="member-pill${meetNotifyMode === mode ? " selected" : ""}" role="radio" aria-checked="${meetNotifyMode === mode}" onclick="setMeetNotify('${mode}')">${inner}</button>`;
+    const avs = ids => ids.map(id => (GMEMBERS.find(m => m.id === id) || {}).avatar || "").join("");
+    const notifyHtml = !IS_GROUPED ? "" : `
+        <div class="form-row">
+          <div class="form-label">通知誰</div>
+          <div class="with-picker" role="radiogroup" aria-label="通知誰">
+            ${GROUPS.map((g, i) => pill("g" + i, `${_esc(g.name)} <span>${_esc(avs(g.memberIds))}</span>`)).join("")}${pill("all", "全員")}${pill("custom", "自己選")}
+          </div>
+          ${meetNotifyMode === "custom" ? `<div class="with-picker" style="margin-top:8px">${GMEMBERS.map((m, i) =>
+            `<button type="button" class="member-pill${meetNotifyIds.indexOf(m.id) >= 0 ? " selected" : ""}" aria-pressed="${meetNotifyIds.indexOf(m.id) >= 0}" onclick="toggleMeetNotify(${i})">${_esc(m.avatar || "")} ${_esc(m.name)}</button>`).join("")}</div>` : ""}
+        </div>`;
+    _meetFormKey = meetEditKey || "new";
     html += `
       <div class="meeting-form-card">
-        <div class="form-title">設定集合時間</div>
+        <div class="form-title">${editing ? "更新集合時間" : "設定集合時間"}</div>
         <div class="form-row">
           <div class="form-label">集合時間</div>
-          <input class="form-input" type="time" id="m-time" value="${currTime}">
+          <input class="form-input" type="time" id="m-time" value="${_esc(currTime)}">
         </div>
         <div class="form-row">
           <div class="form-label">備註（選填）</div>
-          <input class="form-input" type="text" id="m-msg" value="${currMsg}" placeholder="例：在 7-11 旁邊等">
+          <input class="form-input" type="text" id="m-msg" value="${_esc(currMsg)}" placeholder="例：在 7-11 旁邊等">
         </div>
-        <div class="form-row">
+        ${notifyHtml}
+        ${me ? "" : `<div class="form-row">
           <div class="form-label">你的名字（選填）</div>
-          <input class="form-input" type="text" id="m-by" value="${savedName}" placeholder="例：Claire">
-        </div>
+          <input class="form-input" type="text" id="m-by" value="${_esc(currBy)}" placeholder="例：Claire">
+        </div>`}
         <div class="form-actions">
           ${showForm ? `<button class="btn btn-outline" onclick="hideMeetingForm()">取消</button>` : ""}
           <button class="btn btn-primary" onclick="submitMeeting()">🔔 送出通知</button>
@@ -4643,6 +4975,9 @@ function renderMeeting() {
           💡 送出後會請求通知權限。請保持此頁面在瀏覽器中開著，集合時間到時會響鈴並震動。
         </div>
       </div>`;
+  } else {
+    _meetFormKey = null;
+    html += `<button class="btn btn-primary" style="width:100%" onclick="showMeetingForm()">＋ 設定集合時間</button>`;
   }
 
   el.innerHTML = html;
@@ -4667,11 +5002,6 @@ function getDayLabel(day) {
   if (day === 0) return "整趟旅程";
   const d = DAYS.find(x => x.day === day);
   return d ? `第 ${day} 天・${d.date}（${d.wd}）${d.theme}` : `第 ${day} 天`;
-}
-
-function getMemberAvatar(name) {
-  const m = MEMBERS.find(m => m.name === name);
-  return m ? m.avatar : "💬";
 }
 
 // ─── Expenses ─────────────────────────────────────────────────────
@@ -4704,51 +5034,38 @@ function renderExpenses() {
   } else {
     const jpy = allExpenses.filter(e => e.currency === "JPY");
     const twd = allExpenses.filter(e => e.currency === "TWD");
-
-    if (jpy.length > 0) {
-      html += `<div class="exp-currency-header">💴 日圓 JPY</div>`;
-      jpy.forEach(e => {
-        const forLabel = e.forWhom.length === MEMBERS.length ? "全員分擔" : e.forWhom.join("、");
-        const share = Math.round(e.amount / e.forWhom.length);
-        html += `
+    const card = (e, sym) => {
+      const payer = resolveWho(e.payer, GMEMBERS, e.names);
+      const who = _expWhoList(e);
+      const covers = GMEMBERS.every(m => who.some(w => w.key === m.id)) && who.every(w => w.member);
+      const forLabel = covers ? "全員分擔" : who.map(w => w.name).join("、");
+      const share = who.length ? Math.round(e.amount / who.length) : 0;
+      const k = _esc(e._key);
+      return `
           <div class="exp-card">
             <div class="exp-card-left">
-              <div class="exp-payer">${getMemberAvatar(e.payer)} ${e.payer}</div>
-              <div class="exp-for">幫 ${forLabel} 付・每人 ¥${share.toLocaleString()}</div>
-              ${e.note ? `<div class="exp-note">📝 ${e.note}</div>` : ""}
+              <div class="exp-payer">${_esc(payer.member ? (payer.member.avatar || "💬") : "💬")} ${_esc(payer.name)}</div>
+              <div class="exp-for">幫 ${_esc(forLabel)} 付・每人 ${sym}${share.toLocaleString()}</div>
+              ${e.note ? `<div class="exp-note">📝 ${_esc(e.note)}</div>` : ""}
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-              <div class="exp-amount">¥${e.amount.toLocaleString()}</div>
+              <div class="exp-amount">${sym}${e.amount.toLocaleString()}</div>
               <div style="display:flex;gap:4px">
-                <button class="edit-btn" onclick="editExpense('${e._key}')">✏️</button>
-                <button class="exp-del-btn" onclick="deleteExpense('${e._key}')">✕</button>
+                <button class="edit-btn" onclick="editExpense('${k}')">✏️</button>
+                <button class="exp-del-btn" onclick="deleteExpense('${k}')">✕</button>
               </div>
             </div>
           </div>`;
-      });
+    };
+
+    if (jpy.length > 0) {
+      html += `<div class="exp-currency-header">💴 日圓 JPY</div>`;
+      jpy.forEach(e => { html += card(e, "¥"); });
     }
 
     if (twd.length > 0) {
       html += `<div class="exp-currency-header" style="margin-top:${jpy.length>0?'16px':'0'}">💵 台幣 TWD</div>`;
-      twd.forEach(e => {
-        const forLabel = e.forWhom.length === MEMBERS.length ? "全員分擔" : e.forWhom.join("、");
-        const share = Math.round(e.amount / e.forWhom.length);
-        html += `
-          <div class="exp-card">
-            <div class="exp-card-left">
-              <div class="exp-payer">${getMemberAvatar(e.payer)} ${e.payer}</div>
-              <div class="exp-for">幫 ${forLabel} 付・每人 $${share.toLocaleString()}</div>
-              ${e.note ? `<div class="exp-note">📝 ${e.note}</div>` : ""}
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-              <div class="exp-amount">$${e.amount.toLocaleString()}</div>
-              <div style="display:flex;gap:4px">
-                <button class="edit-btn" onclick="editExpense('${e._key}')">✏️</button>
-                <button class="exp-del-btn" onclick="deleteExpense('${e._key}')">✕</button>
-              </div>
-            </div>
-          </div>`;
-      });
+      twd.forEach(e => { html += card(e, "$"); });
     }
   }
 
@@ -4772,7 +5089,9 @@ function renderSettlement(el) {
     if (expenses.length === 0) return;
     const symbol = currency === "JPY" ? "¥" : "$";
     const label  = currency === "JPY" ? "💴 日圓 JPY 結算" : "💵 台幣 TWD 結算";
-    const txns   = calcSettlement(expenses);
+    const settled = settleExpenses(expenses, GMEMBERS);
+    const txns   = settled.txns;
+    const chip = k => { const w = resolveWho(k, GMEMBERS, null); return `${_esc(w.member ? (w.member.avatar || "💬") : "💬")} ${_esc(w.member ? w.name : (settled.names[k] || k))}`; };
     const total  = expenses.reduce((s, e) => s + e.amount, 0);
 
     html += `<div class="settle-card">`;
@@ -4783,9 +5102,9 @@ function renderSettlement(el) {
       txns.forEach(t => {
         html += `
           <div class="settle-row">
-            <span class="settle-from">${getMemberAvatar(t.from)} ${t.from}</span>
+            <span class="settle-from">${chip(t.from)}</span>
             <span style="color:var(--text-3);font-size:12px">還給</span>
-            <span class="settle-to">${getMemberAvatar(t.to)} ${t.to}</span>
+            <span class="settle-to">${chip(t.to)}</span>
             <span class="settle-amount">${symbol}${t.amount.toLocaleString()}</span>
           </div>`;
       });
@@ -4796,41 +5115,38 @@ function renderSettlement(el) {
   el.innerHTML = html;
 }
 
-function calcSettlement(expenses) {
-  const bal = {};
-  MEMBERS.forEach(m => { bal[m.name] = 0; });
-  expenses.forEach(e => {
-    const share = e.amount / e.forWhom.length;
-    e.forWhom.forEach(name => { bal[name] = (bal[name] || 0) - share; });
-    bal[e.payer] = (bal[e.payer] || 0) + e.amount;
-  });
-  Object.keys(bal).forEach(k => { bal[k] = Math.round(bal[k]); });
-
-  const creditors = Object.entries(bal).filter(([,v]) => v > 0).sort((a,b) => b[1]-a[1]);
-  const debtors   = Object.entries(bal).filter(([,v]) => v < 0).sort((a,b) => a[1]-b[1]);
-  const txns = [];
-  let ci = 0, di = 0;
-  while (ci < creditors.length && di < debtors.length) {
-    const amount = Math.min(creditors[ci][1], -debtors[di][1]);
-    if (amount > 0) txns.push({ from: debtors[di][0], to: creditors[ci][0], amount });
-    creditors[ci][1] -= amount;
-    debtors[di][1]   += amount;
-    if (creditors[ci][1] <= 0) ci++;
-    if (debtors[di][1]  >= 0) di++;
-  }
-  return txns;
+// 這筆記帳的分擔者（對得上成員就用現在的名字；同一人只算一次）
+function _expWhoList(e) {
+  const seen = new Set();
+  return (Array.isArray(e.forWhom) ? e.forWhom : []).map(v => resolveWho(v, GMEMBERS, e.names))
+    .filter(w => !seen.has(w.key) && seen.add(w.key));
+}
+// 預設分擔 = 付款人今天那張日卡的同行名單（套用換卡；當天多張卡取聯集）；沒分組、今天不在行程內 = 全員
+function _expDefaultForWhom(payerKey) {
+  const all = GMEMBERS.map(m => m.id);
+  if (!IS_GROUPED) return all;
+  return memberDayList(DAYS, GMEMBERS, payerKey, OVERRIDES, _ck, _todayDay()) || all;
 }
 
 function showExpForm(expense) {
+  expFormExtra = [];
+  expFormNames = {};
   if (expense) {
     expEditKey      = expense._key;
     expFormCurrency = expense.currency;
-    expFormPayer    = expense.payer;
-    expFormForWhom  = new Set(expense.forWhom);
+    const payer = resolveWho(expense.payer, GMEMBERS, expense.names);
+    expFormPayer    = payer.key;
+    const who = _expWhoList(expense);
+    expFormForWhom  = new Set(who.map(w => w.key));
+    // 已經不在成員名單裡的人（刪除的成員、對不上的舊名字）：編輯時仍要看得到，免得存檔時被默默拿掉
+    [payer, ...who].forEach(w => { if (!w.member && !expFormExtra.some(x => x.key === w.key)) expFormExtra.push({ key: w.key, name: w.name }); });
+    expForWhomTouched = true;
   } else {
     expEditKey     = null;
-    expFormForWhom = new Set(MEMBERS.map(m => m.name));
-    expFormPayer   = "";
+    const me = _meMember();
+    expFormPayer   = me ? me.id : "";                 // 付款人預設是我
+    expFormForWhom = new Set(_expDefaultForWhom(expFormPayer || null));
+    expForWhomTouched = false;
   }
   document.getElementById("exp-form-title").textContent = expense ? "✏️ 編輯記帳" : "💰 新增記帳";
   document.getElementById("exp-overlay").classList.add("visible");
@@ -4848,15 +5164,27 @@ function hideExpForm() {
 }
 
 function selectExpCurrency(c) { expFormCurrency = c; renderExpFormBody(); }
-function selectExpPayer(idx)   { expFormPayer = MEMBERS[idx].name; renderExpFormBody(); }
+// 選項索引 0..n-1 是成員，之後是編輯時帶進來的「已不在名單裡」的人
+function _expPickKey(idx) { return idx < GMEMBERS.length ? GMEMBERS[idx].id : (expFormExtra[idx - GMEMBERS.length] || {}).key; }
+function selectExpPayer(idx) {
+  const key = _expPickKey(idx);
+  if (key === undefined) return;
+  expFormPayer = key;
+  // 還沒動過分擔名單：預設跟著付款人那天的同行名單走
+  if (!expEditKey && !expForWhomTouched) expFormForWhom = new Set(_expDefaultForWhom(key));
+  renderExpFormBody();
+}
 function toggleExpForWhom(idx) {
-  const name = MEMBERS[idx].name;
-  expFormForWhom.has(name) ? expFormForWhom.delete(name) : expFormForWhom.add(name);
+  const key = _expPickKey(idx);
+  if (key === undefined) return;
+  expForWhomTouched = true;
+  expFormForWhom.has(key) ? expFormForWhom.delete(key) : expFormForWhom.add(key);
   renderExpFormBody();
 }
 function selectAllExpForWhom() {
-  if (expFormForWhom.size === MEMBERS.length) expFormForWhom.clear();
-  else MEMBERS.forEach(m => expFormForWhom.add(m.name));
+  expForWhomTouched = true;
+  if (GMEMBERS.every(m => expFormForWhom.has(m.id))) expFormForWhom.clear();
+  else GMEMBERS.forEach(m => expFormForWhom.add(m.id));
   renderExpFormBody();
 }
 
@@ -4868,13 +5196,15 @@ function renderExpFormBody(prefill) {
     `<button class="currency-btn${expFormCurrency===b.c?" selected":""}" onclick="selectExpCurrency('${b.c}')">${b.label}</button>`
   ).join("");
 
-  const payerPills = MEMBERS.map((m,i) =>
-    `<button class="member-pill${expFormPayer===m.name?" selected":""}" onclick="selectExpPayer(${i})">${m.avatar} ${m.name}</button>`
+  const pick = GMEMBERS.map(m => ({ key: m.id, label: `${_esc(m.avatar || "")} ${_esc(m.name)}` }))
+    .concat(expFormExtra.map(x => ({ key: x.key, label: `${_esc(x.name)}（已不在名單）` })));
+  const payerPills = pick.map((p, i) =>
+    `<button class="member-pill${expFormPayer===p.key?" selected":""}" onclick="selectExpPayer(${i})">${p.label}</button>`
   ).join("");
 
-  const allSel = expFormForWhom.size === MEMBERS.length;
-  const forPills = MEMBERS.map((m,i) =>
-    `<button class="member-pill${expFormForWhom.has(m.name)?" selected":""}" onclick="toggleExpForWhom(${i})">${m.avatar} ${m.name}</button>`
+  const allSel = GMEMBERS.every(m => expFormForWhom.has(m.id));
+  const forPills = pick.map((p, i) =>
+    `<button class="member-pill${expFormForWhom.has(p.key)?" selected":""}" onclick="toggleExpForWhom(${i})">${p.label}</button>`
   ).join("");
 
   const savedAmount = prefill ? prefill.amount : (document.getElementById("exp-amount-input")?.value || "");
@@ -4916,10 +5246,19 @@ function submitExpense() {
   if (!amount || amount <= 0) { alert("請輸入金額");     return; }
   const note = (document.getElementById("exp-note-input")?.value || "").trim();
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
+  // 付款人與分擔者存成員 id，並記下當時的名字（之後成員被刪除，舊帳還看得到名字）
+  const forWhom = [...expFormForWhom];
+  const names = {};
+  [expFormPayer, ...forWhom].forEach(k => {
+    const w = resolveWho(k, GMEMBERS, null);
+    const nm = w.member ? w.name : ((expFormExtra.find(x => x.key === k) || {}).name || w.name);
+    names[fbKey(k)] = nm;
+  });
   const payload = {
     currency: expFormCurrency,
     payer:    expFormPayer,
-    forWhom:  [...expFormForWhom],
+    forWhom,
+    names,
     amount,
     note
   };

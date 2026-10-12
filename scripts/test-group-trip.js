@@ -577,6 +577,113 @@ test('4-0 我的行程：名單含我的卡；換卡以換到的那張為準；D
   assert.strictEqual(ctx.displayDayNo(3, undefined), 3);
 });
 
+// 包 5：集合、換卡同步、記帳的純函式。瀏覽器行為另有驗收清單 5-1～5-22
+test('5-0 集合：時間換算、通知對象、取消／更新權限、橫幅挑選、30 分鐘自動收起', () => {
+  const vm = require('vm');
+  const src = fs.readFileSync(path.join(root, 'generator/template-src.html'), 'utf8');
+  const pure = /\/\/ <group-pure-begin>([\s\S]*?)\/\/ <group-pure-end>/.exec(src);
+  const view = /\/\/ <group-view-begin>([\s\S]*?)\/\/ <\/group-view-end>/.exec(src);
+  const sync = /\/\/ <sync-pure-begin>([\s\S]*?)\/\/ <\/sync-pure-end>/.exec(src);
+  assert.ok(pure && view && sync, '找不到 sync-pure 區段');
+  const ctx = vm.createContext({});
+  vm.runInContext(pure[1] + view[1] + sync[1], ctx);
+  const at = (h, m, dayOffset = 0) => new Date(2026, 10, 4 + dayOffset, h, m, 0).getTime();
+  // 集合時間：設定當下之後最近的那個時刻
+  assert.strictEqual(ctx.meetingTarget({ time: '17:30', setAt: at(15, 0) }, at(15, 0)), at(17, 30));
+  assert.strictEqual(ctx.meetingTarget({ time: '08:00', setAt: at(23, 0) }, at(23, 0)), at(8, 0, 1));   // 半夜設早上 → 隔天
+  assert.strictEqual(ctx.meetingTarget({ time: '17:30' }, at(15, 0)), at(17, 30));                     // 舊資料沒有 setAt = 今天
+  assert.ok(isNaN(ctx.meetingTarget({ time: '' }, 0)));
+  // 30 分鐘自動收起
+  const m1 = { time: '17:30', setAt: at(15, 0) };
+  assert.ok(ctx.meetingVisible(m1, at(17, 59)));
+  assert.ok(!ctx.meetingVisible(m1, at(18, 0)));
+  // 通知對象
+  assert.ok(ctx.meetingNotifies({}, 'a'));
+  assert.ok(ctx.meetingNotifies({ notify: [] }, 'a'));
+  assert.ok(ctx.meetingNotifies({ notify: ['a', 'b'] }, 'a'));
+  assert.ok(!ctx.meetingNotifies({ notify: ['a', 'b'] }, 'c'));
+  assert.ok(ctx.meetingNotifies({ notify: ['a', 'b'] }, null));      // 沒選身分 = 每個都通知他
+  assert.ok(ctx.meetingNotifies({ notify: ['a', 'b'] }, 'none'));
+  // 取消／更新
+  assert.ok(ctx.meetingCanCancel({ setBy: 'a' }, 'a'));
+  assert.ok(!ctx.meetingCanCancel({ setBy: 'a' }, 'b'));
+  assert.ok(!ctx.meetingCanCancel({ setBy: 'a' }, null));
+  assert.ok(ctx.meetingCanCancel({ setBy: '' }, 'b'));               // 發起者空 → 誰都能取消
+  assert.ok(ctx.meetingCanUpdate({ setBy: 'a', notify: ['b'] }, 'b'));   // 被通知的人可更新
+  assert.ok(!ctx.meetingCanUpdate({ setBy: 'a', notify: ['b'] }, 'c'));  // 沒被通知、不是發起者
+  assert.ok(ctx.meetingCanUpdate({ setBy: 'a', notify: ['b'] }, 'a'));   // 發起者（即使自己不在通知名單）
+  // 清單：新路徑多筆＋舊路徑一筆，依時間排序；舊的誰都能取消
+  const now = at(16, 0);
+  const list = ctx.meetingList({ k2: { time: '18:00', setBy: 'c', notify: ['c', 'd'], setAt: at(15, 0) }, k1: { time: '17:30', setBy: 'a', notify: ['a', 'b'], setAt: at(15, 0) } },
+    { time: '17:45', message: '舊', setBy: '小貓', setAt: at(15, 0) }, now);
+  assert.deepStrictEqual(Array.from(list, m => m._key), ['k1', '__legacy', 'k2']);
+  assert.strictEqual(list[1].setBy, '');
+  assert.strictEqual(list[1].setByName, '小貓');
+  assert.ok(ctx.meetingCanCancel(list[1], 'd'));
+  // 橫幅：時間最近、通知我的那一筆
+  assert.strictEqual(ctx.pickBannerMeeting(list, 'a', now)._key, 'k1');
+  assert.strictEqual(ctx.pickBannerMeeting(list, 'c', now)._key, '__legacy');    // 舊的通知全員，比 18:00 近
+  assert.strictEqual(ctx.pickBannerMeeting(list, 'd', now)._key, '__legacy');
+  assert.strictEqual(ctx.pickBannerMeeting(list, 'a', at(17, 40))._key, '__legacy');   // 17:30 剛過還在 30 分鐘內，但還沒到的優先
+  assert.strictEqual(ctx.pickBannerMeeting([], 'a', now), null);
+});
+
+test('5-0b 換卡後的名單、預設通知／分擔、記帳讀取相容與結算合併', () => {
+  const vm = require('vm');
+  const src = fs.readFileSync(path.join(root, 'generator/template-src.html'), 'utf8');
+  const pure = /\/\/ <group-pure-begin>([\s\S]*?)\/\/ <group-pure-end>/.exec(src);
+  const view = /\/\/ <group-view-begin>([\s\S]*?)\/\/ <\/group-view-end>/.exec(src);
+  const sync = /\/\/ <sync-pure-begin>([\s\S]*?)\/\/ <\/sync-pure-end>/.exec(src);
+  const ctx = vm.createContext({});
+  vm.runInContext(pure[1] + view[1] + sync[1], ctx);
+  const members = [{ id: 'a', name: '小貓' }, { id: 'b', name: '阿熊' }, { id: 'c', name: '小魚' }, { id: 'd', name: '阿鹿' }];
+  const cards = [
+    { id: 'c3', day: 3 },
+    { id: 'c4a', day: 4, with: ['a', 'b'] }, { id: 'c4b', day: 4, with: ['c', 'd'] },
+    { id: 'c8', day: 8 },
+  ];
+  const keyOf = c => c.id;
+  const R = (d, o) => Array.from(ctx.cardRoster(cards, members, d, o, keyOf));
+  assert.deepStrictEqual(R(cards[1], {}), ['a', 'b']);
+  assert.deepStrictEqual(R(cards[2], { b: { 4: 'c4b' } }), ['b', 'c', 'd']);    // 阿熊換到福岡組 → 福岡組名單含阿熊
+  assert.deepStrictEqual(R(cards[1], { b: { 4: 'c4b' } }), ['a']);              // 鹿兒島組少了阿熊
+  assert.deepStrictEqual(R(cards[0], { b: { 4: 'c4b' } }), ['a', 'b', 'c', 'd']); // 只有一張卡的日子不受影響
+  const L = (me, o, day) => { const r = ctx.memberDayList(cards, members, me, o, keyOf, day); return r && Array.from(r); };
+  assert.deepStrictEqual(L('a', {}, 4), ['a', 'b']);                            // 5-15：小貓 11/4 → 鹿兒島組
+  assert.deepStrictEqual(L('a', {}, 8), ['a', 'b', 'c', 'd']);                  // 11/8 全員
+  assert.strictEqual(L('a', {}, null), null);                                    // 行程日期外
+  assert.deepStrictEqual(L('b', { b: { 4: 'c4b' } }, 4), ['b', 'c', 'd']);      // 5-13：阿熊換卡後 → 福岡組那張的人（含阿熊）
+  // 記帳：id／名字／已刪除成員
+  const w = (v, names) => { const r = ctx.resolveWho(v, members, names); return [r.key, r.name, !!r.member]; };
+  assert.deepStrictEqual(w('a'), ['a', '小貓', true]);
+  assert.deepStrictEqual(w('小貓'), ['a', '小貓', true]);                        // 舊紀錄用名字
+  assert.deepStrictEqual(w('zz', { zz: '已離開' }), ['zz', '已離開', false]);     // 成員被刪除：用當時的名字
+  assert.deepStrictEqual(w('路人'), ['路人', '路人', false]);
+  // 結算：同一人的新舊紀錄合併；改代號後金額不變（5-18）；刪除成員後仍計入（5-19）
+  const exp = [
+    { currency: 'JPY', amount: 1000, payer: '小貓', forWhom: ['小貓', '阿熊'] },                 // 舊：名字
+    { currency: 'JPY', amount: 600, payer: 'b', forWhom: ['a', 'b', 'c'], names: { a: '小貓', b: '阿熊', c: '小魚' } },   // 新：id
+  ];
+  const S = (ms) => { const r = ctx.settleExpenses(exp, ms); return { t: Array.from(r.txns, x => [x.from, x.to, x.amount]), n: JSON.parse(JSON.stringify(r.names)) }; };
+  const base = S(members);
+  // 小貓 +1000-500-200 = +300；阿熊 -500+600-200 = -100；小魚 -200
+  assert.deepStrictEqual(base.t, [['c', 'a', 200], ['b', 'a', 100]], '同一人的新舊紀錄合併');
+  // 改代號（5-18）：以 id 存的紀錄，金額不變、顯示新代號。（以名字存的舊紀錄在改名後對不上，屬於已知限制）
+  const renamed = members.map(m => m.id === 'a' ? { ...m, name: '貓貓' } : m);
+  const idOnly = [exp[1]];
+  const before = ctx.settleExpenses(idOnly, members), after = ctx.settleExpenses(idOnly, renamed);
+  assert.strictEqual(after.names.a, '貓貓');
+  assert.deepStrictEqual(Array.from(after.txns, x => [x.from, x.to, x.amount]), Array.from(before.txns, x => [x.from, x.to, x.amount]));
+  const noD = members.filter(m => m.id !== 'c');
+  const afterDelete = ctx.settleExpenses(exp, noD);
+  assert.strictEqual(afterDelete.names.c, '小魚');                                // 已刪除成員：結算仍計入、名字取當時的
+  assert.ok(afterDelete.txns.some(x => x.from === 'c' || x.to === 'c'));
+  // Firebase 把數字 key 讀成陣列
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(ctx.normOverrides({ a: [null, null, null, 'c3', 'c4b'], b: { 4: 'c4b' }, c: null }))),
+    { a: { 3: 'c3', 4: 'c4b' }, b: { 4: 'c4b' } });
+  assert.strictEqual(ctx.fbKey('a.b/c'), 'a_b_c');
+});
+
 Promise.all(pendingTests).then(() => {
   console.log(`\n${pass} 通過、${fail} 失敗`);
   process.exit(fail ? 1 : 0);
