@@ -434,17 +434,10 @@ function gDotStyle(k, ctx) {
   if (kind === 1) return `background:#fff;box-shadow:0 0 0 2px ${ctx.deep} inset`;
   return `background:${ctx.pale};box-shadow:0 0 0 2px ${ctx.deep} inset`;
 }
-// 「有人分頭行動嗎？」入口：行程 App 端還沒支援分組，暫時只在網址帶 ?groups=1 時顯示
-// （已經選了「有分頭」的草稿照常顯示，免得被鎖在裡面）
-let _gFeatureSeen = false;   // 這次開啟頁面期間入口出現過就一直留著，切回「全程一起」才看得到說明、也切得回來
-function groupFeatureOn() {
-  if (state.splitUp || /[?&]groups=1(&|$)/.test((typeof location !== 'undefined' && location.search) || '')) _gFeatureSeen = true;
-  return _gFeatureSeen;
-}
+// 「有人分頭行動嗎？」入口（步驟 1）。行程 App 端支援分組後（包 3～5），入口對所有人開放。
 function renderSplitSetup() {
   const ta = document.getElementById('trip-text');
   if (!ta || !ta.parentNode) return;
-  if (!groupFeatureOn()) { gDropSlot('split-setup'); return; }
   const host = gSlot('split-setup', ta.parentNode, ta.nextSibling);
   const on = !!state.splitUp;
   const t = gTheme();

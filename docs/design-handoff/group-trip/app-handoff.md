@@ -7,7 +7,7 @@
 ## 0. 開工前
 
 - 流程照全域 CLAUDE.md：分支 → 驗收清單確認 → 實作 → 逐條自我驗證 → `/code-review` → 問過 Claire 才 push／開 PR（PR 會觸發 Netlify 預覽）。
-- 一包一個分支、一個 PR，依序做；前一包 merge 後再從 main 切下一包。
+- 一包一個分支，依序做；原訂一包一個 PR、前一包 merge 後再從 main 切下一包。**2026-10-11 修訂：包 4 與包 5 合成同一個 PR**（包 5 從包 4 的分支切出，PR 內多個 commit 分段）。
   - 包 3 `feat/group-trip-app-data`、包 4 `feat/group-trip-app-identity`、包 5 `feat/group-trip-app-sync`
 - 入口閘門（`generator/group-ui.js` 的 `groupFeatureOn()`）到包 5 最後一個 commit 才拿掉。在那之前，分組行程只能從 `/generator/?groups=1` 建立。
 - App 的原始檔是 `generator/template-src.html`。改完跑 `node scripts/build-template.js`（產生 `generator-template.js`）與 `node scripts/build-demo.js`（重產 `trip-app-v2/index.html`），三個檔一起 commit。
