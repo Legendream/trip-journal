@@ -425,7 +425,20 @@
     .day-hotel-info { flex: 1; min-width: 0; }
     .day-hotel-name { font-size: 13px; font-weight: 600; color: var(--text-2); }
     .day-hotel-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
-    .day-hotel-note { font-size: 11px; color: var(--text-3); }
+    .day-hotel-note { font-size: 11px; color: var(--text-3); min-width: 0; overflow-wrap: anywhere; }
+    .hotel-apply-row { display: flex; align-items: center; gap: 8px; padding: 10px 4px; font-size: 14px; color: var(--text-2); flex-wrap: wrap; }
+    .hotel-apply-row input { width: 20px; height: 20px; accent-color: var(--pink); flex-shrink: 0; }
+    .hotel-copy-has { font-size: 11px; color: var(--text-3); }
+    .day-hotel.unbooked { background: var(--pink-3); }
+    .day-hotel-unbooked-label { font-size: 13px; font-weight: 700; color: var(--text); }
+    .hotel-fill-btn {
+      margin-top: 8px; border: 1.5px solid var(--pink); background: #fff; color: var(--pink);
+      border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
+    }
+    .hotel-unbooked-tag {
+      display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--pink);
+      border-radius: 5px; padding: 1px 6px; line-height: 1.5; white-space: nowrap;
+    }
     .hotel-paid-badge {
       display: inline-flex; align-items: center; gap: 3px;
       font-size: 11px; font-weight: 600;
@@ -1682,7 +1695,7 @@ let itinEditTarget = null; // null=新增 | {kind:"added",key} | {kind:"preset",
 let itinFormSeed   = { name:"", time:"", sub:"", map:"" };
 let itinMenuKey    = null; // id of the act whose ⋯ menu is open
 let hotelEdited  = {}, hotelHidden  = {};     // 住宿：每日覆寫 / 隱藏
-let hotelFormDay  = null, hotelFormSeed  = {}, hotelFormPaid = false;
+let hotelFormDay  = null, hotelFormSeed  = {}, hotelFormPaid = false, hotelFormBooked = true, hotelFormApply = null;
 let notesAdded   = [];      // [{_key, icon, text}] — Firebase/localStorage added
 let notesEdited  = {};      // {idx: {icon,text}} — preset overrides
 let notesHidden  = {};      // {idx: true} — hidden presets
@@ -2497,7 +2510,7 @@ function _rainStr(w) {
 function _dayPlaces(d) {
   const out = _dayMergedActs(d).map(a => ({ map: a.map, geo: a.geo }));
   const h = _dayHotelInfo(d);
-  if (h) out.push({ map: h.map, geo: h.geo });
+  if (h && (h.map || h.geo)) out.push({ map: h.map, geo: h.geo });
   return out;
 }
 function _weatherQueriesByDate() {
@@ -2785,6 +2798,7 @@ function renderItinerary(opts) {
     }).join("");
 
     const _hotel = _dayHotelInfo(d);
+    const _hotelUnbooked = !!(_hotel && _hotel.booked === false);
     const hotelHtml = _hotel ? (() => {
       const _hMapBtn  = _hotel.map ? `<a class="map-btn" href="${mapUrl(_hotel.map)}" target="_blank" rel="noopener">📍 地圖</a>` : "";
       const _hParkBtn = (d.selfDrive && _hotel.name && _hotel.park !== false)
@@ -2793,6 +2807,7 @@ function renderItinerary(opts) {
           <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('hotel:${_key}')">⋯</button>
           ${itinMenuKey === "hotel:" + _key ? `<div class="act-menu">
             <button class="act-menu-item" onclick="startEditHotel(${_kl})">✏️ 編輯</button>
+            <button class="act-menu-item" onclick="startCopyHotel(${_kl})">複製到其他天</button>
             <button class="act-menu-item danger" onclick="deleteHotel(${_kl})">🗑 刪除</button>
           </div>` : ""}
         </span>` : "";
@@ -2802,18 +2817,20 @@ function renderItinerary(opts) {
             ${_hMapBtn}${_hParkBtn}${_hMenu}
           </div>` : "";
       return `
-      <div class="day-hotel">
+      <div class="day-hotel${_hotelUnbooked ? " unbooked" : ""}">
         <span class="day-hotel-icon">🏨</span>
         <div class="day-hotel-info">${_listTagHtml(_hotel.with)}
-          <div class="day-hotel-name">${_esc(_hotel.name || "")}</div>
+          ${_hotelUnbooked ? `<div class="day-hotel-unbooked-label">住宿未訂</div>` : ""}
+          ${_hotel.name ? `<div class="day-hotel-name">${_esc(_hotel.name)}</div>` : ""}
           <div class="day-hotel-meta">
-            <span class="hotel-paid-badge ${_hotel.paid ? 'paid' : 'unpaid'}">
+            ${_hotelUnbooked ? "" : `<span class="hotel-paid-badge ${_hotel.paid ? 'paid' : 'unpaid'}">
               ${_hotel.paid
                 ? `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 4.5,9 10.5,3"/></svg> 已付清`
-                : `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="5"/><line x1="6" y1="3.5" x2="6" y2="6.5"/><line x1="6" y1="8" x2="6" y2="8.5"/></svg> 現場付`}
-            </span>
+                : `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="5"/><line x1="6" y1="3.5" x2="6" y2="6.5"/><line x1="6" y1="8" x2="6" y2="8.5"/></svg> 未付款`}
+            </span>`}
             ${_hotel.note ? `<span class="day-hotel-note">${_esc(_hotel.note)}</span>` : ""}
           </div>
+          ${_hotelUnbooked && _canEdit ? `<button class="hotel-fill-btn" onclick="startEditHotel(${_kl})">填入住宿</button>` : ""}
           ${_hActions}
         </div>
       </div>`;
@@ -2872,7 +2889,7 @@ function renderItinerary(opts) {
           </div>
           <div class="day-info">
             <div class="day-theme">${d.theme}</div>
-            <div class="day-meta${_dayTag ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點</div>
+            <div class="day-meta${_dayTag || _hotelUnbooked ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點${_hotelUnbooked ? `<span class="hotel-unbooked-tag">住宿未訂</span>` : ""}</div>
           </div>
           <span class="day-emoji">${d.emoji}</span>
           <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -3095,7 +3112,8 @@ function _daySnapshotKey(key) { return _PFX + "-share-snapshot-" + key; }   // k
 function _daySnapshot(d) {
   const acts  = _dayMergedActs(d).map(a => ({ n: a.name, t: a.time, s: a.sub, r: a.ref }));
   const hotel = _dayHotelInfo(d);
-  return JSON.stringify({ acts, hotel: hotel ? { n: hotel.name, m: hotel.map } : null });
+  const _shown = hotel && hotel.booked !== false;   // 未訂不上圖卡，也不算內容變動
+  return JSON.stringify({ acts, hotel: _shown ? { n: hotel.name, m: hotel.map } : null });
 }
 function _dayHasShareUpdate(d) {
   let saved;
@@ -3544,7 +3562,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
     if (!d) { ctx.setTransform(1, 0, 0, 1, 0, 0); return; }
     const acts  = _dayMergedActs(d).map(a => a.name).filter(Boolean);
     const hotel = _dayHotelInfo(d);
-    const hotelName = hotel && hotel.name;
+    const hotelName = hotel && hotel.booked !== false && hotel.name;   // 未訂不上圖卡
     const cap = (caption || "").trim();
     const dateText = `${d.date}（${d.wd}）`;
     const totalText = `／ ${_tripDayCount()} 天`;
@@ -3830,23 +3848,29 @@ function doUndo() {
 }
 
 // ─── 住宿編輯 ─────────────────────────────────────────────────────
+// 訂房狀態：資料只多一個 booked 記號（false = 還沒訂；沒有記號 = 已訂，舊行程不用轉換）
+function _hotelOf(d) {   // 一張卡「畫面上實際的」住宿（原始行程＋覆寫，扣掉隱藏）；沒有 = null
+  return d ? _dayHotelInfo(d) : null;
+}
 function _hotelSeed(day) {   // day = 卡片 key
   const d = _cardByKey(day);
   const b = Object.assign({}, (d && d.hotel) || {}, (d && _byCard(hotelEdited, d)) || {});
-  return { name: b.name || "", note: b.note || "", paid: !!b.paid,
+  return { name: b.name || "", note: b.note || "", paid: !!b.paid, booked: b.booked !== false,
            map: (b.map && b.map !== b.name) ? b.map : "" };
 }
 function startEditHotel(day) {
   itinMenuKey = null;
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
   hotelFormDay = day; hotelFormSeed = _hotelSeed(day); hotelFormPaid = hotelFormSeed.paid;
+  hotelFormBooked = hotelFormSeed.booked; hotelFormApply = null;
   document.getElementById("hotel-form-title").textContent = "✏️ 編輯住宿";
   document.getElementById("hotel-overlay").classList.add("visible");
   renderHotelFormBody();
 }
 function startAddHotel(day) {
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
-  hotelFormDay = day; hotelFormSeed = { name: "", note: "", paid: false, map: "" }; hotelFormPaid = false;
+  hotelFormDay = day; hotelFormSeed = { name: "", note: "", paid: false, booked: true, map: "" };
+  hotelFormPaid = false; hotelFormBooked = true; hotelFormApply = null;
   document.getElementById("hotel-form-title").textContent = "🏨 新增住宿";
   document.getElementById("hotel-overlay").classList.add("visible");
   renderHotelFormBody();
@@ -3854,7 +3878,7 @@ function startAddHotel(day) {
 function hideHotelForm() {
   document.getElementById("hotel-overlay").classList.remove("visible");
   document.getElementById("hotel-form-body").innerHTML = "";
-  hotelFormDay = null;
+  hotelFormDay = null; hotelFormApply = null;
 }
 function _hotelFormVals() {
   const g = id => document.getElementById(id);
@@ -3863,37 +3887,126 @@ function _hotelFormVals() {
     name: g("ho-name") ? g("ho-name").value : (f.name || ""),
     note: g("ho-note") ? g("ho-note").value : (f.note || ""),
     map:  g("ho-map")  ? g("ho-map").value  : (f.map || ""),
-    paid: hotelFormPaid,
+    paid: hotelFormBooked ? hotelFormPaid : false,
+    booked: hotelFormBooked,
   };
+}
+// 「同時套用到同一間的其他晚」：同一間 = 名稱相同（不要求連續）；比對用修改前的名稱，沒填名稱的不算
+function _sameHotelCards(day) {
+  const seedName = (hotelFormSeed.name || "").trim();
+  if (!seedName || hotelFormDay == null) return [];
+  return DAYS.filter(d => {
+    if (_ck(d) === day) return false;
+    const h = _hotelOf(d);
+    return h && (h.name || "").trim() === seedName;
+  });
+}
+function _applyTargetKeys() {   // 目前勾選的「套用到其他晚」卡片 key（沒打開過就是全勾）
+  return _sameHotelCards(hotelFormDay).map(_ck).filter(k => !hotelFormApply || hotelFormApply[String(k)] !== false);
+}
+function toggleHotelApply(k, on) {
+  if (!hotelFormApply) hotelFormApply = {};
+  hotelFormApply[String(k)] = !!on;
 }
 function renderHotelFormBody() {
   const v = _hotelFormVals();
+  const same = (hotelFormDay != null && hotelFormSeed.name) ? _sameHotelCards(hotelFormDay) : [];
+  const applyHtml = same.length ? `
+    <div class="form-row"><div class="form-label">同時套用到（只更新這次改動的欄位）</div>
+      ${same.map(d => {
+        const k = _ck(d), lb = _cardLabel(d);
+        const on = !hotelFormApply || hotelFormApply[String(k)] !== false;
+        return `<label class="hotel-apply-row"><input type="checkbox" ${on ? "checked" : ""} onchange="toggleHotelApply(${_keyLit(k)}, this.checked)"> Day ${_dispDay(d)}・${d.date}（${d.wd}）${lb ? "・" + _esc(lb) : ""}</label>`;
+      }).join("")}
+    </div>` : "";
   document.getElementById("hotel-form-body").innerHTML = `
-    <div class="form-row"><div class="form-label">住宿名稱</div><input class="form-input" id="ho-name" value="${_esc(v.name)}" placeholder="例：ホテル京阪仙台"></div>
-    <div class="form-row"><div class="form-label">備註（選填）</div><input class="form-input" id="ho-note" value="${_esc(v.note)}" placeholder="例：¥123,400（含早餐）"></div>
-    <div class="form-row"><div class="form-label">付款狀態</div>
+    <div class="form-row"><div class="form-label">訂房狀態</div>
       <div class="member-picker">
-        <button class="member-pill${!hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=false;renderHotelFormBody()">現場付</button>
-        <button class="member-pill${hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=true;renderHotelFormBody()">已付清</button>
+        <button class="member-pill${hotelFormBooked ? " selected" : ""}" onclick="hotelFormBooked=true;renderHotelFormBody()">已訂</button>
+        <button class="member-pill${!hotelFormBooked ? " selected" : ""}" onclick="hotelFormBooked=false;renderHotelFormBody()">還沒訂</button>
       </div>
     </div>
+    <div class="form-row"><div class="form-label">住宿名稱${hotelFormBooked ? "" : "（選填）"}</div><input class="form-input" id="ho-name" value="${_esc(v.name)}" placeholder="例：ホテル京阪仙台"></div>
+    <div class="form-row"><div class="form-label">備註（選填）</div><input class="form-input" id="ho-note" value="${_esc(v.note)}" placeholder="例：現場付／11/1 刷尾款，先換卡方案"></div>
+    ${hotelFormBooked ? `<div class="form-row"><div class="form-label">付款狀態</div>
+      <div class="member-picker">
+        <button class="member-pill${!hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=false;renderHotelFormBody()">未付款</button>
+        <button class="member-pill${hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=true;renderHotelFormBody()">已付清</button>
+      </div>
+    </div>` : ""}
     ${_mapFieldHtml("ho-map", v.map, "ho-name", "住宿")}
+    ${applyHtml}
     <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitHotel()">💾 儲存</button>`;
   onMapFieldInput("ho-map", "住宿", true);
+}
+// 寫入一張卡的住宿覆寫（整筆覆蓋，booked 一定明寫；也解除「已隱藏」，否則新住宿看不到）
+function _writeHotel(key, data) {
+  const d = _cardByKey(key), ld = d ? _legacyDay(d) : null;
+  _dbRef(ITIN_PATH + "/hotelHidden/" + key).remove();
+  if (ld != null) _dbRef(ITIN_PATH + "/hotelHidden/" + ld).remove();   // 分組前以 day 存的「已隱藏」也要解除
+  _dbRef(ITIN_PATH + "/hotelEdited/" + key).set(data);
 }
 function submitHotel() {
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
   const v = _hotelFormVals();
   const name = v.name.trim();
-  if (!name) { alert("請輸入住宿名稱"); return; }
+  if (v.booked && !name) { alert("請輸入住宿名稱"); return; }
   const day = hotelFormDay;   // 卡片 key
-  const _hd = _cardByKey(day), _ld = _hd ? _legacyDay(_hd) : null;
-  _dbRef(ITIN_PATH + "/hotelHidden/" + day).remove();
-  if (_ld != null) _dbRef(ITIN_PATH + "/hotelHidden/" + _ld).remove();   // 分組前以 day 存的「已隱藏」也要解除，否則新住宿看不到
-  _dbRef(ITIN_PATH + "/hotelEdited/" + day).set({
-    name, note: v.note.trim(), paid: !!v.paid, map: _resolveMapStr(v.map) || name,
+  const note = v.note.trim(), map = _resolveMapStr(v.map) || name;
+  // 套用到其他晚：只帶這次有改動的欄位（以開表單時的值為準），其他晚各自的內容不被蓋掉
+  const f = hotelFormSeed, changes = {};
+  if (name !== (f.name || "").trim()) changes.name = name;
+  if (note !== (f.note || "").trim()) changes.note = note;
+  if (!!v.paid !== !!f.paid) changes.paid = !!v.paid;
+  if (v.booked !== f.booked) changes.booked = v.booked;
+  if (map !== (f.map || f.name || "")) changes.map = map;
+  const targets = Object.keys(changes).length ? _applyTargetKeys() : [];
+  _writeHotel(day, { name, note, paid: !!v.paid, booked: !!v.booked, map });
+  targets.forEach(k => {
+    const td = _cardByKey(k), cur = _hotelOf(td);
+    if (!cur) return;
+    _writeHotel(k, {
+      name: cur.name || "", note: cur.note || "", paid: !!cur.paid, booked: cur.booked !== false, map: cur.map || cur.name || "",
+      ...changes,
+      ...(changes.booked === false ? { paid: false } : {}),   // 改回未訂：付款狀態清成未付款
+    });
   });
   hideHotelForm();
+  _maybeShowLocalEditToast();
+}
+
+// ─── 住宿：複製到其他天（一次勾選多天）──────────────────────────────
+let hotelCopySrc = null;
+function startCopyHotel(day) {
+  itinMenuKey = null;
+  if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
+  const src = _hotelOf(_cardByKey(day));
+  if (!src) return;
+  hotelCopySrc = day;
+  document.getElementById("hotel-form-title").textContent = "複製「" + (src.name || "住宿未訂") + "」到哪幾天？";
+  document.getElementById("hotel-overlay").classList.add("visible");
+  const rows = _viewCards().filter(d => _ck(d) !== day).map(d => {
+    const k = _ck(d), h = _hotelOf(d), lb = _cardLabel(d);
+    const has = h ? `<span class="hotel-copy-has">已有住宿：${_esc(h.name || "未訂")}</span>` : "";
+    return `<label class="hotel-apply-row"><input type="checkbox" class="ho-copy-cb" value="${_esc(String(k))}"> Day ${_dispDay(d)}・${d.date}（${d.wd}）${lb ? "・" + _esc(lb) : ""} ${has}</label>`;
+  }).join("");
+  document.getElementById("hotel-form-body").innerHTML = (rows || `<div class="view-empty">沒有其他天可以複製</div>`) +
+    (rows ? `<button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:8px" onclick="submitCopyHotel()">複製</button>` : "");
+}
+function submitCopyHotel() {
+  if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
+  const src = _hotelOf(_cardByKey(hotelCopySrc));
+  if (!src) { hideHotelForm(); return; }
+  const keys = [...document.querySelectorAll(".ho-copy-cb:checked")].map(el => _keyFromStr(el.value));
+  if (!keys.length) { alert("請至少勾選一天"); return; }
+  // 取代前先問：只問「已訂」的住宿；未訂的佔位直接取代
+  const booked = keys.map(k => _cardByKey(k)).filter(d => { const h = _hotelOf(d); return h && h.booked !== false; });
+  if (booked.length && !confirm("這幾天已經有訂好的住宿，複製會取代掉（取代後無法復原）：\n" +
+      booked.map(d => "Day " + _dispDay(d) + "・" + d.date + "：" + (_hotelOf(d).name || "")).join("\n") + "\n\n要取代嗎？")) return;
+  const data = { name: src.name || "", note: src.note || "", paid: !!src.paid, booked: src.booked !== false, map: src.map || src.name || "" };
+  keys.forEach(k => _writeHotel(k, { ...data }));
+  hideHotelForm();
+  hotelCopySrc = null;
   _maybeShowLocalEditToast();
 }
 function deleteHotel(day) {   // day = 卡片 key
