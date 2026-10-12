@@ -367,13 +367,12 @@ test('2-2 D1 分組設定文字（G-1～G-8）', () => {
   assert.ok(!g.el('split-setup').innerHTML.includes('＋ 再加一組'), '第 3 組建立後隱藏');
 });
 
-test('入口閘門：沒有 ?groups=1 時不顯示「有人分頭行動嗎？」；已選有分頭的草稿照常顯示', () => {
-  let g = loadGenerator();
+test('5-21 入口已對外開放：不帶任何網址參數也顯示「有人分頭行動嗎？」；預設「全程一起」不顯示組別區塊', () => {
+  const g = loadGenerator();
   g.run('renderSplitSetup()');
-  assert.strictEqual(g.el('split-setup').innerHTML, '');
-  g = loadGenerator();
-  g.run('state.splitUp = true; renderSplitSetup()');
-  assert.ok(g.el('split-setup').innerHTML.includes('各組成員'));
+  const h = g.el('split-setup').innerHTML;
+  assert.ok(h.includes('有人分頭行動嗎？') && h.includes('全程一起') && h.includes('有分頭'));
+  assert.ok(!h.includes('各組成員'));
 });
 test('切回「全程一起」：同日有 2 張以上的卡時顯示說明，沒有則不顯示', () => {
   const g = groupedSandbox();
@@ -676,8 +675,15 @@ test('5-0b 換卡後的名單、預設通知／分擔、記帳讀取相容與結
   assert.deepStrictEqual(Array.from(after.txns, x => [x.from, x.to, x.amount]), Array.from(before.txns, x => [x.from, x.to, x.amount]));
   const noD = members.filter(m => m.id !== 'c');
   const afterDelete = ctx.settleExpenses(exp, noD);
-  assert.strictEqual(afterDelete.names.c, '小魚');                                // 已刪除成員：結算仍計入、名字取當時的
-  assert.ok(afterDelete.txns.some(x => x.from === 'c' || x.to === 'c'));
+  assert.strictEqual(afterDelete.names['~小魚'], '小魚');                          // 已刪除成員：結算仍計入、名字取當時的
+  assert.ok(afterDelete.txns.some(x => x.from === '~小魚' || x.to === '~小魚'));
+  // 已刪除成員同時有「名字舊帳」與「id 新帳」：合成同一人
+  const both = ctx.settleExpenses([
+    { currency: 'JPY', amount: 300, payer: 'a', forWhom: ['c', 'a'], names: { c: '小魚', a: '小貓' } },
+    { currency: 'JPY', amount: 200, payer: 'a', forWhom: ['小魚', 'a'] },
+  ], noD);
+  assert.strictEqual(both.txns.length, 1);
+  assert.strictEqual(both.txns[0].amount, 250);
   // Firebase 把數字 key 讀成陣列
   assert.deepStrictEqual(JSON.parse(JSON.stringify(ctx.normOverrides({ a: [null, null, null, 'c3', 'c4b'], b: { 4: 'c4b' }, c: null }))),
     { a: { 3: 'c3', 4: 'c4b' }, b: { 4: 'c4b' } });
