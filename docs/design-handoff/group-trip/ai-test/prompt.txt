@@ -9,6 +9,7 @@
 - 如有附上圖片（機票、訂房確認截圖等），請一併從圖片中擷取資訊，與文字資料合併整理
 - 若資料含班機、列車、演唱會等有明確時間的事件，務必擷取 time（格式 HH:MM）；圖片中的起飛/抵達時間優先於文字
 - 若該天有班機（去程或回程），請填 flight 物件：label（去程航班/回程航班）、num（如 BR 198）、from/to（機場 IATA 代碼如 TPE/NRT）、fromCity/toCity（如桃園/成田）、dept（起飛 HH:MM）、arr（抵達 HH:MM）、boarding（登機 HH:MM，可選）；同時也在 acts 內保留對應活動
+- 住宿（hotel）：該天資料有飯店但沒寫付款狀況 → "paid": false；寫已付／已付清 → "paid": true；草稿寫「還沒訂／待訂／未訂」→ 加 "booked": false（此時 paid 為 false）；其餘已訂的住宿不要加 booked 欄位；該天完全沒提住宿 → "hotel": null
 - 缺漏資訊一律用 null 或空陣列，不要瞎編
 - 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 ``` 包起來
 

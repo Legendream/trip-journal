@@ -14,6 +14,7 @@ const PARSE_PROMPT = `你是行程資料整理助手。請把以下行程資訊�
 - 如有附上圖片（機票、訂房確認截圖等），請一併從圖片中擷取資訊，與文字資料合併整理
 - 若資料含班機、列車、演唱會等有明確時間的事件，務必擷取 time（格式 HH:MM）；圖片中的起飛/抵達時間優先於文字
 - 若該天有班機（去程或回程），請填 flight 物件：label（去程航班/回程航班）、num（如 BR 198）、from/to（機場 IATA 代碼如 TPE/NRT）、fromCity/toCity（如桃園/成田）、dept（起飛 HH:MM）、arr（抵達 HH:MM）、boarding（登機 HH:MM，可選）；同時也在 acts 內保留對應活動
+- 住宿（hotel）：該天資料有飯店但沒寫付款狀況 → "paid": false；寫已付／已付清 → "paid": true；草稿寫「還沒訂／待訂／未訂」→ 加 "booked": false（此時 paid 為 false）；其餘已訂的住宿不要加 booked 欄位；該天完全沒提住宿 → "hotel": null
 - 缺漏資訊一律用 null 或空陣列，不要瞎編
 - 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 \`\`\` 包起來
 
@@ -718,7 +719,7 @@ function fromLegacyDay(d) {
       icon: '🏨', title: h.name || '', sub: '', ref: '',
       park: h.park === false ? false : undefined,
       location: makeLocation(h.map),
-      data: { note: h.note || '', paid: !!h.paid },
+      data: { note: h.note || '', paid: h.booked === false ? false : !!h.paid, ...(h.booked === false ? { booked: false } : {}) },
       ...groupFields(h)
     });
   }
@@ -790,7 +791,9 @@ function toLegacyDay(d, grouped) {
     flight: null,   // 航班已移入 acts，不再獨立輸出
     hotel: lItem ? {
       name: lItem.title || '', note: lItem.data.note || '',
-      paid: !!lItem.data.paid, map: locationForExport(lItem.location),
+      paid: lItem.data.booked === false ? false : !!lItem.data.paid,
+      ...(lItem.data.booked === false ? { booked: false } : {}),   // 未訂記號；沒有記號 = 已訂
+      map: locationForExport(lItem.location),
       park: lItem.park === false ? false : undefined,
       ...withOf(lItem)
     } : null,
@@ -1465,6 +1468,7 @@ function renderDays() {
     let acts = '';
     let hasFlight = false;
     let hasHotel  = false;
+    let hasUnbooked = false;
     (d.items || []).forEach((it, idx) => {
       if (it.type === 'activity') {
         const mapStr = locationToMap(it.location);
@@ -1540,19 +1544,26 @@ function renderDays() {
         const ld = it.data || {};
         const hMap = locationToMap(it.location);
         hasHotel = true;
+        _hotelBase[it.id] = _hotelSnap(it);
         const paidChecked = ld.paid ? 'checked' : '';
-        acts += `<div class="act-edit-row hotel-inline" data-di="${i}" data-ai="${idx}"
+        const unbooked = ld.booked === false;
+        hasUnbooked = unbooked;
+        acts += `<div class="act-edit-row hotel-inline${unbooked ? ' unbooked' : ''}" data-di="${i}" data-ai="${idx}"
             ondragover="actDragOver(event,${i},${idx})"
             ondragleave="actDragLeave(event)"
             ondrop="actDrop(event,${i},${idx})">
           <div class="act-row1">
             <span class="act-drag-handle" style="visibility:hidden" aria-hidden="true">⋮⋮</span>
             <span class="act-icon-i" style="pointer-events:none;user-select:none;">🏨</span>
-            <input class="act-name-i" value="${escHtml(it.title || '')}" placeholder="飯店名稱" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})">
+            <input class="act-name-i" value="${escHtml(it.title || '')}" placeholder="${unbooked ? '飯店名稱（選填，還沒訂）' : '飯店名稱'}" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})" onchange="onHotelCommit(${i},${idx})">
             <label class="hotel-paid-label">
-              <input type="checkbox" ${paidChecked} onchange="state.days[${i}].items[${idx}].data.paid=this.checked;saveState()">
-              已付清
+              <input type="checkbox" ${unbooked ? 'checked' : ''} onchange="setHotelUnbooked(${i},${idx},this.checked)">
+              還沒訂
             </label>
+            ${unbooked ? '' : `<label class="hotel-paid-label">
+              <input type="checkbox" ${paidChecked} onchange="setHotelPaid(${i},${idx},this.checked)">
+              已付清
+            </label>`}
             ${parkToggleHtml(i, idx, it)}
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
             <button class="act-del" onclick="removeHotel(${i})" title="移除">✕</button>
@@ -1560,13 +1571,13 @@ function renderDays() {
           ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
           <div class="act-row2">
             <span class="map-label">📍</span>
-            <input class="act-map-i" value="${escHtml(hMap)}" placeholder="地圖連結或地名" oninput="setItemMap(${i},${idx},this.value)">
+            <input class="act-map-i" value="${escHtml(hMap)}" placeholder="地圖連結或地名" oninput="setItemMap(${i},${idx},this.value)" onchange="onHotelCommit(${i},${idx})">
             <a class="map-verify" id="map-verify-${i}-${idx}" href="${mapPreviewUrl(hMap || it.title)}" target="_blank" rel="noopener" title="${escHtml(mapPreviewTitle(it))}">查看地圖 ↗</a>
             <span class="map-status" id="map-status-${i}-${idx}">${mapStatusHtml(i, idx, it)}</span>
           </div>
           <div class="act-row2">
             <span class="map-label">📋</span>
-            <input class="act-map-i" value="${escHtml(ld.note || '')}" placeholder="費用備註（選填）" oninput="state.days[${i}].items[${idx}].data.note=this.value;saveState()">
+            <input class="act-map-i" value="${escHtml(ld.note || '')}" placeholder="備註（選填）例：現場付／11/1 刷尾款，先換卡方案" oninput="state.days[${i}].items[${idx}].data.note=this.value;saveState()" onchange="onHotelCommit(${i},${idx})">
           </div>
         </div>`;
       }
@@ -1584,7 +1595,7 @@ function renderDays() {
         <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
           <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
-          <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}</div>
+          <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''}</div>
           ${gctx ? dayGroupHeadHtml(gctx, d, i) : ''}
         </div>
         <button class="btn-icon-x" onclick="event.stopPropagation();removeDay(${i})" title="刪除這天">✕</button>
@@ -1701,8 +1712,89 @@ document.addEventListener('keydown', e => {
   }
 });
 
+// ── 住宿狀態：未訂／付款、同一間其他晚的套用 ─────────────────────────
+const _hotelBase = {};   // item.id → 上次提交時的住宿欄位（用來判斷這次改了什麼、同一間以修改前的名稱為準）
+function _hotelSnap(it) {
+  const ld = it.data || {};
+  return { name: it.title || '', note: ld.note || '', paid: !!ld.paid, booked: ld.booked !== false, map: locationToMap(it.location) };
+}
+function setHotelPaid(di, ai, on) {
+  state.days[di].items[ai].data.paid = !!on;
+  saveState();
+  onHotelCommit(di, ai);
+}
+function setHotelUnbooked(di, ai, on) {
+  const it = state.days[di].items[ai];
+  if (on) { it.data.booked = false; it.data.paid = false; }   // 未訂沒有付款狀態
+  else delete it.data.booked;
+  saveState();
+  onHotelCommit(di, ai);
+  renderDays();
+}
+// 欄位改完（change）時：同名的其他晚若存在，問要不要把這次改動的欄位一起套用
+function onHotelCommit(di, ai) {
+  const it = state.days[di] && state.days[di].items[ai];
+  if (!it || it.type !== 'lodging') return;
+  const base = _hotelBase[it.id], cur = _hotelSnap(it);
+  _hotelBase[it.id] = cur;
+  if (!base) return;
+  const changes = {};
+  ['name', 'note', 'paid', 'booked', 'map'].forEach(k => { if (base[k] !== cur[k]) changes[k] = cur[k]; });
+  const oldName = (base.name || '').trim();
+  if (!Object.keys(changes).length || !oldName) return;   // 沒填名稱的未訂不算「同一間」
+  const targets = [];
+  state.days.forEach((d, i) => {
+    if (i === di) return;
+    const l = dayLodging(d);
+    if (l && (l.title || '').trim() === oldName) targets.push(i);
+  });
+  if (!targets.length) return;
+  const labels = { name: '名稱', note: '備註', paid: '付款狀態', booked: '訂房狀態', map: '地圖' };
+  showPickPanel(
+    `同時套用到同一間的其他晚？（只更新：${Object.keys(changes).map(k => labels[k]).join('、')}）`,
+    targets.map(i => ({ value: i, num: 'Day ' + state.days[i].day, theme: state.days[i].theme || '（未填主題）' })),
+    true, '套用',
+    picked => {
+      picked.forEach(i => {
+        const l = dayLodging(state.days[i]);
+        if (!l) return;
+        if ('name' in changes) l.title = changes.name;
+        if ('note' in changes) l.data.note = changes.note;
+        if ('map' in changes) l.location = JSON.parse(JSON.stringify(it.location));
+        if ('booked' in changes) { if (changes.booked) delete l.data.booked; else l.data.booked = false; }
+        if ('paid' in changes) l.data.paid = changes.paid;
+        if (l.data.booked === false) l.data.paid = false;
+      });
+      saveState(); renderDays();
+    });
+}
+
 // ── 複製到其他天 ──────────────────────────────────────────────────────
 let _copyPending = null;   // { di, ai }
+let _pickConfirm = null;   // 勾選面板的確認動作
+
+// 勾選面板（複製住宿到多天、套用到其他晚共用）。rows = [{value, num, theme}]
+function showPickPanel(title, rows, defaultOn, confirmLabel, onConfirm) {
+  const panel = document.getElementById('copy-panel');
+  const btns  = document.getElementById('copy-day-btns');
+  if (!panel || !btns) return;
+  document.getElementById('copy-panel-title').textContent = title;
+  btns.classList.add('pick-mode');
+  btns.innerHTML = rows.map(r =>
+    `<label class="copy-pick-row"><input type="checkbox" class="copy-pick-cb" value="${r.value}" ${defaultOn ? 'checked' : ''}>
+      <span class="copy-day-num">${escHtml(r.num)}</span>
+      <span class="copy-day-theme">${escHtml(r.theme)}</span>
+    </label>`).join('') +
+    `<button class="btn btn-primary btn-block copy-pick-go" onclick="confirmPick()">${escHtml(confirmLabel)}</button>`;
+  _pickConfirm = onConfirm;
+  panel.classList.add('show');
+}
+function confirmPick() {
+  const picked = [...document.querySelectorAll('#copy-day-btns .copy-pick-cb:checked')].map(el => Number(el.value));
+  const fn = _pickConfirm;
+  cancelCopy();
+  if (fn && picked.length) fn(picked);
+}
 
 function startCopyItem(di, ai) {
   _copyPending = { di, ai };
@@ -1713,6 +1805,16 @@ function startCopyItem(di, ai) {
   const title = document.getElementById('copy-panel-title');
   const btns  = document.getElementById('copy-day-btns');
   if (!panel || !btns) return;
+  if (item.type === 'lodging') {   // 住宿：一次勾選多天（一天一筆，目標天已有住宿直接取代）
+    showPickPanel(
+      `複製「${item.title || '住宿未訂'}」到哪幾天？`,
+      state.days.map((day, i) => ({ value: i, num: 'Day ' + day.day, theme: day.theme || '（未填主題）' }))
+        .filter(r => r.value !== di),
+      false, '複製',
+      picked => picked.forEach(t => copyItemTo(di, ai, t)));
+    return;
+  }
+  btns.classList.remove('pick-mode');
   title.textContent = `複製「${item.title || typeLabel}」到哪一天？`;
   btns.innerHTML = state.days.map((day, i) =>
     `<button class="copy-day-btn${i === di ? ' copy-day-same' : ''}" onclick="executeCopy(${i})">
@@ -1725,6 +1827,10 @@ function startCopyItem(di, ai) {
 function executeCopy(targetDi) {
   if (!_copyPending) return;
   const { di, ai } = _copyPending;
+  copyItemTo(di, ai, targetDi);
+  cancelCopy();
+}
+function copyItemTo(di, ai, targetDi) {
   const item = JSON.parse(JSON.stringify(state.days[di].items[ai]));
   item.id = genId();
   // 住宿一天一筆：若目標天已有住宿則替換
@@ -1745,13 +1851,12 @@ function executeCopy(targetDi) {
     target.items.push(item);
   }
   saveState(); renderDays();
-  cancelCopy();
   // 展開目標天讓使用者看到結果
   setTimeout(() => document.getElementById('day-' + targetDi)?.classList.add('open'), 30);
 }
 function cancelCopy() {
   document.getElementById('copy-panel')?.classList.remove('show');
-  _copyPending = null;
+  _copyPending = null; _pickConfirm = null;
 }
 
 function removeAct(di, ai) {
