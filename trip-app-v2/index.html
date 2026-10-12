@@ -801,6 +801,7 @@
 
     /* Action row below active meeting */
     .meeting-actions { display: flex; gap: 8px; }
+    .exp-warn { font-size: 12px; line-height: 1.5; color: #92400e; background: #fef3c7; border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
     .meeting-item { margin-bottom: 16px; }
     .meeting-small { background: #fff; border: 1px solid var(--border, #eadde2); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
     .meeting-small-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -5042,12 +5043,14 @@ function renderExpenses() {
       const forLabel = covers ? "全員分擔" : who.map(w => w.name).join("、");
       const share = who.length ? Math.round(e.amount / who.length) : 0;
       const k = _esc(e._key);
+      const miss = _expLegacyMiss(e);
       return `
           <div class="exp-card">
             <div class="exp-card-left">
               <div class="exp-payer">${_esc(payer.member ? (payer.member.avatar || "💬") : "💬")} ${_esc(payer.name)}</div>
               <div class="exp-for">幫 ${_esc(forLabel)} 付・每人 ${sym}${share.toLocaleString()}</div>
               ${e.note ? `<div class="exp-note">📝 ${_esc(e.note)}</div>` : ""}
+              ${miss.length ? `<div class="exp-warn">⚠️ 這筆是舊版記的帳，「${_esc(miss.join("、"))}」對不上目前的成員（可能改過代號），結算會把他當成另一個人。按 ✏️ 改選成現在的成員就會併入。</div>` : ""}
             </div>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
               <div class="exp-amount">${sym}${e.amount.toLocaleString()}</div>
@@ -5085,6 +5088,9 @@ function renderSettlement(el) {
     el.innerHTML = html; return;
   }
 
+  const nLegacy = allExpenses.filter(e => _expLegacyMiss(e).length).length;
+  if (nLegacy) html += `<div class="exp-warn" style="margin-bottom:12px">⚠️ 有 ${nLegacy} 筆舊版記的帳，名字對不上目前的成員（可能改過代號），下面的結算把他們當成另一個人。回「記帳清單」按那幾筆的 ✏️，改選成現在的成員就會併入。</div>`;
+
   ["JPY", "TWD"].forEach(currency => {
     const expenses = allExpenses.filter(e => e.currency === currency);
     if (expenses.length === 0) return;
@@ -5121,6 +5127,14 @@ function _expWhoList(e) {
   const seen = new Set();
   return (Array.isArray(e.forWhom) ? e.forWhom : []).map(v => resolveWho(v, GMEMBERS, e.names))
     .filter(w => !seen.has(w.key) && seen.add(w.key));
+}
+// 舊版（以名字存）的帳，名字對不上目前成員 → 回傳那些名字；新版的帳有 names，不算
+function _expLegacyMiss(e) {
+  if (e.names) return [];
+  const vals = [e.payer].concat(Array.isArray(e.forWhom) ? e.forWhom : []);
+  const miss = [];
+  vals.forEach(v => { if (!resolveWho(v, GMEMBERS, null).member && miss.indexOf(String(v)) < 0) miss.push(String(v)); });
+  return miss;
 }
 // 預設分擔 = 付款人今天那張日卡的同行名單（套用換卡；當天多張卡取聯集）；沒分組、今天不在行程內 = 全員
 function _expDefaultForWhom(payerKey) {
