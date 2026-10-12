@@ -81,12 +81,12 @@
 
 ## 下一步（依優先順序；Claire 決定 1～4 的程式改動放進**同一包 PR**，多個 commit 分段）
 
-**進度（2026-10-12）**：1、2 已做完，commit 在分支 `fix/pwa-scope-per-trip`（**尚未 push、未開 PR**）。3、4 接著在**同一個分支**上做，全部完成後 1～4 一起開一包 PR。新對話開頭先 `git checkout fix/pwa-scope-per-trip`，不要從 main 另開分支。
+**進度（2026-10-12）**：1、2、3 已做完，commit 在分支 `fix/pwa-scope-per-trip`（**尚未 push、未開 PR**）。4 接著在**同一個分支**上做，全部完成後 1～4 一起開一包 PR。新對話開頭先 `git checkout fix/pwa-scope-per-trip`，不要從 main 另開分支。
 
 1. ✅ **兩個分享行程 App 無法共存**（bug，commit `391c37b`）：原因是 manifest 沒設 `id`，所有行程身分都變成 `/v/`；已在 `v/index.html` 加 `id: /v/?trip=<storagePrefix>`。結論與診斷見 `docs/bug-pwa-coexist.md`。**待實機驗證**（PR 說明要貼結果）：Android Chrome 兩個行程各自可「安裝並建立捷徑」且各進自己的行程；iOS 加到主畫面沒退步；舊的已安裝 App 要重新安裝才會換成新身分。
 2. ✅ **落地頁「近期更新」區**（commit `f7890d6`）：已取代「下一期預告」，行程共享集的想法移到 `PLAN.md`「未來想法」。定案：標題「近期更新」，左日期右文字，標題與說明兩行；最新 3 則直接顯示，第 4 則起放進 `<details>`「看更早的更新」；現有 2 則（分組旅行、集合提醒可指定通知誰）。之後每次改版先問 Claire 要不要放進去（小改版、debug、原本就有的功能不放）。
-3. **住宿提醒**：某天還沒訂旅館（可先做 App 但留空）、已訂但還沒付款。現有只有「現場付／已付清」，「現場付」是合法選擇不能一律警告；要先決定三種狀態的表達，以及產生器、AI 提示詞、設定檔格式是否跟著改。會動到沒分組行程的畫面。**激盪模式，先比較方案；建議開新對話用 Opus 或 Fable**。
-4. **視覺減量**（emoji 收斂）：`docs/design-handoff/visual-cleanup/backlog.md`。
+3. ✅ **住宿狀態與多晚操作**（原「住宿提醒」）：已實作並自我驗證（2026-10-12），驗收條件與結果在 `docs/acceptance/lodging-status.md`。**未驗證**：C8（真實 Firebase 雙機）、G1～G4（AI 提示詞要用 AI 實跑草稿）；舊版快取會把未訂住宿顯示成無名稱的「現場付」（已實測），PR 說明要提醒旅伴更新。驗證腳本：`verify-tools/verify-lodging.js`、`verify-lodging-gen.js`。
+4. **視覺減量**（emoji 收斂與對比修正）：站①驗收條件已確認（2026-10-12），在 `docs/acceptance/visual-cleanup.md`；**尚未實作**。背景盤點見 `docs/design-handoff/visual-cleanup/backlog.md`。
 
 **吉隆坡旅行回來後**（Claire 2026-10-12：旅行中順便測，現在不做）：
 
@@ -110,7 +110,7 @@
 
 各項的開頭句：
 
-- **住宿提醒**：「我想討論住宿提醒功能（還沒訂／還沒付款），請先讀 PROGRESS.md 下一步第 3 項。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。這是激盪模式，先提方案比較。」
-- **視覺減量**：「請讀 PROGRESS.md 下一步第 4 項與 visual-cleanup/backlog.md。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。」
+- **住宿狀態**：「請讀 PROGRESS.md 下一步第 3 項與 docs/acceptance/lodging-status.md，照驗收條件實作。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。這是落地模式。」
+- **視覺減量**：「請讀 PROGRESS.md 下一步第 4 項與 docs/acceptance/visual-cleanup.md，照驗收條件實作。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。這是落地模式。」
 
 做完要用的指令：`node scripts/test-group-trip.js`、`node scripts/build-template.js --check`；瀏覽器驗證腳本見 `verify-tools/README.md`。
