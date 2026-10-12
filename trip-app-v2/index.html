@@ -805,7 +805,7 @@
     .meeting-small { background: #fff; border: 1px solid var(--border, #eadde2); border-radius: 14px; padding: 12px 14px; margin-bottom: 8px; }
     .meeting-small-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .meeting-small-time { font-size: 15px; font-weight: 700; color: var(--text); }
-    .meeting-mute { font-size: 14px; margin-left: auto; opacity: 0.7; }
+    .meeting-mute { display: inline-flex; margin-left: auto; color: var(--text-3); }
     .meeting-small .meeting-msg { margin-top: 6px; }
     .meeting-small .meeting-by { margin-top: 2px; }
 
@@ -1455,8 +1455,9 @@ function _listTagHtml(ids, swapDay) {
   }
   const ms = desc.ids.map(id => GMEMBERS.find(m => m.id === id)).filter(Boolean);
   const names = ms.map(m => m.name).join("、");
+  // 名單對不上任何一組：兩人以內寫名字，三人以上寫「N 人」（頭像只留在身分相關的地方，標籤保持純文字）
   const text = desc.kind === "all" ? "全員"
-    : (ms.length && ms.every(m => m.avatar) ? ms.map(m => m.avatar).join("") : names);
+    : (ms.length && ms.length <= 2 ? names : `${desc.ids.length} 人`);
   if (swap) return `<button class="gt gt-av gt-btn" type="button" onclick="event.stopPropagation();openSwap(${Number(swapDay)})" aria-label="${_esc("這天跟誰走？目前：" + (desc.kind === "all" ? "全員" : names))}">${_esc(text)}${caret}</button>`;
   return `<span class="gt gt-av" role="img" aria-label="同行：${_esc(names)}">${_esc(text)}</span>`;
 }
@@ -1559,9 +1560,11 @@ function settleExpenses(expenses, members) {
   const bal = {}, names = {};
   (members || []).forEach(m => { bal[m.id] = 0; names[m.id] = m.name; });
   expenses.forEach(e => {
-    const payer = resolveWho(e.payer, members, e.names);
+    // 已不在名單的人：以顯示的名字當 key，名字舊帳與 id 新帳（names 記著當時的名字）才會合成同一人
+    const canon = w => w.member ? w : { key: "~" + w.name, name: w.name, member: null };
+    const payer = canon(resolveWho(e.payer, members, e.names));
     const seen = new Set();
-    const who = (Array.isArray(e.forWhom) ? e.forWhom : []).map(v => resolveWho(v, members, e.names))
+    const who = (Array.isArray(e.forWhom) ? e.forWhom : []).map(v => canon(resolveWho(v, members, e.names)))
       .filter(w => !seen.has(w.key) && seen.add(w.key));
     if (!who.length) return;
     if (!(payer.key in names)) names[payer.key] = payer.name;
@@ -4906,7 +4909,7 @@ function renderMeeting() {
           <div class="meeting-small-head">
             <span class="meeting-small-time">${_esc(m.time)} 集合</span>
             ${_listTagHtml(m.notify)}
-            <span class="meeting-mute" role="img" aria-label="不響鈴" title="不響鈴">🔕</span>
+            <span class="meeting-mute" role="img" aria-label="不響鈴" title="不響鈴"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.7 3A6 6 0 0 1 18 8c0 2.7.6 4.5 1.3 5.7M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><line x1="2" y1="2" x2="22" y2="22"/></svg></span>
           </div>
           ${m.message ? `<div class="meeting-msg">📍 ${_esc(m.message)}</div>` : ""}
           ${byLine(m)}
@@ -5147,7 +5150,7 @@ function showExpForm(expense) {
   }
   document.getElementById("exp-form-title").textContent = expense ? "✏️ 編輯記帳" : "💰 新增記帳";
   document.getElementById("exp-overlay").classList.add("visible");
-  renderExpFormBody(expense);
+  renderExpFormBody(expense || { amount: "", note: "" });   // 新增：空白表單（不沿用上一筆留在欄位裡的值）
 }
 
 function editExpense(key) {
@@ -5224,12 +5227,12 @@ function renderExpFormBody(prefill) {
     </div>
     <div class="form-row">
       <div class="form-label">金額（${sym}）</div>
-      <input class="form-input" type="number" id="exp-amount-input" value="${savedAmount}"
+      <input class="form-input" type="number" id="exp-amount-input" value="${_esc(savedAmount)}"
              placeholder="輸入金額" inputmode="numeric" min="1" style="font-size:20px;font-weight:700">
     </div>
     <div class="form-row">
       <div class="form-label">備註（選填）</div>
-      <input class="form-input" type="text" id="exp-note-input" value="${savedNote}"
+      <input class="form-input" type="text" id="exp-note-input" value="${_esc(savedNote)}"
              placeholder="例：午餐、電車票、門票">
     </div>
     <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitExpense()">💰 送出記帳</button>
@@ -5239,7 +5242,7 @@ function renderExpFormBody(prefill) {
 function submitExpense() {
   if (!expFormPayer)          { alert("請選擇付款人");   return; }
   if (expFormForWhom.size===0){ alert("請選擇分擔成員"); return; }
-  const amount = parseInt(document.getElementById("exp-amount-input")?.value || "0", 10);
+  const amount = Math.round(Number(document.getElementById("exp-amount-input")?.value || "0"));
   if (!amount || amount <= 0) { alert("請輸入金額");     return; }
   const note = (document.getElementById("exp-note-input")?.value || "").trim();
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }

@@ -161,7 +161,7 @@ const meetList = () => Object.entries(meetings()).map(([k, v]) => ({ key: k, ...
     const t1 = await tagsOf(S1);
     const ovr = srv.get(PFX + '/overrides/' + BEAR);
     ok('5-12a 換卡存到 overrides/<成員id>/<day>', ovr && Object.values(ovr).length === 1, sj(srv.get(PFX + '/overrides')));
-    ok('5-12b 小魚的「全部」檢視立刻看到名單變動（福岡組那張變成阿熊＋小魚＋阿鹿、鹿兒島組只剩小貓）', sj(t0) === sj(['鹿兒島組', '福岡組']) && t1[0].includes('🐱') && !t1[0].includes('🐻') && t1[1].includes('🐻') && t1[1].includes('🐟') && t1[1].includes('🦌'), sj([t0, t1]));
+    ok('5-12b 小魚的「全部」檢視立刻看到名單變動（福岡組那張變成「3 人」、鹿兒島組只剩「小貓」）', sj(t0) === sj(['鹿兒島組', '福岡組']) && t1[0] === '小貓' && t1[1] === '3 人', sj([t0, t1]));
     ok('5-12c 換卡面板沒有「只有這支手機會換」', !swapTxt.includes('只有這支手機會換') && swapTxt.includes('這天跟誰走？'));
 
     // 5-13 阿熊在 11/4 發起集合：預設通知福岡組那張卡的人（含阿熊）
