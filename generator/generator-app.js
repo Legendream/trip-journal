@@ -1275,7 +1275,7 @@ function renderChecklistEditor() {
     return;
   }
   const banner = `<div class="checklist-source-note">
-    📎 這些項目可能由 AI 從你的行程資料整理而來，請確認是否適用，不需要的可以刪除。
+    這些項目可能由 AI 從你的行程資料整理而來，請確認是否適用，不需要的可以刪除。
   </div>`;
   el.innerHTML = banner + items.map((txt, i) =>
     `<div class="list-item-row">
@@ -1484,7 +1484,7 @@ function renderDays() {
           <input class="act-icon-i" value="${escHtml(it.icon || '📍')}" oninput="state.days[${i}].items[${idx}].icon=this.value;saveState()">
           <input class="act-name-i" value="${escHtml(it.title)}" placeholder="活動名稱" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})">
           <input class="act-sub-i" value="${escHtml(it.sub || '')}" placeholder="副標題（選填）" oninput="state.days[${i}].items[${idx}].sub=this.value;saveState()">
-          <input class="act-time-i${needsTime(it) && !it.time ? ' suggest' : ''}" value="${escHtml(it.time || '')}" placeholder="${needsTime(it) ? '抵達時間' : '🕐 選填'}" inputmode="numeric" title="${needsTime(it) ? '航班、演唱會、Check-in 等有固定時刻的活動建議填寫，用 24 小時制（下午 3 點＝15:00）' : '選填——有固定時刻才需要，用 24 小時制（下午 3 點＝15:00），填了會自動排序'}" oninput="state.days[${i}].items[${idx}].time=this.value;saveState();this.classList.toggle('suggest', needsTime(state.days[${i}].items[${idx}]) && !this.value)" onblur="onTimeBlur(${i})">
+          <input class="act-time-i${needsTime(it) && !it.time ? ' suggest' : ''}" value="${escHtml(it.time || '')}" placeholder="${needsTime(it) ? '抵達時間' : '選填'}" inputmode="numeric" title="${needsTime(it) ? '航班、演唱會、Check-in 等有固定時刻的活動建議填寫，用 24 小時制（下午 3 點＝15:00）' : '選填——有固定時刻才需要，用 24 小時制（下午 3 點＝15:00），填了會自動排序'}" oninput="state.days[${i}].items[${idx}].time=this.value;saveState();this.classList.toggle('suggest', needsTime(state.days[${i}].items[${idx}]) && !this.value)" onblur="onTimeBlur(${i})">
           ${parkToggleHtml(i, idx, it)}
           <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
           <button class="act-del" onclick="removeAct(${i},${idx})" title="刪除">✕</button>
@@ -1585,7 +1585,7 @@ function renderDays() {
     const selfDriveRow = state.fields['f-self-drive'] ? `
         <label class="day-selfdrive">
           <input type="checkbox" ${d.selfDrive ? 'checked' : ''} onchange="toggleDaySelfDrive(${i})">
-          🚗 這天自駕 <span class="day-selfdrive-hint">— 開啟後本日景點會出現「🅿️ 停車」，徒步的可逐一關掉</span>
+          這天自駕 <span class="day-selfdrive-hint">— 開啟後本日景點會出現「停車」，徒步的可逐一關掉</span>
         </label>` : '';
     const addFlightBtn = hasFlight ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增機票</button>`;
     const addHotelBtn  = hasHotel  ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addHotel(${i})">＋ 新增住宿</button>`;
@@ -2151,7 +2151,7 @@ async function copyFbRules() {
   } catch (e) {
     btn.textContent = '複製失敗，請手動選取';
   }
-  setTimeout(() => { btn.textContent = '📋 複製規則'; }, 2000);
+  setTimeout(() => { btn.textContent = '複製規則'; }, 2000);
 }
 
 async function testFirebase() {
@@ -2703,9 +2703,9 @@ async function generateShareUrl({ refreshed = false } = {}) {
     if (url.length > 8000) {
       warn = ' <span style="color:var(--warn);">⚠ 連結較長（' + sizeKb + ' KB），LINE 仍可貼但部分 QR 掃描可能困難。</span>';
     }
-    const via = '<strong>📱 QR Code</strong>' + (navigator.share ? ' 或 <strong>📤 傳送給旅伴</strong>' : '');
+    const via = '<strong>QR Code</strong>' + (navigator.share ? ' 或 <strong>傳送給旅伴</strong>' : '');
     const lead = refreshed
-      ? '🔄 <strong>行程有修改，連結已自動更新成最新版。</strong>之前傳出去的舊連結不會跟著變，請用 ' + via + ' 把新連結重新傳給旅伴。'
+      ? '<strong>行程有修改，連結已自動更新成最新版。</strong>之前傳出去的舊連結不會跟著變，請用 ' + via + ' 把新連結重新傳給旅伴。'
       : '✓ 連結已產生。建議直接用 ' + via + ' 分享，不必貼那一長串網址。';
     stat.innerHTML = '<div class="status-box ' + (refreshed ? 'status-warn' : 'status-ok') + '">' + lead +
       '<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
@@ -2916,7 +2916,7 @@ function showStorageInfo() {
     '・換裝置、換瀏覽器看不到（同一台電腦的 Chrome 和 Safari 也是分開的）\n' +
     '・無痕模式關掉視窗就消失\n' +
     '・清除瀏覽器資料時會一起被清掉\n\n' +
-    '💡 想換裝置繼續？\n' +
+    '想換裝置繼續？\n' +
     '用「⋯ → 匯出進度」下載一份 JSON，到新裝置點「匯入進度」即可。'
   );
 }
@@ -2978,7 +2978,7 @@ function maybeShowFirstSaveToast() {
   if (localStorage.getItem(TOAST_SHOWN_KEY)) return;
   localStorage.setItem(TOAST_SHOWN_KEY, '1');
   showToast(
-    '💾 進度已自動儲存到此瀏覽器',
+    '進度已自動儲存到此瀏覽器',
     '換裝置或無痕模式不會同步。需要時用「⋯ → 匯出進度」搬家。',
     6500
   );

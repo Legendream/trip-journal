@@ -81,12 +81,12 @@
 
 ## 下一步（依優先順序；Claire 決定 1～4 的程式改動放進**同一包 PR**，多個 commit 分段）
 
-**進度（2026-10-12）**：1、2、3 已做完，commit 在分支 `fix/pwa-scope-per-trip`（**尚未 push、未開 PR**）。4 接著在**同一個分支**上做，全部完成後 1～4 一起開一包 PR。新對話開頭先 `git checkout fix/pwa-scope-per-trip`，不要從 main 另開分支。
+**進度（2026-10-12）**：1～4 已做完，commit 在分支 `fix/pwa-scope-per-trip`（**尚未 push、未開 PR**），1～4 一起開一包 PR。新對話開頭先 `git checkout fix/pwa-scope-per-trip`，不要從 main 另開分支。
 
 1. ✅ **兩個分享行程 App 無法共存**（bug，commit `391c37b`）：原因是 manifest 沒設 `id`，所有行程身分都變成 `/v/`；已在 `v/index.html` 加 `id: /v/?trip=<storagePrefix>`。結論與診斷見 `docs/bug-pwa-coexist.md`。**待實機驗證**（PR 說明要貼結果）：Android Chrome 兩個行程各自可「安裝並建立捷徑」且各進自己的行程；iOS 加到主畫面沒退步；舊的已安裝 App 要重新安裝才會換成新身分。
 2. ✅ **落地頁「近期更新」區**（commit `f7890d6`）：已取代「下一期預告」，行程共享集的想法移到 `PLAN.md`「未來想法」。定案：標題「近期更新」，左日期右文字，標題與說明兩行；最新 3 則直接顯示，第 4 則起放進 `<details>`「看更早的更新」；現有 2 則（分組旅行、集合提醒可指定通知誰）。之後每次改版先問 Claire 要不要放進去（小改版、debug、原本就有的功能不放）。
 3. ✅ **住宿狀態與多晚操作**（原「住宿提醒」）：已實作並自我驗證（2026-10-12），驗收條件與結果在 `docs/acceptance/lodging-status.md`。**未驗證**：C8（真實 Firebase 雙機）、G1～G4（AI 提示詞要用 AI 實跑草稿）；舊版快取會把未訂住宿顯示成無名稱的「現場付」（已實測），PR 說明要提醒旅伴更新。驗證腳本：`verify-tools/verify-lodging.js`、`verify-lodging-gen.js`。
-4. **視覺減量**（emoji 收斂與對比修正）：站①驗收條件已確認（2026-10-12），在 `docs/acceptance/visual-cleanup.md`；**尚未實作**。背景盤點見 `docs/design-handoff/visual-cleanup/backlog.md`。
+4. **視覺減量**（emoji 收斂與對比修正）：已實作並自我驗證（2026-10-12），驗收條件與結果在 `docs/acceptance/visual-cleanup.md`（含與驗收文件的 4 點出入，待 Claire 確認）。驗證腳本：`verify-tools/verify-visual-cleanup.js`。背景盤點見 `docs/design-handoff/visual-cleanup/backlog.md`。**1～4 都已完成，下一步：`/code-review`（低強度）→ 問 Claire 同意後 push、開一包 PR**（PR 說明貼各項 checklist 與驗證結果；落地頁「近期更新」要不要加這次改版先問 Claire）。
 
 **吉隆坡旅行回來後**（Claire 2026-10-12：旅行中順便測，現在不做）：
 
