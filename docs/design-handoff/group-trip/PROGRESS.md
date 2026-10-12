@@ -1,10 +1,11 @@
 # 分組旅行：進度與下次接手
 
-> 最後更新：2026-10-11。新對話開始時，先讀這份，再讀 decisions.md。
+> 最後更新：2026-10-12（包 4＋包 5 已合併，PR #7）。
+> **本檔只存本機，不推雲端**（Claire 2026-10-12 決定）：已用 `git update-index --skip-worktree` 讓 git 忽略這個檔案的本機修改；若之後 main 上這檔案有變動導致 pull 衝突，先 `--no-skip-worktree`。新對話開始時，先讀這份，再讀 decisions.md。
 
 ## 現在在哪個階段
 
-產生器端（包 1、包 2）已於 2026-10-10 合併進 main（PR #5）。行程 App 端的格式與分包已討論定案（decisions.md 第 10 節），實作交接與驗收清單在 app-handoff.md。包 3（資料通道＋同日多卡）已於 2026-10-10 合併（PR #6）。包 4（身分與個人檢視）已實作並通過驗收（含獨立驗收），在本機分支 `feat/group-trip-app-identity`，**尚未 push**。Claire 決定包 4 與包 5 合成同一個 PR，等包 5 做完一起開。包 5（進階版 Firebase）已實作並通過 5-1～5-20 與包 3、4 回歸，在 `feat/group-trip-app-sync`（從包 4 分支切出），**尚未 push**；入口閘門已於 2026-10-12 拿掉（Claire 同意），分組功能對外開放。獨立驗收已做、問題已處理。
+分組旅行全部完成並對外開放：產生器端（包 1、2，PR #5）、資料通道與同日多卡（包 3，PR #6）、身分與個人檢視＋Firebase 同步（包 4、5，PR #7，2026-10-12 合併），入口閘門已拿掉。接下來是獨立的後續項目，見「下一步」。
 
 - AI 提示詞 v3 經 Gemini 網頁版與 Antigravity 實測皆 27/27，見 ai-prompt.md 第 8 節。
 - 測試：`node scripts/test-group-trip.js`（資料層＋畫面片段＋沒分組基準比對，不需瀏覽器）。沒分組基準檔在 `scripts/fixtures/no-group/`，是分組功能加入前（main b6d8c41）的輸出。
@@ -78,17 +79,19 @@
 - App 旅途中跳組：「這天跟誰走？」換整張卡；基本版只存手機，進階版存 Firebase。
 - 不加彈出引導；靠「▾」與判讀提醒。
 
-## 下一步（依優先順序）
+## 下一步（依優先順序；Claire 決定 1～4 的程式改動放進**同一包 PR**，多個 commit 分段）
 
-1. ~~**包 3**：資料通道＋同日多卡~~（已合併，PR #6）。
-2. ~~**包 4**：身分與個人檢視~~——已實作並驗收，與包 5 同一個 PR。
-3. **包 5**：~~進階版 Firebase（多個集合＋通知誰、換卡同步、記帳）~~已實作；剩最後一步：拿掉 `generator/group-ui.js` 的 `groupFeatureOn()` 閘門，分組功能才算對外開放。
-4. 可選：原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）；原型 B 加換卡、三組畫面、大字體標籤。
-5. **兩件新想法（2026-10-12 Claire 提出，包 5 merge 後各自獨立開分支）**：
-   - **兩個行程 App 無法共存**：下載馬來西亞行程後，台東行程要刪掉，不然會先開台東再轉到馬來西亞。**推論、未驗證**：兩個行程部署在同一網域同一層時，共用同一個 service worker 範圍與快取（`manifest.json` 的 `start_url: './'`、`register("sw.js")`），後裝的蓋掉先裝的。診斷狀態與待確認事項寫在 `docs/bug-pwa-coexist.md`（讀 `v/index.html` 已確認兩個行程 manifest 的 scope 都是 `/v/`）。這會影響已上線的舊行程，另開 PR、獨立驗證。
-   - **住宿提醒**：想提醒自己「某天還沒訂旅館」（可先做 App 但留空）、以及「已訂但還沒付款」。現有只有「現場付／已付清」兩種狀態，其中「現場付」是合法選擇不能一律警告。要先決定三種狀態怎麼表達（某天沒有住宿／有住宿但還沒訂／已訂但還沒付款），以及產生器、AI 提示詞、設定檔格式要不要跟著改。會動到沒分組行程的畫面，所以不放進包 5（包 5 驗收有「沒分組行程與改前一致」這條）。
+**進度（2026-10-12）**：1、2 已做完，commit 在分支 `fix/pwa-scope-per-trip`（**尚未 push、未開 PR**）。3、4 接著在**同一個分支**上做，全部完成後 1～4 一起開一包 PR。新對話開頭先 `git checkout fix/pwa-scope-per-trip`，不要從 main 另開分支。
 
-原訂一包一個分支、一個 PR；2026-10-11 Claire 決定包 4 與包 5 合成同一個 PR（包 5 從包 4 的分支切出，多個 commit 分段）。
+1. ✅ **兩個分享行程 App 無法共存**（bug，commit `391c37b`）：原因是 manifest 沒設 `id`，所有行程身分都變成 `/v/`；已在 `v/index.html` 加 `id: /v/?trip=<storagePrefix>`。結論與診斷見 `docs/bug-pwa-coexist.md`。**待實機驗證**（PR 說明要貼結果）：Android Chrome 兩個行程各自可「安裝並建立捷徑」且各進自己的行程；iOS 加到主畫面沒退步；舊的已安裝 App 要重新安裝才會換成新身分。
+2. ✅ **落地頁「近期更新」區**（commit `f7890d6`）：已取代「下一期預告」，行程共享集的想法移到 `PLAN.md`「未來想法」。定案：標題「近期更新」，左日期右文字，標題與說明兩行；最新 3 則直接顯示，第 4 則起放進 `<details>`「看更早的更新」；現有 2 則（分組旅行、集合提醒可指定通知誰）。之後每次改版先問 Claire 要不要放進去（小改版、debug、原本就有的功能不放）。
+3. **住宿提醒**：某天還沒訂旅館（可先做 App 但留空）、已訂但還沒付款。現有只有「現場付／已付清」，「現場付」是合法選擇不能一律警告；要先決定三種狀態的表達，以及產生器、AI 提示詞、設定檔格式是否跟著改。會動到沒分組行程的畫面。**激盪模式，先比較方案；建議開新對話用 Opus 或 Fable**。
+4. **視覺減量**（emoji 收斂）：`docs/design-handoff/visual-cleanup/backlog.md`。
+
+**吉隆坡旅行回來後**（Claire 2026-10-12：旅行中順便測，現在不做）：
+
+- 原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）。
+- 用真實 Firebase 專案做一次最後確認（包 5 只用模擬後端驗證；系統通知排程 headless 無法驗）。結果若有問題再開 fix PR。
 
 ## 隔一段時間再回來時
 
@@ -101,8 +104,13 @@
 
 ## 開新對話時可以這樣說
 
-做包 5（spec 已明確，用 Sonnet 即可；從包 4 的分支切出，不必等 merge）：
+每次開頭先讓 Claude 讀檔，它才有脈絡（對話本身不會被記住，檔案才會）。通用開頭：
 
-> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md、package-5-handoff.md 和 app-handoff.md，做包 5。先做 Git 檢查，從 `feat/group-trip-app-identity` 開 `feat/group-trip-app-sync`；動手前先照 verify-tools/README.md 存基準。完成後包 4＋包 5 一起開一個 PR（push 前先問我）。
+> 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 的「下一步」，我們這次做第 N 項。先做 Git 檢查。
 
-測試：`node scripts/test-group-trip.js`。
+各項的開頭句：
+
+- **住宿提醒**：「我想討論住宿提醒功能（還沒訂／還沒付款），請先讀 PROGRESS.md 下一步第 3 項。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。這是激盪模式，先提方案比較。」
+- **視覺減量**：「請讀 PROGRESS.md 下一步第 4 項與 visual-cleanup/backlog.md。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。」
+
+做完要用的指令：`node scripts/test-group-trip.js`、`node scripts/build-template.js --check`；瀏覽器驗證腳本見 `verify-tools/README.md`。
