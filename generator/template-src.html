@@ -1651,7 +1651,6 @@ let expFormPayer    = "";                       // 成員 id（舊紀錄對不�
 let expFormForWhom  = new Set(GMEMBERS.map(m => m.id));
 let expFormExtra    = [];                       // 編輯舊紀錄時，已經不在成員名單裡的人 [{key, name}]
 let expForWhomTouched = false;                  // 使用者動過分擔名單就不再隨付款人換預設
-let expFormNames    = {};
 let expShowSettle   = false;
 let expEditKey      = null;
 
@@ -2241,7 +2240,6 @@ function submitMeeting() {
   setMeeting(rec, key);
   requestNotifPermission().then(() => { _alarmScheduledFor = null; _syncAlarmNotif(_bannerMeeting()); });
 }
-function cancelMeetingBy(key) { clearMeeting(key); }
 
 // ─── Layout ───────────────────────────────────────────────────────
 
@@ -4861,7 +4859,7 @@ function renderMeeting() {
     if (!canU && !canC) return "";
     return `<div class="meeting-actions">
         ${canU ? `<button class="btn btn-outline" onclick="showMeetingForm('${m._key}')">✏️ 更新時間</button>` : ""}
-        ${canC ? `<button class="btn btn-danger" onclick="cancelMeetingBy('${m._key}')">✕ 取消集合</button>` : ""}
+        ${canC ? `<button class="btn btn-danger" onclick="clearMeeting('${m._key}')">✕ 取消集合</button>` : ""}
       </div>`;
   };
   const byLine = m => { const n = _meetByName(m); return n ? `<div class="meeting-by">由 ${_esc(n)} 設定</div>` : ""; };
@@ -5115,7 +5113,6 @@ function _expDefaultForWhom(payerKey) {
 
 function showExpForm(expense) {
   expFormExtra = [];
-  expFormNames = {};
   if (expense) {
     expEditKey      = expense._key;
     expFormCurrency = expense.currency;
