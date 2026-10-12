@@ -84,7 +84,7 @@
       left: 0; right: 0;
       z-index: 99;
       background: linear-gradient(90deg, #f59e0b, #f97316);
-      color: white;
+      color: var(--text);
       padding: 10px 16px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -199,6 +199,7 @@
     .day-theme { font-size: 15px; font-weight: 700; line-height: 1.3; }
     .day-meta  { font-size: 12px; color: var(--text-3); margin-top: 2px; }
     .day-emoji   { font-size: 22px; flex-shrink: 0; }
+    .day-card.open .day-emoji { visibility: hidden; }   /* 展開後已有活動圖示；用 hidden 保留位置，箭頭不跳動 */
     .day-chevron {
       width: 20px; height: 20px; color: var(--text-3);
       transition: transform 0.25s ease; flex-shrink: 0;
@@ -284,7 +285,7 @@
     .act-head { display: flex; align-items: baseline; gap: 8px; }
     .act-head .act-name { flex: 1; min-width: 0; }
     .time-tag {
-      font-size: 11px; font-weight: 700; color: var(--pink);
+      font-size: 11px; font-weight: 700; color: var(--pink-deep, var(--pink));
       background: var(--pink-pale); border-radius: 6px; padding: 2px 8px;
       white-space: nowrap; flex-shrink: 0;
     }
@@ -427,7 +428,20 @@
     .day-hotel-info { flex: 1; min-width: 0; }
     .day-hotel-name { font-size: 13px; font-weight: 600; color: var(--text-2); }
     .day-hotel-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
-    .day-hotel-note { font-size: 11px; color: var(--text-3); }
+    .day-hotel-note { font-size: 11px; color: var(--text-3); min-width: 0; overflow-wrap: anywhere; }
+    .hotel-apply-row { display: flex; align-items: center; gap: 8px; padding: 10px 4px; font-size: 14px; color: var(--text-2); flex-wrap: wrap; }
+    .hotel-apply-row input { width: 20px; height: 20px; accent-color: var(--pink); flex-shrink: 0; }
+    .hotel-copy-has { font-size: 11px; color: var(--text-3); }
+    .day-hotel.unbooked { background: var(--pink-3); }
+    .day-hotel-unbooked-label { font-size: 13px; font-weight: 700; color: var(--text); }
+    .hotel-fill-btn {
+      margin-top: 8px; border: 1.5px solid var(--pink); background: #fff; color: var(--pink);
+      border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer;
+    }
+    .hotel-unbooked-tag {
+      display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--pink-deep, var(--pink));
+      border-radius: 5px; padding: 1px 6px; line-height: 1.5; white-space: nowrap;
+    }
     .hotel-paid-badge {
       display: inline-flex; align-items: center; gap: 3px;
       font-size: 11px; font-weight: 600;
@@ -788,7 +802,7 @@
     }
     .btn:active { opacity: 0.8; }
     .btn-primary {
-      flex: 1; background: var(--amber); color: white;
+      flex: 1; background: var(--amber); color: var(--text);
     }
     .btn-outline {
       background: white; color: var(--text-2);
@@ -1222,7 +1236,7 @@
 <div class="exp-overlay" id="exp-overlay" onclick="if(event.target===this)hideExpForm()">
   <div class="exp-form-sheet">
     <div class="msg-form-header">
-      <span class="msg-form-title" id="exp-form-title">💰 新增記帳</span>
+      <span class="msg-form-title" id="exp-form-title">新增記帳</span>
       <button class="msg-close-btn" onclick="hideExpForm()">✕</button>
     </div>
     <div id="exp-form-body"></div>
@@ -1233,7 +1247,7 @@
 <div class="exp-overlay" id="itin-overlay" onclick="if(event.target===this)hideItinForm()">
   <div class="exp-form-sheet">
     <div class="msg-form-header">
-      <span class="msg-form-title" id="itin-form-title">📍 新增景點</span>
+      <span class="msg-form-title" id="itin-form-title">新增景點</span>
       <button class="msg-close-btn" onclick="hideItinForm()">✕</button>
     </div>
     <div id="itin-form-body"></div>
@@ -1256,7 +1270,7 @@
 <div class="exp-overlay" id="hotel-overlay" onclick="if(event.target===this)hideHotelForm()">
   <div class="exp-form-sheet">
     <div class="msg-form-header">
-      <span class="msg-form-title" id="hotel-form-title">🏨 住宿</span>
+      <span class="msg-form-title" id="hotel-form-title">住宿</span>
       <button class="msg-close-btn" onclick="hideHotelForm()">✕</button>
     </div>
     <div id="hotel-form-body"></div>
@@ -1281,16 +1295,16 @@
 <div class="exp-overlay" id="showcase-overlay" onclick="if(event.target===this)closeShowcaseShare()">
   <div class="exp-form-sheet">
     <div class="msg-form-header">
-      <span class="msg-form-title" id="showcase-form-title">🖼️ 製作行程海報</span>
+      <span class="msg-form-title" id="showcase-form-title">製作行程海報</span>
       <button class="msg-close-btn" onclick="closeShowcaseShare()">✕</button>
     </div>
     <div id="showcase-fields"></div>
     <div class="share-preview-wrap"><canvas id="showcase-canvas"></canvas></div>
     <div class="share-link-row" id="showcase-link-row">
       <input class="form-input share-link-input" id="showcase-link-input" readonly onclick="this.select()">
-      <button class="mini-btn" id="showcase-copy-btn" onclick="copyShowcaseLink()">🔗 複製連結</button>
+      <button class="mini-btn" id="showcase-copy-btn" onclick="copyShowcaseLink()">複製連結</button>
     </div>
-    <button class="btn btn-pink" id="showcase-send-btn" style="width:100%;font-size:16px;padding:16px" onclick="sendShowcaseShare()">📤 分享</button>
+    <button class="btn btn-pink" id="showcase-send-btn" style="width:100%;font-size:16px;padding:16px" onclick="sendShowcaseShare()">分享</button>
     <div class="showcase-share-hint" id="showcase-share-hint" hidden>用 Chrome 或 Safari 開啟可直接分享</div>
   </div>
 </div>
@@ -1378,6 +1392,7 @@ const GROUPS     = (Array.isArray(_CFG.groups) ? _CFG.groups : [])
 const IS_GROUPED = GROUPS.length > 0;                 // 有分組：卡片用日卡 id 識別；沒有：維持用 day
 const GMEMBERS   = MEMBERS.map(m => ({ ...m, id: m.id || m.name }));   // 舊設定檔沒有成員 id：用名字代替
 const _GRP_DEEP  = deepTagColor(_CFG.meta.themeColor);
+document.documentElement.style.setProperty("--pink-deep", _GRP_DEEP);   // 時間標籤、住宿未訂小標籤用的加深主題色
 const _GRP_PALE  = _CFG.meta.bgPale;
 
 // 卡片識別：分組行程用日卡 id（同一天兩張卡的 day 相同），沒分組維持用 day（已上線行程的資料不受影響）
@@ -1667,7 +1682,7 @@ let itinEditTarget = null; // null=新增 | {kind:"added",key} | {kind:"preset",
 let itinFormSeed   = { name:"", time:"", sub:"", map:"" };
 let itinMenuKey    = null; // id of the act whose ⋯ menu is open
 let hotelEdited  = {}, hotelHidden  = {};     // 住宿：每日覆寫 / 隱藏
-let hotelFormDay  = null, hotelFormSeed  = {}, hotelFormPaid = false;
+let hotelFormDay  = null, hotelFormSeed  = {}, hotelFormPaid = false, hotelFormBooked = true, hotelFormApply = null;
 let notesAdded   = [];      // [{_key, icon, text}] — Firebase/localStorage added
 let notesEdited  = {};      // {idx: {icon,text}} — preset overrides
 let notesHidden  = {};      // {idx: true} — hidden presets
@@ -2482,7 +2497,7 @@ function _rainStr(w) {
 function _dayPlaces(d) {
   const out = _dayMergedActs(d).map(a => ({ map: a.map, geo: a.geo }));
   const h = _dayHotelInfo(d);
-  if (h) out.push({ map: h.map, geo: h.geo });
+  if (h && (h.map || h.geo)) out.push({ map: h.map, geo: h.geo });
   return out;
 }
 function _weatherQueriesByDate() {
@@ -2733,14 +2748,14 @@ function renderItinerary(opts) {
       const _id  = _added ? ("a:" + a._key) : ("p:" + a._pid);
       // 天氣膠囊維持「每天首個景點才顯示」：新增項與非首項回傳空字串
       const _wx  = getWeatherCapsule(a.map, d.date, a.time, _wxFallback, _added ? 1 : a._origIdx, a.geo);
-      const _mapBtn  = a.map ? `<a class="map-btn" href="${mapUrl(a.map)}" target="_blank" rel="noopener">📍 地圖</a>` : "";
+      const _mapBtn  = a.map ? `<a class="map-btn" href="${mapUrl(a.map)}" target="_blank" rel="noopener">地圖</a>` : "";
       const _parkBtn = (d.selfDrive && (a.map || a.name) && !isTransit(a.icon) && a.park !== false)
-        ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(a))}" target="_blank" rel="noopener">🅿️ 停車</a>` : "";
+        ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(a))}" target="_blank" rel="noopener">停車</a>` : "";
       const _menu = _canEdit ? `
           <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('${_id}')">⋯</button>
           ${itinMenuKey === _id ? `<div class="act-menu">
-            <button class="act-menu-item" onclick="startEditItin('${_id}')">✏️ 編輯</button>
-            <button class="act-menu-item danger" onclick="${_added ? `deleteItinAct('${a._key}')` : `hideItinAct('${a._pid}')`}">🗑 刪除</button>
+            <button class="act-menu-item" onclick="startEditItin('${_id}')">編輯</button>
+            <button class="act-menu-item danger" onclick="${_added ? `deleteItinAct('${a._key}')` : `hideItinAct('${a._pid}')`}">刪除</button>
           </div>` : ""}` : "";
       const _hasActions = _wx || _mapBtn || _parkBtn || _menu;
       const _actions = _hasActions ? `
@@ -2770,15 +2785,17 @@ function renderItinerary(opts) {
     }).join("");
 
     const _hotel = _dayHotelInfo(d);
+    const _hotelUnbooked = !!(_hotel && _hotel.booked === false);
     const hotelHtml = _hotel ? (() => {
-      const _hMapBtn  = _hotel.map ? `<a class="map-btn" href="${mapUrl(_hotel.map)}" target="_blank" rel="noopener">📍 地圖</a>` : "";
+      const _hMapBtn  = _hotel.map ? `<a class="map-btn" href="${mapUrl(_hotel.map)}" target="_blank" rel="noopener">地圖</a>` : "";
       const _hParkBtn = (d.selfDrive && _hotel.name && _hotel.park !== false)
-        ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(_hotel))}" target="_blank" rel="noopener">🅿️ 停車</a>` : "";
+        ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(_hotel))}" target="_blank" rel="noopener">停車</a>` : "";
       const _hMenu = _canEdit ? `<span class="slot-menu-wrap">
           <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleItinMenu('hotel:${_key}')">⋯</button>
           ${itinMenuKey === "hotel:" + _key ? `<div class="act-menu">
-            <button class="act-menu-item" onclick="startEditHotel(${_kl})">✏️ 編輯</button>
-            <button class="act-menu-item danger" onclick="deleteHotel(${_kl})">🗑 刪除</button>
+            <button class="act-menu-item" onclick="startEditHotel(${_kl})">編輯</button>
+            <button class="act-menu-item" onclick="startCopyHotel(${_kl})">複製到其他天</button>
+            <button class="act-menu-item danger" onclick="deleteHotel(${_kl})">刪除</button>
           </div>` : ""}
         </span>` : "";
       const _hActions = (_hMapBtn || _hParkBtn || _hMenu) ? `
@@ -2787,23 +2804,24 @@ function renderItinerary(opts) {
             ${_hMapBtn}${_hParkBtn}${_hMenu}
           </div>` : "";
       return `
-      <div class="day-hotel">
-        <span class="day-hotel-icon">🏨</span>
+      <div class="day-hotel${_hotelUnbooked ? " unbooked" : ""}">
         <div class="day-hotel-info">${_listTagHtml(_hotel.with)}
-          <div class="day-hotel-name">${_esc(_hotel.name || "")}</div>
+          ${_hotelUnbooked ? `<div class="day-hotel-unbooked-label">住宿未訂</div>` : ""}
+          ${_hotel.name ? `<div class="day-hotel-name">${_esc(_hotel.name)}</div>` : ""}
           <div class="day-hotel-meta">
-            <span class="hotel-paid-badge ${_hotel.paid ? 'paid' : 'unpaid'}">
+            ${_hotelUnbooked ? "" : `<span class="hotel-paid-badge ${_hotel.paid ? 'paid' : 'unpaid'}">
               ${_hotel.paid
                 ? `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 4.5,9 10.5,3"/></svg> 已付清`
-                : `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="5"/><line x1="6" y1="3.5" x2="6" y2="6.5"/><line x1="6" y1="8" x2="6" y2="8.5"/></svg> 現場付`}
-            </span>
+                : `<svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="6" r="5"/><line x1="6" y1="3.5" x2="6" y2="6.5"/><line x1="6" y1="8" x2="6" y2="8.5"/></svg> 未付款`}
+            </span>`}
             ${_hotel.note ? `<span class="day-hotel-note">${_esc(_hotel.note)}</span>` : ""}
           </div>
+          ${_hotelUnbooked && _canEdit ? `<button class="hotel-fill-btn" onclick="startEditHotel(${_kl})">填入住宿</button>` : ""}
           ${_hActions}
         </div>
       </div>`;
     })() : "";
-    const hotelAddHtml = (!_hotel && _canEdit) ? `<button class="slot-add-btn" onclick="startAddHotel(${_kl})">➕ 新增住宿</button>` : "";
+    const hotelAddHtml = (!_hotel && _canEdit) ? `<button class="slot-add-btn" onclick="startAddHotel(${_kl})">新增住宿</button>` : "";
 
     const restaurantHtml = (() => {
       const rests = RESTAURANTS[d.day];
@@ -2814,11 +2832,11 @@ function renderItinerary(opts) {
             <div class="restaurant-name">${r.name}</div>
             ${r.note ? `<div class="restaurant-note">${r.note}</div>` : ""}
           </div>
-          ${r.map ? `<a class="map-btn" href="${mapUrl(r.map)}" target="_blank" rel="noopener">📍 地圖</a>` : ""}
+          ${r.map ? `<a class="map-btn" href="${mapUrl(r.map)}" target="_blank" rel="noopener">地圖</a>` : ""}
         </div>`).join("");
       return `
         <div class="restaurant-section">
-          <div class="restaurant-header">🍜 建議餐廳</div>
+          <div class="restaurant-header">建議餐廳</div>
           ${itemsHtml}
         </div>`;
     })();
@@ -2837,12 +2855,12 @@ function renderItinerary(opts) {
             <div class="parking-name">${p.name}</div>
             ${p.note ? `<div class="parking-note">${p.note}</div>` : ""}
           </div>
-          ${p.map ? `<a class="map-btn" href="${mapUrl(p.map)}" target="_blank" rel="noopener">📍 地圖</a>` : ""}
+          ${p.map ? `<a class="map-btn" href="${mapUrl(p.map)}" target="_blank" rel="noopener">地圖</a>` : ""}
         </div>`).join("");
-      const btnLabel = d.parking.lots.length > 0 ? "🔍 搜尋更多停車場" : "🔍 搜尋附近停車場";
+      const btnLabel = d.parking.lots.length > 0 ? "搜尋更多停車場" : "搜尋附近停車場";
       return `
         <div class="parking-section">
-          <div class="parking-header">🅿️ 停車場資訊</div>
+          <div class="parking-header">停車場資訊</div>
           ${lotsHtml}
           <a class="parking-search-btn" href="${mapUrl(d.parking.searchQuery)}" target="_blank" rel="noopener">${btnLabel}</a>
         </div>`;
@@ -2857,7 +2875,7 @@ function renderItinerary(opts) {
           </div>
           <div class="day-info">
             <div class="day-theme">${d.theme}</div>
-            <div class="day-meta${_dayTag ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點</div>
+            <div class="day-meta${_dayTag || _hotelUnbooked ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點${_hotelUnbooked ? `<span class="hotel-unbooked-tag">住宿未訂</span>` : ""}</div>
           </div>
           <span class="day-emoji">${d.emoji}</span>
           <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
@@ -2866,13 +2884,13 @@ function renderItinerary(opts) {
         </div>
         <div class="day-body">
           <div class="act-list">${actsHtml}</div>
-          ${_canEdit ? `<div class="itin-add-row"><button class="itin-add-btn" onclick="showItinForm(${_kl})">➕ 新增景點</button></div>` : ""}
+          ${_canEdit ? `<div class="itin-add-row"><button class="itin-add-btn" onclick="showItinForm(${_kl})">新增景點</button></div>` : ""}
           ${hotelHtml}
           ${hotelAddHtml}
           ${carHtml}
           ${parkingHtml}
           ${restaurantHtml}
-          <div class="day-share-row"><button class="day-share-btn" onclick="openDayShare(${_kl})">📤 分享這天${_dayHasShareUpdate(d) ? `<span class="share-updated-badge">已更新</span>` : ""}</button></div>
+          <div class="day-share-row"><button class="day-share-btn" onclick="openDayShare(${_kl})">分享這天${_dayHasShareUpdate(d) ? `<span class="share-updated-badge">已更新</span>` : ""}</button></div>
         </div>
       </div>`;
   }).join("");
@@ -2888,8 +2906,8 @@ function renderItinerary(opts) {
         <button class="checklist-tab-btn${VIEW === "all" || !_meMember() ? " active" : ""}" aria-pressed="${VIEW === "all" || !_meMember()}" onclick="setView('all')">全部</button>
       </div>${_meBtn}</div>` : "";
   const _poster = (_meBtn && !IS_GROUPED)
-    ? `<div class="showcase-entry-row has-me"><button class="showcase-entry-btn" onclick="openShowcaseShare()">🖼️ 製作行程海報</button>${_meBtn}</div>`
-    : `<div class="showcase-entry-row"><button class="showcase-entry-btn" onclick="openShowcaseShare()">🖼️ 製作行程海報</button></div>`;
+    ? `<div class="showcase-entry-row has-me"><button class="showcase-entry-btn" onclick="openShowcaseShare()">製作行程海報</button>${_meBtn}</div>`
+    : `<div class="showcase-entry-row"><button class="showcase-entry-btn" onclick="openShowcaseShare()">製作行程海報</button></div>`;
   document.getElementById("tab-itinerary").innerHTML = `${_viewBar}${_poster}<div id="day-cards-wrap">${html}${_emptyMine}</div><div id="itin-trash-wrap"></div>`;
   renderTrash();
   if (opts.keepScroll && _keepTop !== null) document.getElementById("app-content").scrollTop = _keepTop;
@@ -3080,7 +3098,8 @@ function _daySnapshotKey(key) { return _PFX + "-share-snapshot-" + key; }   // k
 function _daySnapshot(d) {
   const acts  = _dayMergedActs(d).map(a => ({ n: a.name, t: a.time, s: a.sub, r: a.ref }));
   const hotel = _dayHotelInfo(d);
-  return JSON.stringify({ acts, hotel: hotel ? { n: hotel.name, m: hotel.map } : null });
+  const _shown = hotel && hotel.booked !== false;   // 未訂不上圖卡，也不算內容變動
+  return JSON.stringify({ acts, hotel: _shown ? { n: hotel.name, m: hotel.map } : null });
 }
 function _dayHasShareUpdate(d) {
   let saved;
@@ -3191,7 +3210,7 @@ function _syncShowcasePhotoPos() {
 
 function renderShowcaseOverlay() {
   const isDay = _showcaseScope === "day";
-  document.getElementById("showcase-form-title").textContent = isDay ? "📤 分享這天" : "🖼️ 製作行程海報";
+  document.getElementById("showcase-form-title").textContent = isDay ? "分享這天" : "製作行程海報";
   // 單日是傳給同行旅伴看今天的行程，不需要「複製回訪首頁連結」這個給非同行者的入口
   document.getElementById("showcase-link-row").style.display = isDay ? "none" : "";
 
@@ -3233,7 +3252,7 @@ function renderShowcaseOverlay() {
   document.getElementById("showcase-link-input").value = SHOWCASE_HOMEPAGE_URL;
 
   const canShareFiles = _canShareImageFile();
-  document.getElementById("showcase-send-btn").textContent = canShareFiles ? "📤 分享" : "⬇️ 下載海報圖片";
+  document.getElementById("showcase-send-btn").textContent = canShareFiles ? "分享" : "下載海報圖片";
   document.getElementById("showcase-share-hint").hidden = canShareFiles;
 
   redrawShowcaseCanvas();
@@ -3529,7 +3548,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
     if (!d) { ctx.setTransform(1, 0, 0, 1, 0, 0); return; }
     const acts  = _dayMergedActs(d).map(a => a.name).filter(Boolean);
     const hotel = _dayHotelInfo(d);
-    const hotelName = hotel && hotel.name;
+    const hotelName = hotel && hotel.booked !== false && hotel.name;   // 未訂不上圖卡
     const cap = (caption || "").trim();
     const dateText = `${d.date}（${d.wd}）`;
     const totalText = `／ ${_tripDayCount()} 天`;
@@ -3815,31 +3834,37 @@ function doUndo() {
 }
 
 // ─── 住宿編輯 ─────────────────────────────────────────────────────
+// 訂房狀態：資料只多一個 booked 記號（false = 還沒訂；沒有記號 = 已訂，舊行程不用轉換）
+function _hotelOf(d) {   // 一張卡「畫面上實際的」住宿（原始行程＋覆寫，扣掉隱藏）；沒有 = null
+  return d ? _dayHotelInfo(d) : null;
+}
 function _hotelSeed(day) {   // day = 卡片 key
   const d = _cardByKey(day);
   const b = Object.assign({}, (d && d.hotel) || {}, (d && _byCard(hotelEdited, d)) || {});
-  return { name: b.name || "", note: b.note || "", paid: !!b.paid,
+  return { name: b.name || "", note: b.note || "", paid: !!b.paid, booked: b.booked !== false,
            map: (b.map && b.map !== b.name) ? b.map : "" };
 }
 function startEditHotel(day) {
   itinMenuKey = null;
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
   hotelFormDay = day; hotelFormSeed = _hotelSeed(day); hotelFormPaid = hotelFormSeed.paid;
-  document.getElementById("hotel-form-title").textContent = "✏️ 編輯住宿";
+  hotelFormBooked = hotelFormSeed.booked; hotelFormApply = null;
+  document.getElementById("hotel-form-title").textContent = "編輯住宿";
   document.getElementById("hotel-overlay").classList.add("visible");
   renderHotelFormBody();
 }
 function startAddHotel(day) {
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
-  hotelFormDay = day; hotelFormSeed = { name: "", note: "", paid: false, map: "" }; hotelFormPaid = false;
-  document.getElementById("hotel-form-title").textContent = "🏨 新增住宿";
+  hotelFormDay = day; hotelFormSeed = { name: "", note: "", paid: false, booked: true, map: "" };
+  hotelFormPaid = false; hotelFormBooked = true; hotelFormApply = null;
+  document.getElementById("hotel-form-title").textContent = "新增住宿";
   document.getElementById("hotel-overlay").classList.add("visible");
   renderHotelFormBody();
 }
 function hideHotelForm() {
   document.getElementById("hotel-overlay").classList.remove("visible");
   document.getElementById("hotel-form-body").innerHTML = "";
-  hotelFormDay = null;
+  hotelFormDay = null; hotelFormApply = null;
 }
 function _hotelFormVals() {
   const g = id => document.getElementById(id);
@@ -3848,37 +3873,126 @@ function _hotelFormVals() {
     name: g("ho-name") ? g("ho-name").value : (f.name || ""),
     note: g("ho-note") ? g("ho-note").value : (f.note || ""),
     map:  g("ho-map")  ? g("ho-map").value  : (f.map || ""),
-    paid: hotelFormPaid,
+    paid: hotelFormBooked ? hotelFormPaid : false,
+    booked: hotelFormBooked,
   };
+}
+// 「同時套用到同一間的其他晚」：同一間 = 名稱相同（不要求連續）；比對用修改前的名稱，沒填名稱的不算
+function _sameHotelCards(day) {
+  const seedName = (hotelFormSeed.name || "").trim();
+  if (!seedName || hotelFormDay == null) return [];
+  return DAYS.filter(d => {
+    if (_ck(d) === day) return false;
+    const h = _hotelOf(d);
+    return h && (h.name || "").trim() === seedName;
+  });
+}
+function _applyTargetKeys() {   // 目前勾選的「套用到其他晚」卡片 key（沒打開過就是全勾）
+  return _sameHotelCards(hotelFormDay).map(_ck).filter(k => !hotelFormApply || hotelFormApply[String(k)] !== false);
+}
+function toggleHotelApply(k, on) {
+  if (!hotelFormApply) hotelFormApply = {};
+  hotelFormApply[String(k)] = !!on;
 }
 function renderHotelFormBody() {
   const v = _hotelFormVals();
+  const same = (hotelFormDay != null && hotelFormSeed.name) ? _sameHotelCards(hotelFormDay) : [];
+  const applyHtml = same.length ? `
+    <div class="form-row"><div class="form-label">同時套用到（只更新這次改動的欄位）</div>
+      ${same.map(d => {
+        const k = _ck(d), lb = _cardLabel(d);
+        const on = !hotelFormApply || hotelFormApply[String(k)] !== false;
+        return `<label class="hotel-apply-row"><input type="checkbox" ${on ? "checked" : ""} onchange="toggleHotelApply(${_keyLit(k)}, this.checked)"> Day ${_dispDay(d)}・${d.date}（${d.wd}）${lb ? "・" + _esc(lb) : ""}</label>`;
+      }).join("")}
+    </div>` : "";
   document.getElementById("hotel-form-body").innerHTML = `
-    <div class="form-row"><div class="form-label">住宿名稱</div><input class="form-input" id="ho-name" value="${_esc(v.name)}" placeholder="例：ホテル京阪仙台"></div>
-    <div class="form-row"><div class="form-label">備註（選填）</div><input class="form-input" id="ho-note" value="${_esc(v.note)}" placeholder="例：¥123,400（含早餐）"></div>
-    <div class="form-row"><div class="form-label">付款狀態</div>
+    <div class="form-row"><div class="form-label">訂房狀態</div>
       <div class="member-picker">
-        <button class="member-pill${!hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=false;renderHotelFormBody()">現場付</button>
-        <button class="member-pill${hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=true;renderHotelFormBody()">已付清</button>
+        <button class="member-pill${hotelFormBooked ? " selected" : ""}" onclick="hotelFormBooked=true;renderHotelFormBody()">已訂</button>
+        <button class="member-pill${!hotelFormBooked ? " selected" : ""}" onclick="hotelFormBooked=false;renderHotelFormBody()">還沒訂</button>
       </div>
     </div>
+    <div class="form-row"><div class="form-label">住宿名稱${hotelFormBooked ? "" : "（選填）"}</div><input class="form-input" id="ho-name" value="${_esc(v.name)}" placeholder="例：ホテル京阪仙台"></div>
+    <div class="form-row"><div class="form-label">備註（選填）</div><input class="form-input" id="ho-note" value="${_esc(v.note)}" placeholder="例：現場付／11/1 刷尾款，先換卡方案"></div>
+    ${hotelFormBooked ? `<div class="form-row"><div class="form-label">付款狀態</div>
+      <div class="member-picker">
+        <button class="member-pill${!hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=false;renderHotelFormBody()">未付款</button>
+        <button class="member-pill${hotelFormPaid ? " selected" : ""}" onclick="hotelFormPaid=true;renderHotelFormBody()">已付清</button>
+      </div>
+    </div>` : ""}
     ${_mapFieldHtml("ho-map", v.map, "ho-name", "住宿")}
-    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitHotel()">💾 儲存</button>`;
+    ${applyHtml}
+    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitHotel()">儲存</button>`;
   onMapFieldInput("ho-map", "住宿", true);
+}
+// 寫入一張卡的住宿覆寫（整筆覆蓋，booked 一定明寫；也解除「已隱藏」，否則新住宿看不到）
+function _writeHotel(key, data) {
+  const d = _cardByKey(key), ld = d ? _legacyDay(d) : null;
+  _dbRef(ITIN_PATH + "/hotelHidden/" + key).remove();
+  if (ld != null) _dbRef(ITIN_PATH + "/hotelHidden/" + ld).remove();   // 分組前以 day 存的「已隱藏」也要解除
+  _dbRef(ITIN_PATH + "/hotelEdited/" + key).set(data);
 }
 function submitHotel() {
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
   const v = _hotelFormVals();
   const name = v.name.trim();
-  if (!name) { alert("請輸入住宿名稱"); return; }
+  if (v.booked && !name) { alert("請輸入住宿名稱"); return; }
   const day = hotelFormDay;   // 卡片 key
-  const _hd = _cardByKey(day), _ld = _hd ? _legacyDay(_hd) : null;
-  _dbRef(ITIN_PATH + "/hotelHidden/" + day).remove();
-  if (_ld != null) _dbRef(ITIN_PATH + "/hotelHidden/" + _ld).remove();   // 分組前以 day 存的「已隱藏」也要解除，否則新住宿看不到
-  _dbRef(ITIN_PATH + "/hotelEdited/" + day).set({
-    name, note: v.note.trim(), paid: !!v.paid, map: _resolveMapStr(v.map) || name,
+  const note = v.note.trim(), map = _resolveMapStr(v.map) || name;
+  // 套用到其他晚：只帶這次有改動的欄位（以開表單時的值為準），其他晚各自的內容不被蓋掉
+  const f = hotelFormSeed, changes = {};
+  if (name !== (f.name || "").trim()) changes.name = name;
+  if (note !== (f.note || "").trim()) changes.note = note;
+  if (!!v.paid !== !!f.paid) changes.paid = !!v.paid;
+  if (v.booked !== f.booked) changes.booked = v.booked;
+  if (map !== (f.map || f.name || "")) changes.map = map;
+  const targets = Object.keys(changes).length ? _applyTargetKeys() : [];
+  _writeHotel(day, { name, note, paid: !!v.paid, booked: !!v.booked, map });
+  targets.forEach(k => {
+    const td = _cardByKey(k), cur = _hotelOf(td);
+    if (!cur) return;
+    _writeHotel(k, {
+      name: cur.name || "", note: cur.note || "", paid: !!cur.paid, booked: cur.booked !== false, map: cur.map || cur.name || "",
+      ...changes,
+      ...(changes.booked === false ? { paid: false } : {}),   // 改回未訂：付款狀態清成未付款
+    });
   });
   hideHotelForm();
+  _maybeShowLocalEditToast();
+}
+
+// ─── 住宿：複製到其他天（一次勾選多天）──────────────────────────────
+let hotelCopySrc = null;
+function startCopyHotel(day) {
+  itinMenuKey = null;
+  if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
+  const src = _hotelOf(_cardByKey(day));
+  if (!src) return;
+  hotelCopySrc = day;
+  document.getElementById("hotel-form-title").textContent = "複製「" + (src.name || "住宿未訂") + "」到哪幾天？";
+  document.getElementById("hotel-overlay").classList.add("visible");
+  const rows = _viewCards().filter(d => _ck(d) !== day).map(d => {
+    const k = _ck(d), h = _hotelOf(d), lb = _cardLabel(d);
+    const has = h ? `<span class="hotel-copy-has">已有住宿：${_esc(h.name || "未訂")}</span>` : "";
+    return `<label class="hotel-apply-row"><input type="checkbox" class="ho-copy-cb" value="${_esc(String(k))}"> Day ${_dispDay(d)}・${d.date}（${d.wd}）${lb ? "・" + _esc(lb) : ""} ${has}</label>`;
+  }).join("");
+  document.getElementById("hotel-form-body").innerHTML = (rows || `<div class="view-empty">沒有其他天可以複製</div>`) +
+    (rows ? `<button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:8px" onclick="submitCopyHotel()">複製</button>` : "");
+}
+function submitCopyHotel() {
+  if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
+  const src = _hotelOf(_cardByKey(hotelCopySrc));
+  if (!src) { hideHotelForm(); return; }
+  const keys = [...document.querySelectorAll(".ho-copy-cb:checked")].map(el => _keyFromStr(el.value));
+  if (!keys.length) { alert("請至少勾選一天"); return; }
+  // 取代前先問：只問「已訂」的住宿；未訂的佔位直接取代
+  const booked = keys.map(k => _cardByKey(k)).filter(d => { const h = _hotelOf(d); return h && h.booked !== false; });
+  if (booked.length && !confirm("這幾天已經有訂好的住宿，複製會取代掉（取代後無法復原）：\n" +
+      booked.map(d => "Day " + _dispDay(d) + "・" + d.date + "：" + (_hotelOf(d).name || "")).join("\n") + "\n\n要取代嗎？")) return;
+  const data = { name: src.name || "", note: src.note || "", paid: !!src.paid, booked: src.booked !== false, map: src.map || src.name || "" };
+  keys.forEach(k => _writeHotel(k, { ...data }));
+  hideHotelForm();
+  hotelCopySrc = null;
   _maybeShowLocalEditToast();
 }
 function deleteHotel(day) {   // day = 卡片 key
@@ -3973,7 +4087,7 @@ function renderTrash() {
   wrap.innerHTML = `
     <div class="trash-section">
       <button class="trash-header" onclick="trashOpen=!trashOpen;renderTrash()">
-        <span class="trash-title">🗑 最近刪除 <span class="trash-count">${itinTrash.length}</span></span>
+        <span class="trash-title">最近刪除 <span class="trash-count">${itinTrash.length}</span></span>
         <span class="trash-caret">${trashOpen ? "▲" : "▼"}</span>
       </button>
       ${trashOpen ? `<div class="trash-list">${rows}</div><div class="trash-foot">刪除的項目保留 30 天，隨時可以復原</div>` : ""}
@@ -4006,7 +4120,7 @@ function showItinForm(day) {   // day = 卡片 key
   itinFormIcon = "📍";
   itinFormSeed = { name: "", time: "", sub: "", map: "", geo: "" };
   _itinWithReset(null);
-  document.getElementById("itin-form-title").textContent = "📍 新增景點";
+  document.getElementById("itin-form-title").textContent = "新增景點";
   document.getElementById("itin-overlay").classList.add("visible");
   renderItinFormBody();
 }
@@ -4022,7 +4136,7 @@ function startEditItin(id) {
   // map 等於名稱＝當初沒貼連結（儲存時以名稱補上）→ 連結欄位顯示空白
   itinFormSeed = { name: it.name, time: it.time, sub: it.sub, map: (it.map && it.map !== it.name) ? it.map : "", geo: it.geo || "" };
   _itinWithReset(it.kind === "added" ? it.with : null);
-  document.getElementById("itin-form-title").textContent = "✏️ 編輯景點";
+  document.getElementById("itin-form-title").textContent = "編輯景點";
   document.getElementById("itin-overlay").classList.add("visible");
   renderItinFormBody();
 }
@@ -4101,11 +4215,11 @@ function _mapStatusHtml(value, noun) {
   const info = _mapLinkInfo(value);
   switch (info.status) {
     case "ok": return `✅ 已定位：${_esc(info.name || "地圖上指定的位置")}<br>
-      <a class="geo-verify-link" href="${_esc(info.url)}" target="_blank" rel="noopener">🗺 在 Google 地圖確認</a>`;
+      <a class="geo-verify-link" href="${_esc(info.url)}" target="_blank" rel="noopener">在 Google 地圖確認</a>`;
     case "pending": return "⏳ 讀取中…";
     case "failed":  return "⚠️ 讀不到位置，請確認連結或網路後重新貼上（仍可儲存）";
     case "noplace": return "⚠️ 這個連結沒有指向單一地點，請在 Google 地圖點選一個地點後再分享";
-    case "text":    return `目前只有文字：「📍 地圖」會用這段文字搜尋，但不會查天氣。貼 Google 地圖分享連結，這個${noun}才會有自己的天氣。`;
+    case "text":    return `目前只有文字：「地圖」會用這段文字搜尋，但不會查天氣。貼 Google 地圖分享連結，這個${noun}才會有自己的天氣。`;
     default:        return `在 Google 地圖找到地點 → 分享 → 複製連結，貼到上面。貼了這個${noun}才會有自己的天氣；沒貼就沿用當天其他地點的天氣。`;
   }
 }
@@ -4119,7 +4233,7 @@ function _mapFieldHtml(inputId, value, nameInputId, noun) {
       <div class="form-label">Google 地圖分享連結（選填）</div>
       <input class="form-input" type="text" id="${inputId}" value="${_esc(value)}" autocomplete="off"
              placeholder="貼上 Google 地圖的分享連結" oninput="onMapFieldInput('${inputId}','${noun}')">
-      <button type="button" class="btn map-find-btn" onclick="openMapSearch('${nameInputId}','${noun}')">🔍 到 Google 地圖找</button>
+      <button type="button" class="btn map-find-btn" onclick="openMapSearch('${nameInputId}','${noun}')">到 Google 地圖找</button>
       <div class="${_mapStatusClass(value)}" id="${inputId}-status">${_mapStatusHtml(value, noun)}</div>
     </div>`;
 }
@@ -4147,7 +4261,7 @@ function onMapFieldInput(inputId, noun, immediate) {
     });
   }, immediate ? 0 : 300);
 }
-// 「🔍 到 Google 地圖找」：用已填的名稱開 Google 地圖搜尋（手機會開 Google 地圖 App）
+// 「到 Google 地圖找」：用已填的名稱開 Google 地圖搜尋（手機會開 Google 地圖 App）
 function openMapSearch(nameInputId, noun) {
   const el = document.getElementById(nameInputId);
   const name = el ? el.value.trim() : "";
@@ -4210,12 +4324,12 @@ function renderItinFormBody() {
     <div class="form-row">
       <div class="form-label">精確定位</div>
       <div class="geo-pinned">
-        <span class="geo-pinned-txt">📍 已標定精確位置，這個景點的天氣以它為準</span>
+        <span class="geo-pinned-txt">已標定精確位置，這個景點的天氣以它為準</span>
         <button type="button" class="geo-clear-btn" onclick="clearMyLocation()">清除</button>
       </div>
-      <a class="geo-verify-link" href="${mapUrl(v.geo)}" target="_blank" rel="noopener">🗺 在 Google 地圖確認這個位置</a>
+      <a class="geo-verify-link" href="${mapUrl(v.geo)}" target="_blank" rel="noopener">在 Google 地圖確認這個位置</a>
     </div>` : ""}
-    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitItinAct()">${isEdit ? "💾 儲存修改" : "📍 加入行程"}</button>
+    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitItinAct()">${isEdit ? "儲存修改" : "加入行程"}</button>
   `;
   onMapFieldInput("itin-map-input", "景點", true);
 }
@@ -4275,9 +4389,9 @@ function renderChecklist() {
   const cur = checklistSubTab;
   document.getElementById("tab-checklist").innerHTML = `
     <div class="checklist-tabs">
-      <button class="checklist-tab-btn ${cur === "packing" ? "active" : ""}" onclick="switchChecklistTab('packing')">🎒 打包</button>
-      <button class="checklist-tab-btn ${cur === "shopping" ? "active" : ""}" onclick="switchChecklistTab('shopping')">🛍️ 購物</button>
-      <button class="checklist-tab-btn ${cur === "notes" ? "active" : ""}" onclick="switchChecklistTab('notes')">⚠️ 注意事項</button>
+      <button class="checklist-tab-btn ${cur === "packing" ? "active" : ""}" onclick="switchChecklistTab('packing')">打包</button>
+      <button class="checklist-tab-btn ${cur === "shopping" ? "active" : ""}" onclick="switchChecklistTab('shopping')">購物</button>
+      <button class="checklist-tab-btn ${cur === "notes" ? "active" : ""}" onclick="switchChecklistTab('notes')">注意事項</button>
     </div>
     <div id="tab-checklist-content"></div>`;
   if (cur === "packing") renderPacking();
@@ -4313,7 +4427,7 @@ function renderPacking() {
   const totalDone = allChecks.filter(c => c.done).length;
   const totalAll  = allChecks.length;
 
-  html += `<div class="sec-title">✅ 行前清單 <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:6px">${totalDone}/${totalAll}</span></div>`;
+  html += `<div class="sec-title">行前清單 <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:6px">${totalDone}/${totalAll}</span></div>`;
 
   allChecks.forEach(c => {
     const editKey = c.kind + ":" + c.id;
@@ -4382,8 +4496,8 @@ function renderNotes() {
         ${firebaseReady ? `<div style="position:relative;flex-shrink:0">
           <button class="act-menu-btn" aria-label="更多操作" onclick="event.stopPropagation();toggleNoteMenu('${mk}')">⋯</button>
           ${menuOpen ? `<div class="act-menu">
-            <button class="act-menu-item" onclick="startEditNote('${mk}')">✏️ 編輯</button>
-            <button class="act-menu-item danger" onclick="deleteNote('${mk}')">🗑 刪除</button>
+            <button class="act-menu-item" onclick="startEditNote('${mk}')">編輯</button>
+            <button class="act-menu-item danger" onclick="deleteNote('${mk}')">刪除</button>
           </div>` : ""}
         </div>` : ""}
       </div>`;
@@ -4430,7 +4544,7 @@ function startEditNote(mk) {
     noteFormSeed = { icon: item.icon || "⚠️", text: item.text || "" };
   }
   renderNoteFormBody();
-  document.getElementById("note-overlay-title").textContent = "✏️ 編輯注意事項";
+  document.getElementById("note-overlay-title").textContent = "編輯注意事項";
   document.getElementById("note-overlay").style.display = "flex";
 }
 
@@ -4707,11 +4821,11 @@ function initFontSize() {
 function renderShopping() {
   let html = "";
   const boughtCount = shoppingItems.filter(s => s.bought).length;
-  html += `<div class="sec-title">🛍️ 伴手禮 ＆ 購物清單 <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:6px">${boughtCount}/${shoppingItems.length}</span></div>`;
-  html += `<div style="font-size:12px;color:var(--text-3);margin-bottom:12px;line-height:1.6">可新增想買的物品、附上照片與購買地點 📍</div>`;
+  html += `<div class="sec-title">伴手禮 ＆ 購物清單 <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:6px">${boughtCount}/${shoppingItems.length}</span></div>`;
+  html += `<div style="font-size:12px;color:var(--text-3);margin-bottom:12px;line-height:1.6">可新增想買的物品、附上照片與購買地點</div>`;
 
   if (shoppingItems.length === 0 && !showShoppingInput) {
-    html += `<div style="text-align:center;padding:20px 0 8px;color:var(--text-3);font-size:13px">還沒有購物項目 🛒</div>`;
+    html += `<div style="text-align:center;padding:20px 0 8px;color:var(--text-3);font-size:13px">還沒有購物項目</div>`;
   }
 
   shoppingItems.forEach(s => {
@@ -4730,7 +4844,7 @@ function renderShopping() {
             <button class="del-btn" onclick="cancelEditShopping()">✕</button>
           </div>
           <button class="del-btn" style="width:100%;border-radius:10px;padding:8px 0;font-size:13px;color:#e55;border-color:#fcc"
-                  onclick="if(confirm('確定刪除此項目？'))deleteShopping(${s.id})">🗑 刪除此項目</button>
+                  onclick="if(confirm('確定刪除此項目？'))deleteShopping(${s.id})">刪除此項目</button>
         </div>`;
     } else {
       const thumbsHtml = photos.length
@@ -4776,7 +4890,7 @@ function renderShopping() {
       : "";
     html += `
       <div class="shop-add-card">
-        <div class="shop-add-title">🆕 新增購物項目</div>
+        <div class="shop-add-title">新增購物項目</div>
         <label class="shop-field-label" for="shop-input">商品名稱</label>
         <input id="shop-input" class="shop-add-input" type="text" placeholder="想買什麼？例如：白色戀人餅乾"
                onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('shop-loc-input').focus()">
@@ -4812,7 +4926,7 @@ function renderMeeting() {
   if (!firebaseReady) {
     el.innerHTML = `
       <div class="setup-card">
-        <div class="setup-title">🔔 集合通知</div>
+        <div class="setup-title">集合通知</div>
         <div class="setup-sub">設定後，任何人輸入集合時間，大家的手機即時顯示倒數計時。<br>需要 5 分鐘完成 Firebase 免費設定。</div>
 
         <div class="setup-step">
@@ -4843,7 +4957,7 @@ function renderMeeting() {
         <div class="setup-step">
           <div class="step-num">4</div>
           <div class="step-text">
-            存檔重新部署，集合功能就啟用了 🎉
+            存檔重新部署，集合功能就啟用了
           </div>
         </div>
       </div>`;
@@ -4862,7 +4976,7 @@ function renderMeeting() {
     const canU = meetingCanUpdate(m, meId), canC = meetingCanCancel(m, meId);
     if (!canU && !canC) return "";
     return `<div class="meeting-actions">
-        ${canU ? `<button class="btn btn-outline" onclick="showMeetingForm('${m._key}')">✏️ 更新時間</button>` : ""}
+        ${canU ? `<button class="btn btn-outline" onclick="showMeetingForm('${m._key}')">更新時間</button>` : ""}
         ${canC ? `<button class="btn btn-danger" onclick="clearMeeting('${m._key}')">✕ 取消集合</button>` : ""}
       </div>`;
   };
@@ -4874,7 +4988,7 @@ function renderMeeting() {
     html += `
       <div class="meeting-item">
         <div class="meeting-active-card">
-          <div class="meeting-label">🔔 集合通知</div>
+          <div class="meeting-label">集合通知</div>
           <div class="meeting-clock${c ? "" : " passed"}" data-mkey="${_esc(m._key)}">${fmtCountdown(c)}</div>
           <div class="meeting-time-row">
             <span>⏰</span>
@@ -4956,10 +5070,10 @@ function renderMeeting() {
         </div>`}
         <div class="form-actions">
           ${showForm ? `<button class="btn btn-outline" onclick="hideMeetingForm()">取消</button>` : ""}
-          <button class="btn btn-primary" onclick="submitMeeting()">🔔 送出通知</button>
+          <button class="btn btn-primary" onclick="submitMeeting()">送出通知</button>
         </div>
         <div style="font-size:12px;color:#9ca3af;margin-top:10px;line-height:1.5;">
-          💡 送出後會請求通知權限。請保持此頁面在瀏覽器中開著，集合時間到時會響鈴並震動。
+          送出後會請求通知權限。請保持此頁面在瀏覽器中開著，集合時間到時會響鈴並震動。
         </div>
       </div>`;
   } else {
@@ -5001,7 +5115,7 @@ function renderExpenses() {
   let html = `
     <div class="exp-top-row">
       <button class="exp-add-btn" onclick="showExpForm()">＋ 新增記帳</button>
-      <button class="exp-settle-btn" onclick="expShowSettle=true;renderExpenses()">🧮 結算</button>
+      <button class="exp-settle-btn" onclick="expShowSettle=true;renderExpenses()">結算</button>
     </div>`;
 
   if (allExpenses.length === 0) {
@@ -5015,7 +5129,7 @@ function renderExpenses() {
       html += `<div class="msg-empty">
         <div class="msg-empty-icon">💰</div>
         <div class="msg-empty-text">還沒有記帳</div>
-        <div class="msg-empty-sub">記錄大家的消費，旅程結束後一鍵結算 🧮</div>
+        <div class="msg-empty-sub">記錄大家的消費，旅程結束後一鍵結算</div>
       </div>`;
     }
   } else {
@@ -5048,12 +5162,12 @@ function renderExpenses() {
     };
 
     if (jpy.length > 0) {
-      html += `<div class="exp-currency-header">💴 日圓 JPY</div>`;
+      html += `<div class="exp-currency-header">日圓 JPY</div>`;
       jpy.forEach(e => { html += card(e, "¥"); });
     }
 
     if (twd.length > 0) {
-      html += `<div class="exp-currency-header" style="margin-top:${jpy.length>0?'16px':'0'}">💵 台幣 TWD</div>`;
+      html += `<div class="exp-currency-header" style="margin-top:${jpy.length>0?'16px':'0'}">台幣 TWD</div>`;
       twd.forEach(e => { html += card(e, "$"); });
     }
   }
@@ -5065,7 +5179,7 @@ function renderSettlement(el) {
   let html = `
     <div class="exp-top-row">
       <button class="exp-add-btn" style="flex:1" onclick="expShowSettle=false;renderExpenses()">← 記帳清單</button>
-      <button class="exp-settle-btn active" style="flex:1">🧮 結算</button>
+      <button class="exp-settle-btn active" style="flex:1">結算</button>
     </div>`;
 
   if (allExpenses.length === 0) {
@@ -5080,7 +5194,7 @@ function renderSettlement(el) {
     const expenses = allExpenses.filter(e => e.currency === currency);
     if (expenses.length === 0) return;
     const symbol = currency === "JPY" ? "¥" : "$";
-    const label  = currency === "JPY" ? "💴 日圓 JPY 結算" : "💵 台幣 TWD 結算";
+    const label  = currency === "JPY" ? "日圓 JPY 結算" : "台幣 TWD 結算";
     const settled = settleExpenses(expenses, GMEMBERS);
     const txns   = settled.txns;
     const chip = k => { const w = resolveWho(k, GMEMBERS, null); return `${_esc(w.member ? (w.member.avatar || "💬") : "💬")} ${_esc(w.member ? w.name : (settled.names[k] || k))}`; };
@@ -5147,7 +5261,7 @@ function showExpForm(expense) {
     expFormForWhom = new Set(_expDefaultForWhom(expFormPayer || null));
     expForWhomTouched = false;
   }
-  document.getElementById("exp-form-title").textContent = expense ? "✏️ 編輯記帳" : "💰 新增記帳";
+  document.getElementById("exp-form-title").textContent = expense ? "編輯記帳" : "新增記帳";
   document.getElementById("exp-overlay").classList.add("visible");
   renderExpFormBody(expense || { amount: "", note: "" });   // 新增：空白表單（不沿用上一筆留在欄位裡的值）
 }
@@ -5189,8 +5303,8 @@ function selectAllExpForWhom() {
 
 function renderExpFormBody(prefill) {
   const currBtns = [
-    { c: "JPY", label: "💴 日圓 JPY" },
-    { c: "TWD", label: "💵 台幣 TWD" },
+    { c: "JPY", label: "日圓 JPY" },
+    { c: "TWD", label: "台幣 TWD" },
   ].map(b =>
     `<button class="currency-btn${expFormCurrency===b.c?" selected":""}" onclick="selectExpCurrency('${b.c}')">${b.label}</button>`
   ).join("");
@@ -5234,7 +5348,7 @@ function renderExpFormBody(prefill) {
       <input class="form-input" type="text" id="exp-note-input" value="${_esc(savedNote)}"
              placeholder="例：午餐、電車票、門票">
     </div>
-    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitExpense()">💰 送出記帳</button>
+    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="submitExpense()">送出記帳</button>
   `;
 }
 
@@ -5333,8 +5447,8 @@ function updateCountdown() {
   const nowMid = new Date(nowRaw); nowMid.setHours(0, 0, 0, 0);
   const diff = Math.round((start - nowMid) / 86400000);
   if      (diff > 0)              { n.textContent = diff;     l.textContent = "天後出發"; }
-  else if (nowRaw <= endBoundary) { n.textContent = "旅途中"; l.textContent = "🌸"; }
-  else                            { n.textContent = "已結束"; l.textContent = "回味中 🫶"; }
+  else if (nowRaw <= endBoundary) { n.textContent = "旅途中"; l.textContent = ""; }
+  else                            { n.textContent = "已結束"; l.textContent = "回味中"; }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────

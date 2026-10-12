@@ -1093,6 +1093,15 @@
   .copy-day-same { border-color: var(--accent-line); background: var(--accent-soft); }
   .copy-day-num { display: block; font-size: var(--fs-fine); font-weight: 700; color: var(--accent); letter-spacing: .04em; }
   .copy-day-theme { display: block; font-size: var(--fs-fine); color: var(--ink); margin-top: 2px; }
+  #copy-day-btns.pick-mode { flex-direction: column; flex-wrap: nowrap; gap: 4px; max-height: 50vh; overflow-y: auto; }
+  .copy-pick-row { display: flex; align-items: center; gap: 10px; padding: 10px 6px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .copy-pick-row input { width: 18px; height: 18px; accent-color: var(--accent); flex-shrink: 0; }
+  .copy-pick-go { margin-top: 10px; }
+  .act-edit-row.hotel-inline.unbooked { background: var(--accent-soft); border-color: var(--accent-line); }
+  .hotel-unbooked-tag {
+    display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--accent);
+    border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; white-space: nowrap;
+  }
   /* Undo Toast */
   #undo-toast {
     position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(12px);
@@ -1672,7 +1681,7 @@
         </div>
         <button class="btn btn-primary btn-block" id="copy-prompt-btn"
           onclick="copyPromptToClipboard()" disabled>
-          📋 複製整理指令（Prompt）
+          複製整理指令（Prompt）
         </button>
         <div class="ai-launch-buttons">
           <a class="ai-btn" href="https://claude.ai/new" target="_blank" rel="noopener">
@@ -1739,7 +1748,7 @@
         <div class="restore-or-file">
           <span>或</span>
           <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('load-file').click()">
-            📂 選擇 index.html 檔案
+            選擇 index.html 檔案
           </button>
           <input type="file" id="load-file" accept=".html,text/html" style="display:none;" onchange="handleFileLoad(event)">
         </div>
@@ -1750,7 +1759,7 @@
       </button>
       <div id="restore-status"></div>
       <div class="hint mt-12">
-        💡 在 LINE 或通訊軟體收到的分享連結，直接貼上即可；<code style="font-family:ui-monospace,monospace;background:var(--bg-2);padding:1px 4px;border-radius:3px;">.html</code> 檔案則是進階部署過的使用者才會有。
+        在 LINE 或通訊軟體收到的分享連結，直接貼上即可；<code style="font-family:ui-monospace,monospace;background:var(--bg-2);padding:1px 4px;border-radius:3px;">.html</code> 檔案則是進階部署過的使用者才會有。
       </div>
     </div>
   </div>
@@ -1769,7 +1778,7 @@
 
   <div class="alert-banner" id="missing-summary" role="status" aria-live="polite"></div>
 
-  <p class="desktop-hint">💡 建議使用電腦瀏覽器編輯：螢幕較寬闊，校對長篇行程與地圖連結更順手。</p>
+  <p class="desktop-hint">建議使用電腦瀏覽器編輯：螢幕較寬闊，校對長篇行程與地圖連結更順手。</p>
 
   <div class="card">
     <div class="card-title">基本資訊</div>
@@ -1820,7 +1829,7 @@
     <div class="field" id="ff-self-drive">
       <label class="self-drive-label">
         <input type="checkbox" id="f-self-drive" onchange="onSelfDriveToggle()">
-        <span>🚗 這趟是自駕行程</span>
+        <span>這趟是自駕行程</span>
       </label>
       <div class="hint">開啟後，每天可標記<strong>「這天自駕」</strong>，該天的景點與住宿才會出現「停車」按鈕。整趟不開車就免開。</div>
     </div>
@@ -1986,21 +1995,21 @@
             <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);"></span>最新版已就緒
           </span>
         </div>
-        <div class="seg-tab-title">🔗 一行分享連結</div>
+        <div class="seg-tab-title">一行分享連結</div>
         <div class="seg-tab-sub">免註冊、免部署，複製連結即傳即看</div>
       </div>
       <div class="seg-tab" id="mode-card-advanced" onclick="selectDeliveryMode('advanced')">
         <div class="seg-tab-head">
           <span class="seg-tab-badge seg-tab-badge-secondary">進階 · 多人協作</span>
         </div>
-        <div class="seg-tab-title">☁️ Netlify + Firebase</div>
+        <div class="seg-tab-title">Netlify + Firebase</div>
         <div class="seg-tab-sub">自訂獨立短網址，多人即時同步記帳</div>
       </div>
     </div>
 
     <details class="specs-drawer">
       <summary>
-        <span>⚖️ 查看兩種分享模式的完整規格對照（MECE 五維度嚴格對稱）</span>
+        <span>查看兩種分享模式的完整規格對照（MECE 五維度嚴格對稱）</span>
         <span style="font-size:11px;color:var(--ink-3);">點此展開 / 收合 ▾</span>
       </summary>
       <div class="specs-table-wrap">
@@ -2008,8 +2017,8 @@
           <thead>
             <tr>
               <th>比較維度</th>
-              <th class="highlight-col">🔗 方案 A：一行分享連結</th>
-              <th>☁️ 方案 B：Netlify + Firebase</th>
+              <th class="highlight-col">方案 A：一行分享連結</th>
+              <th>方案 B：Netlify + Firebase</th>
             </tr>
           </thead>
           <tbody>
@@ -2029,10 +2038,10 @@
     <div class="card-desc" id="preview-card-desc"></div>
     <div class="row mt-16" style="gap:10px;flex-wrap:wrap;">
       <button class="btn btn-secondary btn-lg" onclick="previewApp('desktop')">
-        🔍 預覽 App（桌機）
+        預覽 App（桌機）
       </button>
       <button class="btn btn-secondary btn-lg" onclick="previewApp('phone')">
-        📱 預覽 App（手機）
+        預覽 App（手機）
       </button>
     </div>
     <div id="dl-status"></div>
@@ -2053,16 +2062,16 @@
           <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ok);"></span>最新版
         </span>
       </div>
-      <button class="btn btn-primary" onclick="copyShareUrl()" style="white-space:nowrap;">📋 複製最新連結</button>
+      <button class="btn btn-primary" onclick="copyShareUrl()" style="white-space:nowrap;">複製最新連結</button>
     </div>
     <div id="share-status"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:8px;padding-top:12px;border-top:1px dashed var(--rule);">
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" id="share-native-btn" onclick="shareNative()" style="display:none;">📤 傳送給旅伴</button>
-        <button class="btn btn-secondary btn-sm" onclick="showQrCode()">📱 旅伴現場掃碼</button>
+        <button class="btn btn-secondary btn-sm" id="share-native-btn" onclick="shareNative()" style="display:none;">傳送給旅伴</button>
+        <button class="btn btn-secondary btn-sm" onclick="showQrCode()">旅伴現場掃碼</button>
         <button class="btn btn-secondary btn-sm" onclick="openShareUrl()">↗ 另開分頁預覽</button>
       </div>
-      <div style="font-size:var(--fs-fine);color:var(--ink-3);">💡 行程儲存在網址中，若有修改，把新連結重傳給旅伴即可覆蓋</div>
+      <div style="font-size:var(--fs-fine);color:var(--ink-3);">行程儲存在網址中，若有修改，把新連結重傳給旅伴即可覆蓋</div>
     </div>
   </div>
   </div><!-- #section-basic -->
@@ -2076,7 +2085,7 @@
     <div class="card-section mt-16">
       <div class="card-label">第一步：下載行程網頁包</div>
       <p class="card-desc" style="margin-top:4px;">內含完整的獨立網頁程式碼（index.html、manifest.json、sw.js）</p>
-      <button class="btn btn-primary mt-12" onclick="downloadZip()">⬇ 下載 .zip 部署包</button>
+      <button class="btn btn-primary mt-12" onclick="downloadZip()">下載 .zip 部署包</button>
       <div id="download-status"></div>
     </div>
 
@@ -2108,7 +2117,7 @@
           <div class="guide-num">2</div>
           <div class="guide-text">套用安全規則：切換至「規則」分頁，貼入下方專屬規則並按「發布」：
             <pre class="guide-code" id="fb-rules-code"></pre>
-            <button type="button" class="btn btn-secondary btn-sm mt-12" id="fb-rules-copy" onclick="copyFbRules()">📋 複製規則</button>
+            <button type="button" class="btn btn-secondary btn-sm mt-12" id="fb-rules-copy" onclick="copyFbRules()">複製規則</button>
           </div>
         </div>
         <div class="guide-step">

@@ -214,13 +214,18 @@ function svgToPngDataUrl(svg, size) {
 // Generate a PWA manifest customised with this trip's title/colours and
 // inject it as a blob URL. start_url preserves the hash so the home-screen
 // icon launches into this exact trip on tap.
+// `id` 讓每個行程是獨立的 App 身分：沒設 id 時瀏覽器用 start_url 去掉 # 片段
+// 當身分，所有行程都變成 /v/，第二個行程會被當成「已安裝」而開到第一個
+// （診斷見 docs/bug-pwa-coexist.md）。代號用 storagePrefix，缺少時退回行程資料本身。
 async function installPwaManifest(cfg) {
   const svg = generateIconSvg(cfg);
   const png192 = await svgToPngDataUrl(svg, 192);
   const png512 = await svgToPngDataUrl(svg, 512);
   const png180 = await svgToPngDataUrl(svg, 180);
 
+  const tripId = cfg.meta.storagePrefix || location.hash.slice(1);
   const manifest = {
+    id: location.pathname + '?trip=' + encodeURIComponent(tripId),
     name: cfg.meta.title || '旅人手帖',
     short_name: cfg.meta.shortTitle || (cfg.meta.title || '行程').slice(0, 12),
     description: cfg.meta.subtitle || '',

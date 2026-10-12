@@ -196,6 +196,7 @@ const clickText = (b, sel, text) => b.eval(`(()=>{const e=[...document.querySele
     await bb.close(); return r;
   };
   const A = await snap('main-nogroup.html'), B = await snap('new-nogroup.html');
+  A.itinerary = A.itinerary.split('現場付').join('未付款');   // 住宿狀態批次（2026-10）：唯一預期差異是「現場付」改名「未付款」
   ok('4-16 沒分組沒 Firebase：行程分頁與標頭 DOM 與改前相同、不問身分', A.itinerary === B.itinerary && A.header === B.header && A.checklist === B.checklist && A.nav === B.nav && B.who === false, `itin ${A.itinerary.length}/${B.itinerary.length}`);
   const px = fs.readFileSync(SP + '/main-nogroup.png').equals(fs.readFileSync(SP + '/new-nogroup.png'));
   ok('4-16 截圖逐像素相同（行程分頁）', px);
