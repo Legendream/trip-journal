@@ -9,6 +9,7 @@
 | 想知道 | 看這份 |
 |---|---|
 | 現在做到哪、下一步是什麼 | `design-handoff/group-trip/PROGRESS.md` |
+| 下一個要做的：加密短網址（方案、待決、驗收草稿、PR 安排） | `design-handoff/short-link/plan.md` |
 | 吉隆坡旅行中要順便測的項目（要記回饋的那份） | `test-kl-trip.md` |
 | 還沒做的待辦、之後的想法 | `../PLAN.md`（未來想法）、`design-handoff/visual-cleanup/backlog.md`（視覺待辦）、`sw-followups.md`（Service Worker 待辦） |
 
