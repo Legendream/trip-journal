@@ -69,11 +69,11 @@ const fnSrc = (src, name) => {
   }
   return null;
 };
-for (const name of ['_insertByTime', '_minimalTimeOrder']) {
+for (const name of ['_insertByTime', '_minimalTimeOrder', '_placeIdLatLon']) {
   const a = fnSrc(html, name), b = fnSrc(genSrc, name);
   if (!a || !b || a !== b) throw new Error(`${name} 在 template-src.html 與 generator-app.js 不一致`);
 }
-console.log('  ✓ 行程排序函式兩邊一致（_insertByTime、_minimalTimeOrder）');
+console.log('  ✓ 產生器與模板共用函式兩邊一致（_insertByTime、_minimalTimeOrder、_placeIdLatLon）');
 
 // ─── encode + roundtrip ───────────────────────────────────────────────────────
 const b64 = Buffer.from(html, 'utf8').toString('base64');
