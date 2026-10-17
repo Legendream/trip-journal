@@ -4149,6 +4149,26 @@ function hideItinForm() {
 
 function selectItinIcon(ic) { itinFormIcon = ic; renderItinFormBody(); }
 
+// 景點時間：空白或「時:分」用手機原生時間選擇器（「9:00」補成「09:00」）；
+// 「夜」「上午」這類文字原樣保留成一般文字框，不然一存檔就被清空——要改再按「改用時間選擇器」。
+function _stdTime(t) {
+  const m = String(t || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, "0") + ":" + m[2] : null;
+}
+function _itinTimeFieldHtml(t) {
+  const std = String(t || "").trim() ? _stdTime(t) : "";
+  if (std !== null) return `<input class="form-input" type="time" id="itin-time-input" value="${_esc(std)}">`;
+  return `<div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" type="text" id="itin-time-input" value="${_esc(t)}" style="flex:1;min-width:0">
+        <button type="button" class="btn btn-outline" style="flex-shrink:0;white-space:nowrap" onclick="itinTimeToPicker()">改用時間選擇器</button>
+      </div>`;
+}
+function itinTimeToPicker() {
+  const el = document.getElementById("itin-time-input");
+  if (el) el.value = "";
+  renderItinFormBody();
+}
+
 // 「同行的人」（分組行程才有）：跟這天一樣（預設）／各組／自己選。存成那筆景點的 with
 let itinFormWithMode = "same", itinFormWithIds = [];   // mode: "same" | "g<組別序號>" | "custom"
 function _itinWithReset(withIds) {
@@ -4313,7 +4333,7 @@ function renderItinFormBody() {
     </div>
     <div class="form-row">
       <div class="form-label">時間（選填）</div>
-      <input class="form-input" type="text" inputmode="numeric" id="itin-time-input" value="${_esc(v.time)}" placeholder="例：15:00" title="24 小時制，例如下午 3 點＝15:00">
+      ${_itinTimeFieldHtml(v.time)}
     </div>
     <div class="form-row">
       <div class="form-label">備註（選填）</div>
