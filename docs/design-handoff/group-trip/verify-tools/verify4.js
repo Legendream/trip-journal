@@ -196,10 +196,18 @@ const clickText = (b, sel, text) => b.eval(`(()=>{const e=[...document.querySele
     await bb.close(); return r;
   };
   const A = await snap('main-nogroup.html'), B = await snap('new-nogroup.html');
-  A.itinerary = A.itinerary.split('現場付').join('未付款');   // 住宿狀態批次（2026-10）：唯一預期差異是「現場付」改名「未付款」
-  ok('4-16 沒分組沒 Firebase：行程分頁與標頭 DOM 與改前相同、不問身分', A.itinerary === B.itinerary && A.header === B.header && A.checklist === B.checklist && A.nav === B.nav && B.who === false, `itin ${A.itinerary.length}/${B.itinerary.length}`);
-  const px = fs.readFileSync(SP + '/main-nogroup.png').equals(fs.readFileSync(SP + '/new-nogroup.png'));
-  ok('4-16 截圖逐像素相同（行程分頁）', px);
+  // 分組功能之後刻意做的改版，比對前先從兩邊抹掉（只抹這些已知差異，其他差異仍會被抓到）：
+  //   住宿狀態批次（2026-10）：「現場付」改名「未付款」
+  //   視覺減量（PR #8，2026-10）：按鈕與標題前的裝飾 emoji、住宿列的 🏨 圖示拿掉
+  //   沒有天氣時顯示原因（PR #9，2026-10-17）：沒有位置的那天第一個景點多一行說明
+  const known = s => s.split('現場付').join('未付款')
+    .replace(/>(🖼️|📍|➕|🍜|📤|🅿️|🔍|🎒|🛍️|⚠️) /gu, '>')
+    .split('附上照片與購買地點 📍').join('附上照片與購買地點')
+    .split('<span class="day-hotel-icon">🏨</span> ').join('')
+    .split('<span class="act-wx-slot"><span class="weather-capsule-wrap"><span class="weather-capsule pending">這天的景點沒有貼地圖連結，所以沒有天氣</span></span></span> ').join('');
+  for (const k of ['itinerary', 'header', 'checklist']) { A[k] = known(A[k]); B[k] = known(B[k]); }
+  ok('4-16 沒分組沒 Firebase：行程分頁與標頭 DOM 與改前相同（扣掉上列刻意改版）、不問身分', A.itinerary === B.itinerary && A.header === B.header && A.checklist === B.checklist && A.nav === B.nav && B.who === false, JSON.stringify({ itin: A.itinerary === B.itinerary, header: A.header === B.header, checklist: A.checklist === B.checklist, nav: A.nav === B.nav, who: B.who }));
+  // 原本的「截圖逐像素相同」在視覺減量後必然不同（emoji 拿掉了），改由上面的 DOM 比對把關；截圖仍存檔供人工對照
 
   console.log(out.join('\n'));
 })().catch(e => { console.log(out.join('\n')); console.error('FATAL', e); process.exit(1); });
