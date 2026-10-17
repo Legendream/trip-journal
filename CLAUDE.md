@@ -21,6 +21,7 @@
 | G9 | 每個分享行程是各自獨立、可同時安裝的 App | manifest 的 `id` | PR #8 |
 | G10 | 住宿可標「未訂」、複製到多天、套用到同一間其他晚；未訂住宿不出現在海報 | 樣板與產生器 | `docs/acceptance/lodging-status.md` |
 | G11 | 沒有分組的行程，產生器匯出結果與分組功能上線前相同 | 產生器 | `scripts/fixtures/no-group`、`test-group-trip.js` |
+| G13 | 沒有天氣的天要看得見原因：產生器日卡「這天沒有天氣」標籤＋最後一步摘要；App 在那天第一個景點說明「沒有貼地圖連結」 | `dayWxState`、`renderWxSummary`（產生器）、`_noWxNoteHtml`（樣板） | `docs/acceptance/weather-hint.md` |
 | G12 | 示範行程 `trip-app-v2/` 不手動修改；樣板改了就用 `node scripts/build-demo.js` 重新產生 | `trip-app-v2/` | `PLAN.md`；2026-10-17 Claire 確認跟著樣板同步 |
 
 新功能合併後，把它「做完後應有的行為」補進這張表（一行一項，附依據）。

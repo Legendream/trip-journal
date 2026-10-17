@@ -4,6 +4,8 @@
 
 ## 我現在要做／要看什麼
 
+> 改程式前先看專案根目錄的 `CLAUDE.md` 守護清單（已經能用、不能被改壞的功能）。
+
 | 想知道 | 看這份 |
 |---|---|
 | 現在做到哪、下一步是什麼 | `design-handoff/group-trip/PROGRESS.md` |
@@ -17,6 +19,8 @@
 | 住宿未訂、複製到多天 | `acceptance/lodging-status.md` | 已實作、已合併（PR #8）；C8、G1～G4 未驗證 |
 | 視覺減量（emoji、對比） | `acceptance/visual-cleanup.md` | 已實作、已合併（PR #8） |
 | 貼地圖連結定位天氣 | `acceptance/map-link-location.md` | 已確認 |
+| 景點時間恢復時間選擇器 | `acceptance/time-field.md` | 已實作、已驗證（手機實機待確認） |
+| 讓「沒有天氣」看得見 | `acceptance/weather-hint.md` | 已實作、已驗證 |
 | 單日行程分享（第一批／第二批） | `acceptance/single-day-share.md`、`single-day-share-batch2.md` | 第一批已確認；第二批草稿 |
 | 行程展示分享（海報） | `acceptance/showcase-share.md` | 草稿 |
 
