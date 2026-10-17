@@ -2660,6 +2660,16 @@ function getWeatherCapsule(mapStr, dayDate, timeStr, fallbackQ, actIdx, geo) {
   return `<span class="weather-capsule-wrap"><span class="weather-capsule">${wmoIcon(w.code)} ${w.min}–${w.max}°${_rainStr(w)}</span>${srcTag}</span>`;
 }
 
+// 這張卡沒有任何景點或住宿有位置（地圖連結或精確定位，讀不到位置的短網址也算沒有）→
+// 在第一個景點說明為什麼沒有天氣，不要靜默空白。太遠的日期由「出發前約兩週才有天氣」處理。
+function _noWxNoteHtml(dayDate, fallbackQ) {
+  if (_wxLoading || fallbackQ) return "";
+  const [m, dy] = dayDate.split("/").map(Number);
+  const horizon = new Date(); horizon.setHours(0, 0, 0, 0); horizon.setDate(horizon.getDate() + 16);
+  if (new Date(_CFG.meta.year, m - 1, dy) > horizon) return "";
+  return `<span class="weather-capsule-wrap"><span class="weather-capsule pending">這天的景點沒有貼地圖連結，所以沒有天氣</span></span>`;
+}
+
 // 將 "4/15" → "2026-04-15"
 function dateToISO(d) {
   const [m, day] = d.split("/");
@@ -2762,7 +2772,8 @@ function renderItinerary(opts) {
       const _userVal = _added || a._edited; // 使用者輸入需跳脫；原始 config 信任
       const _id  = _added ? ("a:" + a._key) : ("p:" + a._pid);
       // 天氣膠囊維持「每天首個景點才顯示」：新增項與非首項回傳空字串
-      const _wx  = getWeatherCapsule(a.map, d.date, a.time, _wxFallback, _added ? 1 : a._origIdx, a.geo);
+      const _wx  = getWeatherCapsule(a.map, d.date, a.time, _wxFallback, _added ? 1 : a._origIdx, a.geo)
+        || (a === _mergedActs[0] ? _noWxNoteHtml(d.date, _wxFallback) : "");
       const _mapBtn  = a.map ? `<a class="map-btn" href="${mapUrl(a.map)}" target="_blank" rel="noopener">地圖</a>` : "";
       const _parkBtn = (d.selfDrive && (a.map || a.name) && !isTransit(a.icon) && a.park !== false)
         ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(a))}" target="_blank" rel="noopener">停車</a>` : "";

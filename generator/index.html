@@ -1108,6 +1108,20 @@
     display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: var(--accent);
     border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; white-space: nowrap;
   }
+  .day-nowx-tag {
+    display: inline-block; font-size: 11px; font-weight: 700; color: var(--ink-2); background: var(--line);
+    border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; white-space: nowrap;
+  }
+  .day-nowx-tag[hidden], .wx-summary[hidden] { display: none; }
+  .wx-summary {
+    padding: 12px 14px; border: 1px solid var(--warn); background: var(--warn-soft); border-radius: 8px;
+    font-size: var(--fs-fine); color: var(--ink);
+  }
+  .wx-sum-days { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .wx-sum-day {
+    padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card);
+    font-family: inherit; font-size: var(--fs-fine); font-weight: 700; color: var(--accent); cursor: pointer;
+  }
   /* Undo Toast */
   #undo-toast {
     position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(12px);
@@ -1991,6 +2005,7 @@
     <div class="card-title">設定總覽</div>
     <div class="card-desc">出版前最後一次校稿——資料、共用、外觀一覽。</div>
     <div class="summary-grid mt-16" id="summary-grid"></div>
+    <div class="wx-summary mt-16" id="wx-summary" hidden></div>
   </div>
 
   <!-- ── 單一全能分享中心：Segmented Switcher ─────────────────── -->

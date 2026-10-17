@@ -1438,6 +1438,50 @@ function updateMapStatus(di, ai) {
   }
   const st = document.getElementById(`map-status-${di}-${ai}`);
   if (st) st.innerHTML = mapStatusHtml(di, ai, it);
+  refreshDayWxTag(di);
+}
+
+// 這天有沒有天氣：任一景點或住宿的連結讀得到位置 → 'ok'；還有連結在讀取中 → 'pending'；否則 'none'
+// （跟行程 App 一樣：沒有自己位置的景點借用當天其他地點的天氣，所以一個有位置就整天有天氣）
+function dayWxState(d) {
+  let pending = false;
+  for (const it of (d.items || [])) {
+    if (!String(it.location?.url || '').trim()) continue;
+    const st = locLinkInfo(it.location).status;
+    if (st === 'ok') return 'ok';
+    if (st === 'pending') pending = true;
+  }
+  return pending ? 'pending' : 'none';
+}
+function refreshDayWxTag(di) {
+  const tag = document.getElementById('day-nowx-' + di);
+  if (tag) tag.hidden = dayWxState(state.days[di]) !== 'none';
+}
+function noWxDayIdxs() {
+  return state.days.map((d, i) => dayWxState(d) === 'none' ? i : -1).filter(i => i >= 0);
+}
+// 最後一步：列出沒有天氣的天，點了跳回步驟 2 的那一天
+function renderWxSummary() {
+  const box = document.getElementById('wx-summary');
+  if (!box) return;
+  const idxs = noWxDayIdxs();
+  box.hidden = !idxs.length;
+  if (!idxs.length) { box.innerHTML = ''; return; }
+  const btns = idxs.map(i => `<button type="button" class="wx-sum-day" onclick="gotoDayForWx(${i})">Day ${escHtml(String(state.days[i].day || i + 1))}</button>`).join('');
+  box.innerHTML = `<div class="wx-sum-text">這幾天沒有天氣——在那天任一景點或住宿貼上 Google 地圖分享連結就會有（點日期回去補）：</div><div class="wx-sum-days">${btns}</div>`;
+}
+function gotoDayForWx(di) {
+  goTo(1);
+  // goTo 在下一個畫格捲回頂端；這裡排在它後面（同一畫格依序執行），才不會被捲回去
+  requestAnimationFrame(() => {
+    const card = document.getElementById('day-' + di);
+    if (!card) return;
+    card.classList.add('open');
+    // 頂端的步驟列是固定的，捲到它下方，日卡標題才不會被蓋住
+    const bar = document.querySelector('.stepper');
+    const offset = (bar ? bar.getBoundingClientRect().bottom : 0) + 12;
+    window.scrollTo({ top: window.scrollY + card.getBoundingClientRect().top - offset, behavior: 'instant' });
+  });
 }
 
 // 活動／航班時間：空白或「時:分」用原生時間選擇器（「9:00」補成「09:00」，手機可轉盤挑時間）；
@@ -1630,7 +1674,7 @@ function renderDays() {
         <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
           <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
-          <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''}</div>
+          <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''} <span class="day-nowx-tag" id="day-nowx-${i}"${dayWxState(d) === 'none' ? '' : ' hidden'}>這天沒有天氣</span></div>
           ${gctx ? dayGroupHeadHtml(gctx, d, i) : ''}
         </div>
         <button class="btn-icon-x" onclick="event.stopPropagation();removeDay(${i})" title="刪除這天">✕</button>
@@ -2270,6 +2314,7 @@ function renderSummary() {
     [themeName, '主題色彩'],
     [pfx, '旅程代碼'],
   ].map(([v, k]) => `<div class="sum-item"><div class="sv">${escHtml(v)}</div><div class="sk">${k}</div></div>`).join('');
+  renderWxSummary();
 }
 
 function genPrefix() {
