@@ -1,11 +1,11 @@
 # 分組旅行：進度與下次接手
 
-> 最後更新：2026-10-12（包 4＋包 5 已合併，PR #7）。
-> **本檔只存本機，不推雲端**（Claire 2026-10-12 決定）：已用 `git update-index --skip-worktree` 讓 git 忽略這個檔案的本機修改；若之後 main 上這檔案有變動導致 pull 衝突，先 `--no-skip-worktree`。新對話開始時，先讀這份，再讀 decisions.md。
+> 最後更新：2026-10-12（下一步 1～4 已合併，PR #8）。
+> **本檔已進版控、隨 repo 公開**（2026-10-12 發現：先前「只存本機」的設定已失效，PR #8 已把它推上 main；是否要改回只存本機待 Claire 決定）。新對話開始時，先讀這份，再讀 decisions.md。
 
 ## 現在在哪個階段
 
-分組旅行全部完成並對外開放：產生器端（包 1、2，PR #5）、資料通道與同日多卡（包 3，PR #6）、身分與個人檢視＋Firebase 同步（包 4、5，PR #7，2026-10-12 合併），入口閘門已拿掉。接下來是獨立的後續項目，見「下一步」。
+分組旅行全部完成並對外開放：產生器端（包 1、2，PR #5）、資料通道與同日多卡（包 3，PR #6）、身分與個人檢視＋Firebase 同步（包 4、5，PR #7，2026-10-12 合併），入口閘門已拿掉。下一步 1～4（PWA 身分、近期更新區、住宿狀態、視覺減量）已於 2026-10-12 合併（PR #8）。目前沒有進行中的程式項目，接下來是旅行中的實測，見「下一步」。
 
 - AI 提示詞 v3 經 Gemini 網頁版與 Antigravity 實測皆 27/27，見 ai-prompt.md 第 8 節。
 - 測試：`node scripts/test-group-trip.js`（資料層＋畫面片段＋沒分組基準比對，不需瀏覽器）。沒分組基準檔在 `scripts/fixtures/no-group/`，是分組功能加入前（main b6d8c41）的輸出。
@@ -79,19 +79,23 @@
 - App 旅途中跳組：「這天跟誰走？」換整張卡；基本版只存手機，進階版存 Firebase。
 - 不加彈出引導；靠「▾」與判讀提醒。
 
-## 下一步（依優先順序；Claire 決定 1～4 的程式改動放進**同一包 PR**，多個 commit 分段）
+## 下一步
 
-**進度（2026-10-12）**：1～4 已做完，commit 在分支 `fix/pwa-scope-per-trip`（**尚未 push、未開 PR**），1～4 一起開一包 PR。新對話開頭先 `git checkout fix/pwa-scope-per-trip`，不要從 main 另開分支。
+**狀態（2026-10-12）**：原下一步 1～4 已全部完成並合併（PR #8，main `c9761af`）：
 
-1. ✅ **兩個分享行程 App 無法共存**（bug，commit `391c37b`）：原因是 manifest 沒設 `id`，所有行程身分都變成 `/v/`；已在 `v/index.html` 加 `id: /v/?trip=<storagePrefix>`。結論與診斷見 `docs/bug-pwa-coexist.md`。**待實機驗證**（PR 說明要貼結果）：Android Chrome 兩個行程各自可「安裝並建立捷徑」且各進自己的行程；iOS 加到主畫面沒退步；舊的已安裝 App 要重新安裝才會換成新身分。
-2. ✅ **落地頁「近期更新」區**（commit `f7890d6`）：已取代「下一期預告」，行程共享集的想法移到 `PLAN.md`「未來想法」。定案：標題「近期更新」，左日期右文字，標題與說明兩行；最新 3 則直接顯示，第 4 則起放進 `<details>`「看更早的更新」；現有 2 則（分組旅行、集合提醒可指定通知誰）。之後每次改版先問 Claire 要不要放進去（小改版、debug、原本就有的功能不放）。
-3. ✅ **住宿狀態與多晚操作**（原「住宿提醒」）：已實作並自我驗證（2026-10-12），驗收條件與結果在 `docs/acceptance/lodging-status.md`。**未驗證**：C8（真實 Firebase 雙機）、G1～G4（AI 提示詞要用 AI 實跑草稿）；舊版快取會把未訂住宿顯示成無名稱的「現場付」（已實測），PR 說明要提醒旅伴更新。驗證腳本：`verify-tools/verify-lodging.js`、`verify-lodging-gen.js`。
-4. **視覺減量**（emoji 收斂與對比修正）：已實作並自我驗證（2026-10-12），驗收條件與結果在 `docs/acceptance/visual-cleanup.md`（含與驗收文件的 4 點出入，待 Claire 確認）。驗證腳本：`verify-tools/verify-visual-cleanup.js`。背景盤點見 `docs/design-handoff/visual-cleanup/backlog.md`。**1～4 都已完成，下一步：`/code-review`（低強度）→ 問 Claire 同意後 push、開一包 PR**（PR 說明貼各項 checklist 與驗證結果；落地頁「近期更新」要不要加這次改版先問 Claire）。
+1. ✅ **兩個分享行程 App 無法共存**：manifest 加 `id`，診斷見 `docs/bug-pwa-coexist.md`。**待實機驗證**，見測試清單 A。
+2. ✅ **落地頁「近期更新」區**：標題「近期更新」，最新 3 則直接顯示，第 4 則起收進 `<details>`；現有 2 則（分組旅行、集合提醒可指定通知誰）。之後每次改版先問 Claire 要不要放進去（小改版、debug、原本就有的功能不放）；視覺減量決定不放。
+3. ✅ **住宿狀態與多晚操作**：驗收條件與結果在 `docs/acceptance/lodging-status.md`。**未驗證**：C8（真實 Firebase 雙機）、G1～G4（AI 實跑草稿）；舊版快取會把未訂住宿顯示成無名稱的「現場付」，要請旅伴先更新。
+4. ✅ **視覺減量**：驗收條件與結果在 `docs/acceptance/visual-cleanup.md`；backlog 在 `docs/design-handoff/visual-cleanup/backlog.md`（單獨標籤 emoji 要不要換成文字、琥珀黃主色偏淺）。
 
-**吉隆坡旅行回來後**（Claire 2026-10-12：旅行中順便測，現在不做）：
+**待辦**：
 
-- 原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）。
-- 用真實 Firebase 專案做一次最後確認（包 5 只用模擬後端驗證；系統通知排程 headless 無法驗）。結果若有問題再開 fix PR。
+- **吉隆坡旅行中順便測**（Claire 2026-10-12）：測試清單在 `docs/test-kl-trip.md`，結果記在那份的表格裡，回來後依結果開 fix PR 或補驗收文件。
+
+**吉隆坡旅行回來後**：
+
+- 整理 `docs/test-kl-trip.md` 的結果：失敗項目開 fix PR；通過項目把驗收文件的「未驗證」標記改掉。
+- 原型 A、B 的真人可用性測試（test-report.md 3 項待驗證）已列在測試清單 F。
 
 ## 隔一段時間再回來時
 
@@ -108,9 +112,6 @@
 
 > 請讀 trip-journal/docs/design-handoff/group-trip/PROGRESS.md 的「下一步」，我們這次做第 N 項。先做 Git 檢查。
 
-各項的開頭句：
-
-- **住宿狀態**：「請讀 PROGRESS.md 下一步第 3 項與 docs/acceptance/lodging-status.md，照驗收條件實作。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。這是落地模式。」
-- **視覺減量**：「請讀 PROGRESS.md 下一步第 4 項與 docs/acceptance/visual-cleanup.md，照驗收條件實作。先做 Git 檢查並切到 `fix/pwa-scope-per-trip` 分支。這是落地模式。」
+（原下一步 1～4 已完成。新項目開工前，先從 main 另開新分支；舊的 `fix/pwa-scope-per-trip` 已刪除。）
 
 做完要用的指令：`node scripts/test-group-trip.js`、`node scripts/build-template.js --check`；瀏覽器驗證腳本見 `verify-tools/README.md`。

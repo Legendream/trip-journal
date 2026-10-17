@@ -1438,6 +1438,73 @@ function updateMapStatus(di, ai) {
   }
   const st = document.getElementById(`map-status-${di}-${ai}`);
   if (st) st.innerHTML = mapStatusHtml(di, ai, it);
+  refreshDayWxTag(di);
+}
+
+// 這天有沒有天氣：任一景點或住宿的連結讀得到位置 → 'ok'；還有連結在讀取中 → 'pending'；否則 'none'
+// （跟行程 App 一樣：沒有自己位置的景點借用當天其他地點的天氣，所以一個有位置就整天有天氣）
+function dayWxState(d) {
+  let pending = false;
+  for (const it of (d.items || [])) {
+    if (!String(it.location?.url || '').trim()) continue;
+    const st = locLinkInfo(it.location).status;
+    if (st === 'ok') return 'ok';
+    if (st === 'pending') pending = true;
+  }
+  return pending ? 'pending' : 'none';
+}
+function refreshDayWxTag(di) {
+  const tag = document.getElementById('day-nowx-' + di);
+  if (tag) tag.hidden = dayWxState(state.days[di]) !== 'none';
+}
+function noWxDayIdxs() {
+  return state.days.map((d, i) => dayWxState(d) === 'none' ? i : -1).filter(i => i >= 0);
+}
+// 最後一步：列出沒有天氣的天，點了跳回步驟 2 的那一天
+function renderWxSummary() {
+  const box = document.getElementById('wx-summary');
+  if (!box) return;
+  const idxs = noWxDayIdxs();
+  box.hidden = !idxs.length;
+  if (!idxs.length) { box.innerHTML = ''; return; }
+  const btns = idxs.map(i => `<button type="button" class="wx-sum-day" onclick="gotoDayForWx(${i})">Day ${escHtml(String(state.days[i].day || i + 1))}</button>`).join('');
+  box.innerHTML = `<div class="wx-sum-text">這幾天沒有天氣——在那天任一景點或住宿貼上 Google 地圖分享連結就會有（點日期回去補）：</div><div class="wx-sum-days">${btns}</div>`;
+}
+function gotoDayForWx(di) {
+  goTo(1);
+  // goTo 在下一個畫格捲回頂端；這裡排在它後面（同一畫格依序執行），才不會被捲回去
+  requestAnimationFrame(() => {
+    const card = document.getElementById('day-' + di);
+    if (!card) return;
+    card.classList.add('open');
+    // 頂端的步驟列是固定的，捲到它下方，日卡標題才不會被蓋住
+    const bar = document.querySelector('.stepper');
+    const offset = (bar ? bar.getBoundingClientRect().bottom : 0) + 12;
+    window.scrollTo({ top: window.scrollY + card.getBoundingClientRect().top - offset, behavior: 'instant' });
+  });
+}
+
+// 活動／航班時間：空白或「時:分」用原生時間選擇器（「9:00」補成「09:00」，手機可轉盤挑時間）；
+// 「夜」「上午」這類文字保留成一般文字框（原樣匯出），旁邊「改用選擇器」可清空改用選擇器。
+// 判斷規則與 template-src.html 的 _stdTime 相同。
+function stdTime(t) {
+  const m = String(t || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, '0') + ':' + m[2] : null;
+}
+function actTimeFieldHtml(t, o) {
+  const std = String(t || '').trim() ? stdTime(t) : '';
+  if (std !== null) {
+    return `<input type="time" class="act-time-i act-time-picker${o.cls}" value="${escHtml(std)}" title="${escHtml(o.title)}" oninput="${o.oninput}" onblur="${o.onblur}">`;
+  }
+  return `<span class="act-time-text"><input class="act-time-i${o.cls}" value="${escHtml(t)}" placeholder="${escHtml(o.placeholder)}" title="${escHtml(o.title)}" oninput="${o.oninput}" onblur="${o.onblur}"><button type="button" class="act-time-switch" onclick="${o.toPicker}" title="清空這個時間，改用時間選擇器">改用選擇器</button></span>`;
+}
+function actTimeToPicker(di, ai, field) {
+  const it = state.days[di].items[ai];
+  if (field === 'dept') { it.data = it.data || {}; it.data.dept = ''; }
+  it.time = '';
+  saveState();
+  renderDays();
+  document.getElementById('day-' + di)?.classList.add('open');
 }
 
 // 判斷活動是否「應該有時間」——班機、列車、演唱會等（吃 timeline item）
@@ -1484,7 +1551,14 @@ function renderDays() {
           <input class="act-icon-i" value="${escHtml(it.icon || '📍')}" oninput="state.days[${i}].items[${idx}].icon=this.value;saveState()">
           <input class="act-name-i" value="${escHtml(it.title)}" placeholder="活動名稱" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})">
           <input class="act-sub-i" value="${escHtml(it.sub || '')}" placeholder="副標題（選填）" oninput="state.days[${i}].items[${idx}].sub=this.value;saveState()">
-          <input class="act-time-i${needsTime(it) && !it.time ? ' suggest' : ''}" value="${escHtml(it.time || '')}" placeholder="${needsTime(it) ? '抵達時間' : '選填'}" inputmode="numeric" title="${needsTime(it) ? '航班、演唱會、Check-in 等有固定時刻的活動建議填寫，用 24 小時制（下午 3 點＝15:00）' : '選填——有固定時刻才需要，用 24 小時制（下午 3 點＝15:00），填了會自動排序'}" oninput="state.days[${i}].items[${idx}].time=this.value;saveState();this.classList.toggle('suggest', needsTime(state.days[${i}].items[${idx}]) && !this.value)" onblur="onTimeBlur(${i})">
+          ${actTimeFieldHtml(it.time, {
+            cls: needsTime(it) && !it.time ? ' suggest' : '',
+            placeholder: needsTime(it) ? '抵達時間' : '選填',
+            title: needsTime(it) ? '航班、演唱會、Check-in 等有固定時刻的活動建議填寫' : '選填——有固定時刻才需要，填了會自動排序',
+            oninput: `state.days[${i}].items[${idx}].time=this.value;saveState();this.classList.toggle('suggest', needsTime(state.days[${i}].items[${idx}]) && !this.value)`,
+            onblur: `onTimeBlur(${i})`,
+            toPicker: `actTimeToPicker(${i},${idx},'time')`,
+          })}
           ${parkToggleHtml(i, idx, it)}
           <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
           <button class="act-del" onclick="removeAct(${i},${idx})" title="刪除">✕</button>
@@ -1516,7 +1590,12 @@ function renderDays() {
             <span class="act-icon-i" style="pointer-events:none;user-select:none;">✈️</span>
             <input class="act-name-i" value="${escHtml(it.title || '')}" placeholder="去程航班 / 回程航班" oninput="state.days[${i}].items[${idx}].title=this.value;saveState()">
             <input class="act-num-i" value="${escHtml(fd.num || '')}" placeholder="JX802" oninput="state.days[${i}].items[${idx}].data.num=this.value;saveState()">
-            <input class="act-time-i" value="${escHtml(fd.dept || '')}" placeholder="起飛 HH:MM" inputmode="numeric" title="起飛時間（24 小時制），填了會自動排序" oninput="state.days[${i}].items[${idx}].data.dept=this.value;state.days[${i}].items[${idx}].time=this.value;saveState()" onblur="onTimeBlur(${i})">
+            ${actTimeFieldHtml(fd.dept, {
+              cls: '', placeholder: '起飛 HH:MM', title: '起飛時間，填了會自動排序',
+              oninput: `state.days[${i}].items[${idx}].data.dept=this.value;state.days[${i}].items[${idx}].time=this.value;saveState()`,
+              onblur: `onTimeBlur(${i})`,
+              toPicker: `actTimeToPicker(${i},${idx},'dept')`,
+            })}
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
             <button class="act-del" onclick="removeFlight(${i})" title="移除">✕</button>
           </div>
@@ -1595,7 +1674,7 @@ function renderDays() {
         <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
           <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
-          <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''}</div>
+          <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''} <span class="day-nowx-tag" id="day-nowx-${i}"${dayWxState(d) === 'none' ? '' : ' hidden'}>這天沒有天氣</span></div>
           ${gctx ? dayGroupHeadHtml(gctx, d, i) : ''}
         </div>
         <button class="btn-icon-x" onclick="event.stopPropagation();removeDay(${i})" title="刪除這天">✕</button>
@@ -2235,6 +2314,7 @@ function renderSummary() {
     [themeName, '主題色彩'],
     [pfx, '旅程代碼'],
   ].map(([v, k]) => `<div class="sum-item"><div class="sv">${escHtml(v)}</div><div class="sk">${k}</div></div>`).join('');
+  renderWxSummary();
 }
 
 function genPrefix() {

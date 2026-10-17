@@ -2660,6 +2660,16 @@ function getWeatherCapsule(mapStr, dayDate, timeStr, fallbackQ, actIdx, geo) {
   return `<span class="weather-capsule-wrap"><span class="weather-capsule">${wmoIcon(w.code)} ${w.min}–${w.max}°${_rainStr(w)}</span>${srcTag}</span>`;
 }
 
+// 這張卡沒有任何景點或住宿有位置（地圖連結或精確定位，讀不到位置的短網址也算沒有）→
+// 在第一個景點說明為什麼沒有天氣，不要靜默空白。太遠的日期由「出發前約兩週才有天氣」處理。
+function _noWxNoteHtml(dayDate, fallbackQ) {
+  if (_wxLoading || fallbackQ) return "";
+  const [m, dy] = dayDate.split("/").map(Number);
+  const horizon = new Date(); horizon.setHours(0, 0, 0, 0); horizon.setDate(horizon.getDate() + 16);
+  if (new Date(_CFG.meta.year, m - 1, dy) > horizon) return "";
+  return `<span class="weather-capsule-wrap"><span class="weather-capsule pending">這天的景點沒有貼地圖連結，所以沒有天氣</span></span>`;
+}
+
 // 將 "4/15" → "2026-04-15"
 function dateToISO(d) {
   const [m, day] = d.split("/");
@@ -2762,7 +2772,8 @@ function renderItinerary(opts) {
       const _userVal = _added || a._edited; // 使用者輸入需跳脫；原始 config 信任
       const _id  = _added ? ("a:" + a._key) : ("p:" + a._pid);
       // 天氣膠囊維持「每天首個景點才顯示」：新增項與非首項回傳空字串
-      const _wx  = getWeatherCapsule(a.map, d.date, a.time, _wxFallback, _added ? 1 : a._origIdx, a.geo);
+      const _wx  = getWeatherCapsule(a.map, d.date, a.time, _wxFallback, _added ? 1 : a._origIdx, a.geo)
+        || (a === _mergedActs[0] ? _noWxNoteHtml(d.date, _wxFallback) : "");
       const _mapBtn  = a.map ? `<a class="map-btn" href="${mapUrl(a.map)}" target="_blank" rel="noopener">地圖</a>` : "";
       const _parkBtn = (d.selfDrive && (a.map || a.name) && !isTransit(a.icon) && a.park !== false)
         ? `<a class="map-btn park-btn" href="${mapUrl(parkTerm() + " " + parkQuery(a))}" target="_blank" rel="noopener">停車</a>` : "";
@@ -4164,6 +4175,26 @@ function hideItinForm() {
 
 function selectItinIcon(ic) { itinFormIcon = ic; renderItinFormBody(); }
 
+// 景點時間：空白或「時:分」用手機原生時間選擇器（「9:00」補成「09:00」）；
+// 「夜」「上午」這類文字原樣保留成一般文字框，不然一存檔就被清空——要改再按「改用時間選擇器」。
+function _stdTime(t) {
+  const m = String(t || "").trim().match(/^(\d{1,2}):(\d{2})$/);
+  return m && +m[1] < 24 && +m[2] < 60 ? m[1].padStart(2, "0") + ":" + m[2] : null;
+}
+function _itinTimeFieldHtml(t) {
+  const std = String(t || "").trim() ? _stdTime(t) : "";
+  if (std !== null) return `<input class="form-input" type="time" id="itin-time-input" value="${_esc(std)}">`;
+  return `<div style="display:flex;gap:8px;align-items:center">
+        <input class="form-input" type="text" id="itin-time-input" value="${_esc(t)}" style="flex:1;min-width:0">
+        <button type="button" class="btn btn-outline" style="flex-shrink:0;white-space:nowrap" onclick="itinTimeToPicker()">改用時間選擇器</button>
+      </div>`;
+}
+function itinTimeToPicker() {
+  const el = document.getElementById("itin-time-input");
+  if (el) el.value = "";
+  renderItinFormBody();
+}
+
 // 「同行的人」（分組行程才有）：跟這天一樣（預設）／各組／自己選。存成那筆景點的 with
 let itinFormWithMode = "same", itinFormWithIds = [];   // mode: "same" | "g<組別序號>" | "custom"
 function _itinWithReset(withIds) {
@@ -4328,7 +4359,7 @@ function renderItinFormBody() {
     </div>
     <div class="form-row">
       <div class="form-label">時間（選填）</div>
-      <input class="form-input" type="text" inputmode="numeric" id="itin-time-input" value="${_esc(v.time)}" placeholder="例：15:00" title="24 小時制，例如下午 3 點＝15:00">
+      ${_itinTimeFieldHtml(v.time)}
     </div>
     <div class="form-row">
       <div class="form-label">備註（選填）</div>
