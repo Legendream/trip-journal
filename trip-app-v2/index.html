@@ -2380,9 +2380,39 @@ function _mapLinkInfo(s) {
   return { status: "ok", name: _mapPlaceName(full), url: full };
 }
 
+// 新版分享連結（Android 地圖 App，2026 起常見）展開後只有地點代碼、沒有座標：
+//   /maps/place/<地名>/data=!4m2!3m1!1s0x31cdbf80d4a21211:0x982778bb67b5fa0b…（或 ?ftid=0x…:0x…）
+// 代碼前半段是 Google 的 S2 地圖格網編號，換算出的就是那個地點的位置（不靠地名猜）。
+// 實測：岩手飯店換算結果與連結內座標差約 15 公尺。這是 Google 未公開的格式，換算不出來就回傳 null。
+// 搜尋結果／路線連結不採用（可能帶著畫面上某個候選地點的代碼）。產生器與 App 模板必須逐字相同。
+// 數字用 BigInt(61)、不寫成 BigInt 字面值：不支援 BigInt 的舊瀏覽器會整支程式讀不進來。
+function _placeIdLatLon(u) {
+  u = String(u || "");
+  if (/\/maps\/(search|dir)\//.test(u)) return null;
+  const m = u.match(/(?:!1s|[?&]ftid=)(0x[0-9a-f]{1,16}):0x[0-9a-f]+/i);
+  if (!m || typeof BigInt !== "function") return null;
+  const id = BigInt(m[1]);
+  const face = Number(id >> BigInt(61));
+  if (face > 5) return null;
+  const P2IJ = [[0, 1, 3, 2], [0, 2, 3, 1], [3, 2, 0, 1], [3, 1, 0, 2]], P2O = [1, 0, 0, 3];
+  let o = face & 1, i = 0, j = 0;
+  for (let k = 0; k < 30; k++) {
+    const pos = Number((id >> BigInt(59 - 2 * k)) & BigInt(3));
+    const ij = P2IJ[o][pos];
+    i = i * 2 + (ij >> 1); j = j * 2 + (ij & 1);
+    o ^= P2O[pos];
+  }
+  const uv = n => { const s = (n + 0.5) / 1073741824; return s >= 0.5 ? (4 * s * s - 1) / 3 : (1 - 4 * (1 - s) * (1 - s)) / 3; };
+  const a = uv(i), b = uv(j);
+  const [x, y, z] = [[1, a, b], [-a, 1, b], [-a, -b, 1], [-1, -b, -a], [b, -1, -a], [b, a, -1]][face];
+  const lat = +(Math.atan2(z, Math.hypot(x, y)) * 180 / Math.PI).toFixed(6);
+  const lon = +(Math.atan2(y, x) * 180 / Math.PI).toFixed(6);
+  return isFinite(lat) && isFinite(lon) ? { lat, lon } : null;
+}
+
 // 從 Google Maps 連結解析「使用者實際 pin 的座標」，讓天氣抓的是那個確切位置。優先序：
 //   !3d<lat>!4d<lon>（地點精確標記，最準）> @<lat>,<lon>（地圖視野中心）
-//   > ?q=/query=/ll=/center= 裡的「純座標值」。解析不到座標回傳 null。
+//   > ?q=/query=/ll=/center= 裡的「純座標值」。都沒有時改用地點代碼換算（_placeIdLatLon），仍沒有才回傳 null。
 // maps.app.goo.gl 短網址要先經 _resolveMapStr 換成展開後的完整網址。
 function _extractLatLon(mapStr) {
   if (!mapStr || !/^https?:\/\//i.test(mapStr)) return null;
@@ -2404,7 +2434,7 @@ function _extractLatLon(mapStr) {
       if (c) { const r = ok(parseFloat(c[1]), parseFloat(c[2])); if (r) return r; }
     }
   } catch(e) {}
-  return null;
+  return _placeIdLatLon(mapStr);
 }
 
 // 把精確座標（geo 欄位）正規化成 "lat,lon" 查詢鍵；非合法座標回傳 null。

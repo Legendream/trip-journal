@@ -9,6 +9,7 @@
 | 想知道 | 看這份 |
 |---|---|
 | 現在做到哪、下一步是什麼 | `design-handoff/group-trip/PROGRESS.md` |
+| 下一個要做的：加密短網址（方案、待決、驗收草稿、PR 安排） | `design-handoff/short-link/plan.md` |
 | 吉隆坡旅行中要順便測的項目（要記回饋的那份） | `test-kl-trip.md` |
 | 還沒做的待辦、之後的想法 | `../PLAN.md`（未來想法）、`design-handoff/visual-cleanup/backlog.md`（視覺待辦）、`sw-followups.md`（Service Worker 待辦） |
 
@@ -21,6 +22,7 @@
 | 貼地圖連結定位天氣 | `acceptance/map-link-location.md` | 已確認 |
 | 景點時間恢復時間選擇器 | `acceptance/time-field.md` | 已實作、已驗證（手機實機待確認） |
 | 讓「沒有天氣」看得見 | `acceptance/weather-hint.md` | 已實作、已驗證 |
+| 新版地圖分享連結讀不到位置 | `acceptance/map-link-place-id.md` | 已實作、已驗證 |
 | 單日行程分享（第一批／第二批） | `acceptance/single-day-share.md`、`single-day-share-batch2.md` | 第一批已確認；第二批草稿 |
 | 行程展示分享（海報） | `acceptance/showcase-share.md` | 草稿 |
 

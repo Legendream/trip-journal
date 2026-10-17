@@ -69,7 +69,7 @@ const meetList = () => Object.entries(meetings()).map(([k, v]) => ({ key: k, ...
     // 5-4 取消只有發起者；5-7 更新時間發起者與被通知的人
     const cBtn = await btnTexts(C), bBtn = await btnTexts(B), aBtn = await btnTexts(A);
     ok('5-4a 小貓看得到 17:30 的「取消集合」；阿熊看不到', aBtn.includes('✕ 取消集合') && !cBtn.includes('✕ 取消集合'), sj([aBtn, cBtn]));
-    ok('5-7a 被通知的阿熊看得到「更新時間」；沒被通知的小魚看不到 17:30 的更新', cBtn.includes('✏️ 更新時間'), sj([cBtn, bBtn]));
+    ok('5-7a 被通知的阿熊看得到「更新時間」；沒被通知的小魚看不到 17:30 的更新', cBtn.includes('更新時間')   /* 視覺減量（PR #8）拿掉了 ✏️ */, sj([cBtn, bBtn]));
     const bHas1730Update = await B.eval(`[...document.querySelectorAll('#tab-meeting .meeting-small')].some(c => c.innerText.includes('17:30') && c.parentElement.innerText.includes('更新時間'))`);
     ok('5-7a2 小魚的 17:30 小卡沒有更新鈕', !bHas1730Update);
 

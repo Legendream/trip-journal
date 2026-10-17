@@ -14,7 +14,7 @@
 | G2 | 時間是「夜」「上午」這類非標準文字時，打開表單再存檔或匯出，原文字不被清空 | 同上 | 舊 repo commit `5b02040`；`docs/acceptance/time-field.md` |
 | G3 | 集合時間用原生時間選擇器 | `m-time` | 現有程式 |
 | G4 | 有地圖分享連結或精確定位的景點顯示天氣；太遠的日期顯示「出發前約兩週才有天氣」；載入中顯示 ⏳，不能直接空白 | `getWeatherCapsule` 等 | `docs/acceptance/map-link-location.md`（已確認） |
-| G5 | 天氣只用使用者指定的位置（地圖連結或精確定位），不用地名猜——Claire 要精確的天氣 | 同上 | `docs/use-cases/map-link-location.md`；2026-10-17 Claire 再次確認 |
+| G5 | 天氣只用使用者指定的位置（地圖連結或精確定位），不用地名猜——Claire 要精確的天氣。新版分享連結沒有座標時，用連結裡的地點代碼換算位置（`_placeIdLatLon`，產生器與樣板逐字相同） | 同上 | `docs/use-cases/map-link-location.md`；`docs/acceptance/map-link-place-id.md`；2026-10-17 Claire 再次確認 |
 | G6 | 景點依時間自動排序；沒有「時:分」的景點不被移動 | `_timeMin`、`_insertByTime`、`_minimalTimeOrder` | 程式註解；`build-template.js --check` 會比對 |
 | G7 | 陽春版（分享連結）與進階版（Firebase）的同步範圍照 PLAN.md 的表；行前清單、購物清單一律只存本機 | 整個樣板 | `PLAN.md`「App 各功能同步範圍」 |
 | G8 | 分享連結的行程資料放在網址 `#` 後面，不送到伺服器 | `/v/` | `PLAN.md`「檢視器」 |
@@ -31,9 +31,10 @@
 ```
 node scripts/build-template.js --check
 node scripts/test-group-trip.js
+node scripts/test-map-link.js
 ```
 
-兩支都要通過才算改完。動到守護清單裡的行為時，還要在瀏覽器實際操作那一項，並在 PR 說明逐條寫結果。
+三支都要通過才算改完。動到守護清單裡的行為時，還要在瀏覽器實際操作那一項，並在 PR 說明逐條寫結果。
 
 ## 檔案的來源與產物
 
