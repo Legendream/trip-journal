@@ -21,6 +21,7 @@
 | 貼地圖連結定位天氣 | `acceptance/map-link-location.md` | 已確認 |
 | 景點時間恢復時間選擇器 | `acceptance/time-field.md` | 已實作、已驗證（手機實機待確認） |
 | 讓「沒有天氣」看得見 | `acceptance/weather-hint.md` | 已實作、已驗證 |
+| 新版地圖分享連結讀不到位置 | `acceptance/map-link-place-id.md` | 已實作、已驗證 |
 | 單日行程分享（第一批／第二批） | `acceptance/single-day-share.md`、`single-day-share-batch2.md` | 第一批已確認；第二批草稿 |
 | 行程展示分享（海報） | `acceptance/showcase-share.md` | 草稿 |
 
