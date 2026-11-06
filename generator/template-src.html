@@ -697,6 +697,7 @@
       background: white; outline: none;
     }
     .shop-add-input:focus { border-color: var(--pink); }
+    .shop-name-err { font-size: 12px; color: #e55; margin: -2px 0 4px; }
     /* Photo full-screen viewer */
     .photo-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,.88);
@@ -4725,14 +4726,27 @@ function cancelEditCheckItem() {
 
 // ─── Shopping List ────────────────────────────────────────────────
 
-function _shopSave() { localStorage.setItem(SHOPPING_KEY, JSON.stringify(shoppingItems)); }
+// 存檔失敗（多半是裝置儲存空間滿了）要讓使用者知道，不能默默失敗；回傳是否成功
+function _shopSave() {
+  try { localStorage.setItem(SHOPPING_KEY, JSON.stringify(shoppingItems)); return true; }
+  catch (e) {
+    alert("購物清單存不進去，可能是手機的儲存空間不夠了。可以刪掉幾張購物照片後再試一次。");
+    return false;
+  }
+}
 
+let shopNameError = false;   // 新增表單：品名空白時按「加入清單」的提示
 function addShopping(text, location = "") {
-  if (!text.trim()) { showShoppingInput = false; pendingShoppingPhotos = []; renderShopping(); return; }
+  if (!text.trim()) {   // 不關表單、不丟照片，提示補品名
+    shopNameError = true; renderShopping();
+    document.getElementById("shop-input")?.focus();
+    return;
+  }
   const item = { id: Date.now(), text: text.trim(), bought: false,
                  location: (location || "").trim(), photos: pendingShoppingPhotos.slice() };
-  shoppingItems.push(item); _shopSave();
-  showShoppingInput = false; pendingShoppingPhotos = [];
+  shoppingItems.push(item);
+  if (!_shopSave()) { shoppingItems.pop(); return; }   // 存不進去：表單與照片都留著
+  showShoppingInput = false; pendingShoppingPhotos = []; shopNameError = false;
   renderShopping();
 }
 function toggleShopping(id) {
@@ -4827,7 +4841,9 @@ function openPhotoPicker(itemId) {
     const files = Array.from(e.target.files).slice(0, slots);
     const photos = [...existing];
     for (const f of files) photos.push({ data: await compressImage(f) });
-    item.photos = photos; _shopSave(); renderShopping();
+    item.photos = photos;
+    if (!_shopSave()) item.photos = existing;   // 存不進去就退回原本的照片
+    renderShopping();
   };
   input.click();
 }
@@ -4880,6 +4896,9 @@ function initFontSize() {
 // ─── Render: Shopping ─────────────────────────────────────────────
 
 function renderShopping() {
+  // 新增表單開著時重畫（例如加／刪照片）會換掉輸入框：先記下已經打好的品名與地點，畫完再填回
+  const draftName = document.getElementById("shop-input")?.value;
+  const draftLoc  = document.getElementById("shop-loc-input")?.value;
   let html = "";
   const boughtCount = shoppingItems.filter(s => s.bought).length;
   html += `<div class="sec-title">伴手禮 ＆ 購物清單 <span style="font-weight:400;color:var(--text-3);font-size:12px;margin-left:6px">${boughtCount}/${shoppingItems.length}</span></div>`;
@@ -4954,7 +4973,9 @@ function renderShopping() {
         <div class="shop-add-title">新增購物項目</div>
         <label class="shop-field-label" for="shop-input">商品名稱</label>
         <input id="shop-input" class="shop-add-input" type="text" placeholder="想買什麼？例如：白色戀人餅乾"
+               oninput="if(shopNameError){shopNameError=false;document.getElementById('shop-name-err')?.remove()}"
                onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)document.getElementById('shop-loc-input').focus()">
+        ${shopNameError ? `<div class="shop-name-err" id="shop-name-err">請先填商品名稱</div>` : ""}
         <label class="shop-field-label" for="shop-loc-input">📍 購買地點（選填）</label>
         <input id="shop-loc-input" class="shop-add-input" type="text" placeholder="在哪買？例如：新千歲機場"
                onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addShopping(document.getElementById('shop-input').value,this.value)">
@@ -4967,7 +4988,7 @@ function renderShopping() {
         <div class="add-row-buttons" style="margin-top:8px">
           <button class="add-row-btn" style="flex:1"
                   onclick="addShopping(document.getElementById('shop-input').value,document.getElementById('shop-loc-input').value)">＋ 加入清單</button>
-          <button class="del-btn" onclick="showShoppingInput=false;pendingShoppingPhotos=[];renderShopping()">✕</button>
+          <button class="del-btn" onclick="showShoppingInput=false;pendingShoppingPhotos=[];shopNameError=false;renderShopping()">✕</button>
         </div>
       </div>`;
     setTimeout(() => document.getElementById("shop-input")?.focus(), 50);
@@ -4976,6 +4997,10 @@ function renderShopping() {
   }
 
   document.getElementById("tab-checklist-content").innerHTML = html;
+  if (showShoppingInput) {
+    if (draftName != null) document.getElementById("shop-input").value = draftName;
+    if (draftLoc  != null) document.getElementById("shop-loc-input").value = draftLoc;
+  }
 }
 
 // ─── Render: Meeting ──────────────────────────────────────────────
