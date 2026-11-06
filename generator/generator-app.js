@@ -651,14 +651,17 @@ function ensureLocResolved(di, idx) {
   });
 }
 
-function newItem(type) {
+// mode = 'ship'：船班。沿用航班的資料結構（排序、時間、複製、分組都共用），只差圖示與欄位顯示
+function newItem(type, mode) {
   const it = {
     id: genId(), type, time: '', icon: '📍', title: '', sub: '', ref: '',
     location: { query: '', url: '', verified: false }, data: {}
   };
   if (type === 'flight') {
-    it.icon = '✈️'; it.title = '去程航班';
+    const ship = mode === 'ship';
+    it.icon = ship ? '⛴️' : '✈️'; it.title = ship ? '船班' : '去程航班';
     it.data = { num: '', from: '', fromCity: '', fromTerminal: '', to: '', toCity: '', toTerminal: '', dept: '', arr: '', boarding: '' };
+    if (ship) it.data.mode = 'ship';
   } else if (type === 'lodging') {
     it.icon = '🏨'; it.data = { note: '', paid: false };
   }
@@ -795,8 +798,9 @@ function toLegacyDay(d, grouped) {
       if (fd.dept) parts.push(fd.dept);
       if (toStr)   parts.push('→ ' + toStr);
       if (fd.arr)  parts.push(fd.arr);
+      const ship = fd.mode === 'ship';
       return {
-        id: it.id, icon: '✈️', name: it.title || '班機',
+        id: it.id, icon: ship ? '⛴️' : '✈️', name: it.title || (ship ? '船班' : '班機'),
         sub: parts.join(' · '),
         time: fd.dept || it.time || '',
         map: '', ref: it.ref || '',
@@ -841,7 +845,6 @@ function migrateDays(days) {
 
 // 編輯期常用的型別存取
 function dayActivities(d) { return (d.items || []).filter(it => it.type === 'activity'); }
-function dayFlight(d) { return (d.items || []).find(it => it.type === 'flight') || null; }
 function dayLodging(d) { return (d.items || []).find(it => it.type === 'lodging') || null; }
 
 // ── Manual / load paths ────────────────────────────────────────────
@@ -1563,7 +1566,6 @@ function renderDays() {
     // 一天的 items 依 type 渲染：activity + flight 都進時間軸，lodging 獨立在下方
     // 所有 handler 用「真實 items 索引」操作 state.days[i].items[idx]
     let acts = '';
-    let hasFlight = false;
     let hasHotel  = false;
     let hasUnbooked = false;
     (d.items || []).forEach((it, idx) => {
@@ -1607,7 +1609,7 @@ function renderDays() {
       </div>`;
       } else if (it.type === 'flight') {
         const fd = it.data || {};
-        hasFlight = true;
+        const ship = fd.mode === 'ship';
         acts += `<div class="act-edit-row flight-inline" data-di="${i}" data-ai="${idx}"
             ondragover="actDragOver(event,${i},${idx})"
             ondragleave="actDragLeave(event)"
@@ -1617,20 +1619,25 @@ function renderDays() {
               ondragstart="actDragStart(event,${i},${idx})"
               ondragend="actDragEnd(event)"
               title="拖曳排序">⋮⋮</span>
-            <span class="act-icon-i" style="pointer-events:none;user-select:none;">✈️</span>
-            <input class="act-name-i" value="${escHtml(it.title || '')}" placeholder="去程航班 / 回程航班" oninput="state.days[${i}].items[${idx}].title=this.value;saveState()">
-            <input class="act-num-i" value="${escHtml(fd.num || '')}" placeholder="JX802" oninput="state.days[${i}].items[${idx}].data.num=this.value;saveState()">
+            <span class="act-icon-i" style="pointer-events:none;user-select:none;">${ship ? '⛴️' : '✈️'}</span>
+            <input class="act-name-i" value="${escHtml(it.title || '')}" placeholder="${ship ? '去程船班 / 回程船班' : '去程航班 / 回程航班'}" oninput="state.days[${i}].items[${idx}].title=this.value;saveState()">
+            <input class="act-num-i"${ship ? ' style="width:110px"' : ''} value="${escHtml(fd.num || '')}" placeholder="${ship ? '班次／船名' : 'JX802'}" oninput="state.days[${i}].items[${idx}].data.num=this.value;saveState()">
             ${actTimeFieldHtml(fd.dept, {
-              cls: '', placeholder: '起飛 HH:MM', title: '起飛時間，填了會自動排序',
+              cls: '', placeholder: ship ? '出發 HH:MM' : '起飛 HH:MM', title: ship ? '出發時間，填了會自動排序' : '起飛時間，填了會自動排序',
               oninput: `state.days[${i}].items[${idx}].data.dept=this.value;state.days[${i}].items[${idx}].time=this.value;saveState()`,
               onblur: `onTimeBlur(${i})`,
               toPicker: `actTimeToPicker(${i},${idx},'dept')`,
             })}
             <button class="act-copy" onclick="startCopyItem(${i},${idx})" title="複製到其他天">複製</button>
-            <button class="act-del" onclick="removeFlight(${i})" title="移除">✕</button>
+            <button class="act-del" onclick="removeFlight(${i},${idx})" title="移除">✕</button>
           </div>
           ${gctx ? itemWhoHtml(gctx, d, i, it, idx) : ''}
-          <div class="flight-row2">
+          ${ship ? `<div class="flight-row2 ship-row2">
+            <input value="${escHtml(fd.fromCity || '')}" placeholder="出發港（如 鹿兒島港）" oninput="state.days[${i}].items[${idx}].data.fromCity=this.value;saveState()">
+            <span class="flight-arrow">→</span>
+            <input value="${escHtml(fd.toCity || '')}" placeholder="抵達港（如 宮之浦港）" oninput="state.days[${i}].items[${idx}].data.toCity=this.value;saveState()">
+            <input value="${escHtml(fd.arr || '')}" placeholder="抵達 HH:MM" oninput="state.days[${i}].items[${idx}].data.arr=this.value;saveState()">
+          </div>` : `<div class="flight-row2">
             <input value="${escHtml(fd.from || '')}" placeholder="TPE" maxlength="4" style="text-transform:uppercase;" oninput="state.days[${i}].items[${idx}].data.from=this.value.toUpperCase();saveState()">
             <input value="${escHtml(fd.fromCity || '')}" placeholder="桃園" oninput="state.days[${i}].items[${idx}].data.fromCity=this.value;saveState()">
             <span class="flight-arrow">→</span>
@@ -1643,7 +1650,7 @@ function renderDays() {
             <input value="${escHtml(fd.fromTerminal || '')}" placeholder="起飛航廈（選填）" oninput="state.days[${i}].items[${idx}].data.fromTerminal=this.value;saveState()">
             <span class="flight-arrow">→</span>
             <input value="${escHtml(fd.toTerminal || '')}" placeholder="抵達航廈（選填）" oninput="state.days[${i}].items[${idx}].data.toTerminal=this.value;saveState()">
-          </div>
+          </div>`}
           <div class="act-row2">
             <span class="map-label">📋</span>
             <input class="act-map-i" value="${escHtml(it.ref || '')}" placeholder="訂位號碼（選填）" oninput="state.days[${i}].items[${idx}].ref=this.value;saveState()">
@@ -1696,7 +1703,8 @@ function renderDays() {
           <input type="checkbox" ${d.selfDrive ? 'checked' : ''} onchange="toggleDaySelfDrive(${i})">
           這天自駕 <span class="day-selfdrive-hint">— 開啟後本日景點會出現「停車」，徒步的可逐一關掉</span>
         </label>` : '';
-    const addFlightBtn = hasFlight ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增機票</button>`;
+    const addFlightBtn = `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增機票</button>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i},'ship')">＋ 新增船班</button>`;
     const addHotelBtn  = hasHotel  ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addHotel(${i})">＋ 新增住宿</button>`;
     return `<div class="day-card${gctx && gctx.byDay.has(d.id) ? ' g-warned' : ''}" id="day-${i}">
       <div class="day-card-header" onclick="toggleDay(${i})">
@@ -1909,7 +1917,7 @@ function startCopyItem(di, ai) {
   _copyPending = { di, ai };
   const d = state.days[di];
   const item = d.items[ai];
-  const typeLabel = item.type === 'flight' ? '航班' : item.type === 'lodging' ? '住宿' : '活動';
+  const typeLabel = item.type === 'flight' ? ((item.data || {}).mode === 'ship' ? '船班' : '航班') : item.type === 'lodging' ? '住宿' : '活動';
   const panel = document.getElementById('copy-panel');
   const title = document.getElementById('copy-panel-title');
   const btns  = document.getElementById('copy-day-btns');
@@ -1947,11 +1955,7 @@ function copyItemTo(di, ai, targetDi) {
     const old = state.days[targetDi].items.findIndex(it => it.type === 'lodging');
     if (old !== -1) state.days[targetDi].items.splice(old, 1);
   }
-  // 機票一天一筆：若目標天已有機票則替換
-  if (item.type === 'flight') {
-    const old = state.days[targetDi].items.findIndex(it => it.type === 'flight');
-    if (old !== -1) state.days[targetDi].items.splice(old, 1);
-  }
+  // 機票／船班一天可多筆（轉機、當天來回）：複製是多加一筆，不取代目標天原有的
   const target = state.days[targetDi];
   if (_isTimeline(item)) {
     target.items.splice(_activityInsertIndex(target), 0, item);
@@ -1987,12 +1991,12 @@ function addHotel(i) {
   renderDays();
   saveState();
 }
-function addFlight(i) {
+// 機票／船班一天可多筆（轉機、跳島當天來回）；mode = 'ship' 為船班
+function addFlight(i, mode) {
   const d = state.days[i];
-  if (dayFlight(d)) return;            // 一天一筆機票
   const lodgeIdx = d.items.findIndex(it => it.type === 'lodging');
   const at = lodgeIdx === -1 ? d.items.length : lodgeIdx;  // 機票排在住宿之前
-  d.items.splice(at, 0, newItem('flight'));
+  d.items.splice(at, 0, newItem('flight', mode));
   renderDays();
   saveState();
 }
@@ -2011,12 +2015,13 @@ function removeHotel(i) {
     renderDays(); saveState();
   });
 }
-function removeFlight(i) {
+// 一天可能有多筆機票／船班：移除按的那一筆（idx = items 索引）
+function removeFlight(i, idx) {
   const d = state.days[i];
-  const idx = d.items.findIndex(it => it.type === 'flight');
-  if (idx === -1) return;
+  if (!d.items[idx] || d.items[idx].type !== 'flight') return;
   const removed = JSON.parse(JSON.stringify(d.items[idx]));
-  const label = `已移除航班「${removed.title || '班機'}」`;
+  const ship = (removed.data || {}).mode === 'ship';
+  const label = `已移除${ship ? '船班' : '航班'}「${removed.title || (ship ? '船班' : '班機')}」`;
   d.items.splice(idx, 1);
   renderDays();
   saveState();
