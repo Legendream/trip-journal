@@ -3315,12 +3315,12 @@ function renderShowcaseOverlay() {
   redrawShowcaseCanvas();
 }
 
-// 只重繪 canvas，不動 #showcase-fields 的 DOM——一句話輸入框的 oninput 用這個，
-// 才不會每打一個字就把 input 整個換掉、把游標位置跟焦點弄丟。
 function toggleShowcaseAct(i, on) {
   if (on) _showcaseSkip.delete(i); else _showcaseSkip.add(i);
   redrawShowcaseCanvas();
 }
+// 只重繪 canvas，不動 #showcase-fields 的 DOM——一句話輸入框的 oninput 用這個，
+// 才不會每打一個字就把 input 整個換掉、把游標位置跟焦點弄丟。
 async function redrawShowcaseCanvas() {
   const countEl = document.getElementById("showcase-caption-count");
   if (countEl) countEl.textContent = _showcaseCaption.length + "/20";
