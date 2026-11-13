@@ -1284,7 +1284,7 @@
 <div class="exp-overlay" id="day-theme-overlay" style="display:none" onclick="if(event.target===this)hideDayThemeForm()">
   <div class="exp-form-sheet">
     <div class="msg-form-header">
-      <span class="msg-form-title" id="day-theme-overlay-title">改這天的主題</span>
+      <span class="msg-form-title" id="day-theme-overlay-title">改這天的標題</span>
       <button class="msg-close-btn" onclick="hideDayThemeForm()">✕</button>
     </div>
     <div id="day-theme-form-body"></div>
@@ -2977,7 +2977,7 @@ function renderItinerary(opts) {
           </svg>
         </div>
         <div class="day-body">
-          ${_canEdit ? `<div class="day-theme-edit-row"><button class="day-theme-edit-btn" onclick="showDayThemeForm(${_kl})">✎ 改這天的主題</button></div>` : ""}
+          ${_canEdit ? `<div class="day-theme-edit-row"><button class="day-theme-edit-btn" onclick="showDayThemeForm(${_kl})">✎ 改這天的標題</button></div>` : ""}
           <div class="act-list">${actsHtml}</div>
           ${_canEdit ? `<div class="itin-add-row"><button class="itin-add-btn" onclick="showItinForm(${_kl})">新增景點</button></div>` : ""}
           ${hotelHtml}
@@ -4140,17 +4140,17 @@ function showDayThemeForm(key) {
   dayThemeFormKey = key;
   const edited = !!_themeEditedVal(d);
   document.getElementById("day-theme-overlay-title").textContent =
-    `改 Day ${_dispDay(d)}${_cardLabel(d) ? "・" + _cardLabel(d) : ""} 的主題`;
+    `改 Day ${_dispDay(d)}${_cardLabel(d) ? "・" + _cardLabel(d) : ""} 的標題`;
   document.getElementById("day-theme-form-body").innerHTML = `
     <div style="margin-bottom:16px">
       <input type="text" id="day-theme-input" value="${_esc(_theme(d))}" maxlength="40" placeholder="例：仙台市區賞櫻"
         style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:16px;font-family:inherit"
         onkeydown="if(event.key==='Enter')saveDayTheme()" oninput="document.getElementById('day-theme-err').textContent=''">
       <div class="day-theme-err" id="day-theme-err" role="alert"></div>
-      ${edited ? `<div class="day-theme-orig">原本的主題：${_esc(d.theme || "（無）")}</div>` : ""}
+      ${edited ? `<div class="day-theme-orig">原本的標題：${_esc(d.theme || "（無）")}</div>` : ""}
     </div>
     <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="saveDayTheme()">儲存</button>
-    ${edited ? `<button class="day-theme-reset-btn" onclick="resetDayTheme()">恢復原本的主題</button>` : ""}
+    ${edited ? `<button class="day-theme-reset-btn" onclick="resetDayTheme()">恢復原本的標題</button>` : ""}
   `;
   document.getElementById("day-theme-overlay").style.display = "flex";
   const inp = document.getElementById("day-theme-input");
@@ -4169,7 +4169,7 @@ function saveDayTheme() {
   const d = _cardByKey(dayThemeFormKey);
   if (!d) { hideDayThemeForm(); return; }
   const v = (document.getElementById("day-theme-input").value || "").trim();
-  if (!v) { document.getElementById("day-theme-err").textContent = "請填這天的主題"; return; }
+  if (!v) { document.getElementById("day-theme-err").textContent = "請填這天的標題"; return; }
   const key = _ck(d);
   if (v === (d.theme || "").trim()) _dbRef(ITIN_PATH + "/dayTheme/" + key).remove();   // 改回原樣＝沒改過
   else _dbRef(ITIN_PATH + "/dayTheme/" + key).set(v);
@@ -4185,7 +4185,7 @@ function resetDayTheme() {
   _dbRef(ITIN_PATH + "/dayTheme/" + key).remove();
   _clearLegacyDayTheme(d);
   hideDayThemeForm();
-  if (prev) showUndoToast("已恢復原本的主題", () => _dbRef(ITIN_PATH + "/dayTheme/" + key).set(prev));
+  if (prev) showUndoToast("已恢復原本的標題", () => _dbRef(ITIN_PATH + "/dayTheme/" + key).set(prev));
 }
 
 // ─── 最近刪除：寫入 trash + 還原 + 渲染 ───────────────────────────
