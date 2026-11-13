@@ -148,26 +148,48 @@ test('1-10b 內部旗標不流進匯出設定檔（unsure、withUnknown）', () 
 // ── 1-2、1-3：規則 7（沒分組跟改前一樣）──────────────────────────
 // 3-1：匯出一律多了 members[].id（2026-10-10 定案）；拿掉它以後要與改前基準一字不差
 const stripMemberIds = txt => { const c = JSON.parse(txt); c.members.forEach(m => delete m.id); return JSON.stringify(c, null, 2) + '\n'; };
-test('3-1 沒分組：schema-example.json 匯入→匯出，拿掉 members[].id 後與改前基準一字不差；每位成員都有 id', () => {
+test('3-1 沒分組：schema-example.json 匯入→匯出，拿掉 members[].id 後與改前基準一字不差（AI 匯入的景點圖示依分類正規化除外）；每位成員都有 id', () => {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gt-'));
   capture(path.join(root, 'generator/generator-app.js'), tmp);
+  // 2026-11-13 activity-icons I2：AI 匯入時，分類清單以外的景點圖示換成 📍（刻意改動）；還原設定檔不受影響
+  const g = loadGenerator();
+  const normIcons = txt => { const c = JSON.parse(txt); (c.days || []).forEach(d => (d.acts || []).forEach(a => { a.icon = g.run(`normalizeAiIcon(${JSON.stringify(a.icon)})`); })); return JSON.stringify(c, null, 2) + '\n'; };
   for (const f of ['schema-example.export.json', 'schema-example.ai-import.export.json']) {
     const now = fs.readFileSync(path.join(tmp, f), 'utf8');
     JSON.parse(now).members.forEach(m => assert.ok(m.id, f + '：成員沒有 id'));
-    assert.strictEqual(stripMemberIds(now), fs.readFileSync(path.join(FIX, f), 'utf8'), f + ' 與基準不同');
+    const base = fs.readFileSync(path.join(FIX, f), 'utf8');
+    const expected = f.includes('ai-import') ? normIcons(base) : base;
+    assert.strictEqual(stripMemberIds(now), expected, f + ' 與基準不同');
   }
 });
-test('1-3 沒分組時 buildPrompt() 與基準只差 notes 範例、程式碼框要求這兩行（A19 刻意改動）', () => {
+test('1-3 沒分組時 buildPrompt() 與基準只差列出的刻意改動（notes 範例、A19 程式碼框、景點圖示分類）', () => {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gt-'));
   capture(path.join(root, 'generator/generator-app.js'), tmp);
-  const a = fs.readFileSync(path.join(FIX, 'prompt.txt'), 'utf8').split('\n');
-  const b = fs.readFileSync(path.join(tmp, 'prompt.txt'), 'utf8').split('\n');
-  assert.strictEqual(a.length, b.length);
-  const diff = a.map((l, i) => [l, b[i]]).filter(([x, y]) => x !== y);
-  assert.deepStrictEqual(diff, [
-    ['- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 ``` 包起來', '- 只回傳一個 ```json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字'],
+  // 與改前基準相比，只允許這些刻意改動（其餘必須一字不差）
+  const intended = [
     ['  "notes": []', '  "notes": [{ "icon": "⚠️", "text": "…" }]'],
-  ]);
+    // A19：改請 AI 用程式碼框
+    ['- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 ``` 包起來', '- 只回傳一個 ```json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字'],
+    // activity-icons I1：景點圖示改成分類清單、不再請 AI 挑每天的 emoji
+    ['- emoji：為每天主題挑一個合適的 emoji\n- acts 內每個活動的 icon：挑合適的 emoji', [
+      '- acts 內每個活動的 icon：只能從下面清單挑一個，依「這個時段主要在做什麼」：',
+      '  移動：✈️ 飛機、🚆 鐵路（火車／地鐵／纜車）、🚌 巴士（公車／接駁車）、⛴️ 船、🚗 汽車（自駕／租車／計程車）',
+      '  住宿：🏨 住宿',
+      '  飲食：🍴 用餐、☕ 咖啡甜點',
+      '  遊覽：🏛️ 文化歷史（寺廟／博物館／古蹟）、🌲 自然戶外（公園／步道／海邊）、🎟️ 體驗娛樂（樂園／表演／溫泉／導覽）',
+      '  購物：🛍️ 購物',
+      '  其他：📍 其他（集合、辦手續、判斷不了的）',
+      '  一件事只選一類，依主要目的（夜市逛吃→用餐、市場採買→購物）；搭交通工具的那段是移動，到了之後做的事另算一項',
+    ].join('\n')],
+    ['      "theme": "抵達仙台", "emoji": "✈️",', '      "theme": "抵達仙台",'],
+  ];
+  let a = fs.readFileSync(path.join(FIX, 'prompt.txt'), 'utf8');
+  for (const [from, to] of intended) {
+    assert.ok(a.includes(from), '基準裡找不到：' + from.slice(0, 30));
+    a = a.replace(from, to);
+  }
+  const b = fs.readFileSync(path.join(tmp, 'prompt.txt'), 'utf8');
+  assert.strictEqual(b, a);
 });
 
 // ── 其他保護 ────────────────────────────────────────────────────
@@ -444,6 +466,39 @@ test('A20 貼到整理指令：提示貼錯、不匯入；A21 程式碼框照舊
   g.el('json-paste').value = '```json\n' + JSON.stringify({ tripName: 'x', days: [{ day: 1, date: '4/1', wd: '三', theme: 't', emoji: '📍', acts: [] }] }) + '\n```';
   g.run('importAiJson()');
   assert.ok(g.el('ai-import-status').innerHTML.includes('匯入成功'));
+});
+test('I2 AI 匯入：分類以外的景點圖示換成 📍；分類內的保留（忽略變體選擇符 ✈ → ✈️）', () => {
+  const g = loadGenerator();
+  g.el('json-paste').value = JSON.stringify({ days: [{ day: 1, date: '4/1', wd: '三', theme: 't', acts: [
+    { icon: '🎽', name: 'a' }, { icon: '✈', name: 'b' }, { icon: '🍴', name: 'c' }, { name: 'd' }] }] });
+  g.run('importAiJson()');
+  assert.deepStrictEqual([...g.run("state.days[0].items.filter(x => x.type === 'activity').map(x => x.icon)")], ['📍', '✈️', '🍴', '📍']);
+});
+test('I14 產生器與行程 App 樣板的圖示分類完全相同；6 大類 13 個', () => {
+  const g = loadGenerator();
+  const gen = JSON.parse(JSON.stringify(g.run('ICON_CATALOG')));
+  const tplSrc = fs.readFileSync(path.join(root, 'generator/template-src.html'), 'utf8');
+  const m = /const ITIN_ICON_CATALOG = (\[[\s\S]*?\n\]);/.exec(tplSrc);
+  assert.ok(m, '樣板找不到 ITIN_ICON_CATALOG');
+  assert.deepStrictEqual(eval(m[1]), gen);
+  assert.deepStrictEqual(gen.map(x => x.group), ['移動', '住宿', '飲食', '遊覽', '購物', '其他']);
+  assert.strictEqual(gen.flatMap(x => x.items).length, 13);
+});
+test('I4/I5/I7 第 2 步圖示選單：依大類分組＋「自訂…」；自訂圖示顯示為目前選項', () => {
+  const g = loadGenerator();
+  let h = g.run(`actIconFieldHtml({ id: 'x', icon: '🍴' }, 0, 0)`);
+  for (const t of ['<optgroup label="移動">', '<optgroup label="其他">', 'value="__custom"', '🍴 用餐</option>']) assert.ok(h.includes(t), '缺 ' + t);
+  assert.ok(/value="🍴" selected/.test(h));
+  h = g.run(`actIconFieldHtml({ id: 'y', icon: '🦌' }, 0, 0)`);
+  assert.ok(h.includes('<option value="🦌" selected>🦌 自訂</option>'), h.slice(0, 200));
+  g.run(`_customIconItem = 'z'`);
+  assert.ok(g.run(`actIconFieldHtml({ id: 'z', icon: '🦌' }, 0, 0)`).includes('aria-label="自訂圖示"'));
+});
+test('I11 交通判斷：🚌 也算交通（不顯示停車）；✈️ 仍要填時間', () => {
+  const g = loadGenerator();
+  assert.ok(g.run(`isTransitIcon('🚌')`) && g.run(`isTransitIcon('✈️')`) && g.run(`isTransitIcon('🚄')`));
+  assert.ok(!g.run(`isTransitIcon('🚗')`));
+  assert.ok(g.run(`needsTime({ icon: '✈️', title: '' })`));
 });
 test('A10 第二步把成員改名：組別與日卡仍指向同一個 id，標籤顯示新名字', () => {
   const g = loadGenerator();

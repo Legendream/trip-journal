@@ -8,8 +8,14 @@ const PARSE_PROMPT = `你是行程資料整理助手。請把以下行程資訊�
 規則：
 - date 格式：M/D（例：4/15）
 - wd（星期）：用一二三四五六日，從日期計算
-- emoji：為每天主題挑一個合適的 emoji
-- acts 內每個活動的 icon：挑合適的 emoji
+- acts 內每個活動的 icon：只能從下面清單挑一個，依「這個時段主要在做什麼」：
+  移動：✈️ 飛機、🚆 鐵路（火車／地鐵／纜車）、🚌 巴士（公車／接駁車）、⛴️ 船、🚗 汽車（自駕／租車／計程車）
+  住宿：🏨 住宿
+  飲食：🍴 用餐、☕ 咖啡甜點
+  遊覽：🏛️ 文化歷史（寺廟／博物館／古蹟）、🌲 自然戶外（公園／步道／海邊）、🎟️ 體驗娛樂（樂園／表演／溫泉／導覽）
+  購物：🛍️ 購物
+  其他：📍 其他（集合、辦手續、判斷不了的）
+  一件事只選一類，依主要目的（夜市逛吃→用餐、市場採買→購物）；搭交通工具的那段是移動，到了之後做的事另算一項
 - map：適合 Google Maps 搜尋的地點關鍵字
 - 如有附上圖片（機票、訂房確認截圖等），請一併從圖片中擷取資訊，與文字資料合併整理
 - 若資料含班機、列車、演唱會等有明確時間的事件，務必擷取 time（格式 HH:MM）；圖片中的起飛/抵達時間優先於文字
@@ -29,7 +35,7 @@ JSON Schema（嚴格遵守）：
   "days": [
     {
       "day": 1, "date": "4/15", "wd": "三",
-      "theme": "抵達仙台", "emoji": "✈️",
+      "theme": "抵達仙台",
       "acts": [
         { "icon": "✈️", "name": "桃園飛仙台", "sub": "BR-198", "time": "10:30", "map": "仙台機場" }
       ],
@@ -48,6 +54,23 @@ JSON Schema（嚴格遵守）：
 ---
 行程資訊：
 `;
+
+// ── 景點圖示分類（MECE：依「這個時段主要在做什麼」）＋使用者自訂 ─────────────
+// 規格：docs/acceptance/activity-icons.md。行程 App 樣板有同一份（ITIN_ICON_CATALOG），test-group-trip.js 會比對。
+const ICON_CATALOG = [
+  { group: '移動', items: [['✈️', '飛機'], ['🚆', '鐵路'], ['🚌', '巴士'], ['⛴️', '船'], ['🚗', '汽車']] },
+  { group: '住宿', items: [['🏨', '住宿']] },
+  { group: '飲食', items: [['🍴', '用餐'], ['☕', '咖啡甜點']] },
+  { group: '遊覽', items: [['🏛️', '文化歷史'], ['🌲', '自然戶外'], ['🎟️', '體驗娛樂']] },
+  { group: '購物', items: [['🛍️', '購物']] },
+  { group: '其他', items: [['📍', '其他']] },
+];
+// 比對時忽略變體選擇符（AI 常回 ✈ 而不是 ✈️）
+const _iconKey = ic => String(ic || '').replace(/\uFE0F/g, '').trim();
+const _ICON_BY_KEY = new Map(ICON_CATALOG.flatMap(g => g.items.map(([ic]) => [_iconKey(ic), ic])));
+function catalogIcon(ic) { return _ICON_BY_KEY.get(_iconKey(ic)) || null; }
+// AI 整理的結果：不在分類清單裡的圖示一律換成 📍（使用者自訂只在產生器、App 裡手動選）
+function normalizeAiIcon(ic) { return catalogIcon(ic) || '📍'; }
 
 // ── People pill helpers ────────────────────────────────────────────
 // 欄位儲存純數字（如 "2"）；輸出和預覽時組合成「2人同行」
@@ -514,6 +537,8 @@ function applyParsedData(d) {
   }
   const groups = activeGroups();
   ensureMemberIds();
+  // 景點圖示只能是分類清單裡的；AI 挑了別的就換成 📍（activity-icons I2）
+  (d.days || []).forEach(day => (day && Array.isArray(day.acts) ? day.acts : []).forEach(a => { if (a) a.icon = normalizeAiIcon(a.icon); }));
   d = normalizeImported(d, groups, state.members);   // with／unsure → 內部格式；沒分組時丟掉
   if (d.days?.length) { state.days = d.days.map(fromLegacyDay); state.days.forEach(_orderTimeline); }
   if (d.hotels?.length) state.hotels = [...d.hotels];
@@ -740,7 +765,7 @@ function newDay(n) {
 }
 
 // 交通類活動 icon（搭機/搭車/搭船）— 與 template 的 isTransit 對齊，自駕日也不查停車場
-function isTransitIcon(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤]/u.test(icon || ''); }
+function isTransitIcon(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌]/u.test(icon || ''); }
 
 // 唯一的匯入收斂點：吃舊格式（acts/flight/hotel）或新格式（items），都轉成統一模型
 function fromLegacyDay(d) {
@@ -1582,6 +1607,45 @@ function actTimeToPicker(di, ai, field) {
   document.getElementById('day-' + di)?.classList.add('open');
 }
 
+// 第 2 步景點圖示：分類選單（依大類分組）＋最後的「自訂…」；自訂中改成文字框，可輸入任何 emoji
+let _customIconItem = null;   // 正在自訂圖示的景點 id
+function actIconFieldHtml(it, i, idx) {
+  const cur = it.icon || '📍';
+  if (_customIconItem === it.id) {
+    return `<input class="act-icon-i" id="icon-custom-${it.id}" value="${escHtml(cur)}" maxlength="8" aria-label="自訂圖示"
+      oninput="state.days[${i}].items[${idx}].icon=this.value;saveState()" onblur="endCustomIcon()"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">`;
+  }
+  const inCat = catalogIcon(cur);
+  const opts = (inCat ? '' : `<option value="${escHtml(cur)}" selected>${escHtml(cur)} 自訂</option>`)
+    + ICON_CATALOG.map(g => `<optgroup label="${g.group}">${g.items.map(([ic, name]) =>
+      `<option value="${ic}"${inCat === ic ? ' selected' : ''}>${ic} ${name}</option>`).join('')}</optgroup>`).join('')
+    + `<option value="__custom">✎ 自訂…</option>`;
+  return `<select class="act-icon-sel" aria-label="圖示" onchange="onActIconSelect(${i},${idx},this.value)">${opts}</select>`;
+}
+function onActIconSelect(i, idx, v) {
+  const it = state.days[i] && state.days[i].items[idx];
+  if (!it) return;
+  if (v === '__custom') {
+    _customIconItem = it.id;
+    renderDays();
+    const el = document.getElementById('icon-custom-' + it.id);
+    if (el) { el.focus(); el.select(); }
+    return;
+  }
+  it.icon = v;
+  saveState();
+  renderDays();
+}
+function endCustomIcon() {
+  if (!_customIconItem) return;
+  // 自訂框清空就回到 📍
+  state.days.forEach(d => d.items.forEach(x => { if (x.id === _customIconItem && !String(x.icon || '').trim()) x.icon = '📍'; }));
+  _customIconItem = null;
+  saveState();
+  renderDays();
+}
+
 // 判斷活動是否「應該有時間」——班機、列車、演唱會等（吃 timeline item）
 function needsTime(it) {
   if (!it) return false;
@@ -1622,7 +1686,7 @@ function renderDays() {
             ondragstart="actDragStart(event,${i},${idx})"
             ondragend="actDragEnd(event)"
             title="拖曳排序">⋮⋮</span>
-          <input class="act-icon-i" value="${escHtml(it.icon || '📍')}" oninput="state.days[${i}].items[${idx}].icon=this.value;saveState()">
+          ${actIconFieldHtml(it, i, idx)}
           <input class="act-name-i" value="${escHtml(it.title)}" placeholder="活動名稱" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})">
           <input class="act-sub-i" value="${escHtml(it.sub || '')}" placeholder="副標題（選填）" oninput="state.days[${i}].items[${idx}].sub=this.value;saveState()">
           ${actTimeFieldHtml(it.time, {
@@ -1751,7 +1815,6 @@ function renderDays() {
     return `<div class="day-card${gctx && gctx.byDay.has(d.id) ? ' g-warned' : ''}" id="day-${i}">
       <div class="day-card-header" onclick="toggleDay(${i})">
         <span class="day-badge">Day ${d.day || i + 1}</span>
-        <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
           <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
           <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''} <span class="day-nowx-tag" id="day-nowx-${i}"${dayWxState(d) === 'none' ? '' : ' hidden'}>這天沒有天氣</span></div>

@@ -872,7 +872,6 @@
     padding: 3px 8px; font-size: var(--fs-fine); font-weight: 700;
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .day-emoji { font-size: 17px; }
   .day-theme { font-size: var(--fs-fine); font-weight: 600; flex: 1; min-width: 0; }
   .day-theme.empty { color: var(--ink-3); font-weight: 500; }
   .day-date-wd {
@@ -926,6 +925,11 @@
     background: var(--card);
   }
   .act-icon-i { width: 40px; text-align: center; font-size: 15px; }
+  /* 景點圖示分類選單（closed 狀態只顯示圖示＋分類名，寬度固定不擠名稱欄） */
+  .act-icon-sel {
+    width: 96px; flex-shrink: 0; padding: 5px 4px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: var(--fs-fine); font-family: inherit; background: var(--card);
+  }
   .act-name-i { flex: 2; min-width: 80px; font-weight: 600; }
   .act-sub-i  { flex: 1.5; min-width: 70px; font-size: var(--fs-fine); }
   .act-time-i { width: 70px; font-size: var(--fs-fine); color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -1553,7 +1557,7 @@
     /* Activity row 1: wrap sub + time to a second line */
     .act-row1 { flex-wrap: wrap; }
     .act-drag-handle { order: 1; }
-    .act-icon-i  { order: 2; }
+    .act-icon-i, .act-icon-sel { order: 2; }
     .act-name-i  { order: 3; flex: 1 1 80px; min-width: 0; }
     .act-del     { order: 4; }
     .act-sub-i   { order: 5; flex: 1 1 100px; min-width: 0; margin-top: 4px; }
@@ -2197,9 +2201,9 @@
   </div>
 </div>
 
-<script src="group-trip.js?v=20261113a"></script>
-<script src="group-ui.js?v=20261113a"></script>
-<script src="generator-app.js?v=20261113a"></script>
+<script src="group-trip.js?v=20261113b"></script>
+<script src="group-ui.js?v=20261113b"></script>
+<script src="generator-app.js?v=20261113b"></script>
 
 <!-- Undo Toast -->
 <div id="undo-toast">
