@@ -16,7 +16,7 @@ const PARSE_PROMPT = `你是行程資料整理助手。請把以下行程資訊�
 - 若該天有班機（去程或回程），請填 flight 物件：label（去程航班/回程航班）、num（如 BR 198）、from/to（機場 IATA 代碼如 TPE/NRT）、fromCity/toCity（如桃園/成田）、dept（起飛 HH:MM）、arr（抵達 HH:MM）、boarding（登機 HH:MM，可選）；同時也在 acts 內保留對應活動
 - 住宿（hotel）：該天資料有飯店但沒寫付款狀況 → "paid": false；寫已付／已付清 → "paid": true；草稿寫「還沒訂／待訂／未訂」→ 加 "booked": false（此時 paid 為 false）；其餘已訂的住宿不要加 booked 欄位；該天完全沒提住宿 → "hotel": null
 - 缺漏資訊一律用 null 或空陣列，不要瞎編
-- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 \`\`\` 包起來
+- 只回傳一個 \`\`\`json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字
 
 JSON Schema（嚴格遵守）：
 {
@@ -454,6 +454,11 @@ function importAiJson() {
   const stat = document.getElementById('ai-import-status');
   if (!raw) {
     stat.innerHTML = '<div class="status-box status-err">請先貼上 AI 回的 JSON</div>';
+    return;
+  }
+  // 貼到的是整理指令本身（剪貼簿還是指令）：直接說明，不顯示看不懂的 JSON 錯誤
+  if (raw.includes('你是行程資料整理助手')) {
+    stat.innerHTML = '<div class="status-box status-err">這是整理指令，不是 AI 的回覆。請到 AI 那邊複製它回給你的內容（程式碼框右上角的複製鈕），再貼回來。</div>';
     return;
   }
   try {

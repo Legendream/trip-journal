@@ -157,14 +157,17 @@ test('3-1 沒分組：schema-example.json 匯入→匯出，拿掉 members[].id 
     assert.strictEqual(stripMemberIds(now), fs.readFileSync(path.join(FIX, f), 'utf8'), f + ' 與基準不同');
   }
 });
-test('1-3 沒分組時 buildPrompt() 與基準只差 notes 範例那一行', () => {
+test('1-3 沒分組時 buildPrompt() 與基準只差 notes 範例、程式碼框要求這兩行（A19 刻意改動）', () => {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gt-'));
   capture(path.join(root, 'generator/generator-app.js'), tmp);
   const a = fs.readFileSync(path.join(FIX, 'prompt.txt'), 'utf8').split('\n');
   const b = fs.readFileSync(path.join(tmp, 'prompt.txt'), 'utf8').split('\n');
   assert.strictEqual(a.length, b.length);
   const diff = a.map((l, i) => [l, b[i]]).filter(([x, y]) => x !== y);
-  assert.deepStrictEqual(diff, [['  "notes": []', '  "notes": [{ "icon": "⚠️", "text": "…" }]']]);
+  assert.deepStrictEqual(diff, [
+    ['- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 ``` 包起來', '- 只回傳一個 ```json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字'],
+    ['  "notes": []', '  "notes": [{ "icon": "⚠️", "text": "…" }]'],
+  ]);
 });
 
 // ── 其他保護 ────────────────────────────────────────────────────
@@ -429,6 +432,18 @@ test('A7 重新匯入：成員與組別以新的一份為準；同名成員沿�
   assert.deepStrictEqual([...g.run('state.members.map(m => m.name)')], ['甲', '丙']);
   assert.strictEqual(g.run('state.members[0].id'), idA);
   assert.deepStrictEqual([...g.run('state.groups.map(x => x.name)')], ['Z']);
+});
+test('A20 貼到整理指令：提示貼錯、不匯入；A21 程式碼框照舊可匯入', () => {
+  const g = loadGenerator();
+  g.el('trip-text').value = SAMPLE_TRIP_TEXT;
+  g.el('json-paste').value = g.run('buildPrompt()');
+  g.run('importAiJson()');
+  const st = g.el('ai-import-status').innerHTML;
+  assert.ok(st.includes('這是整理指令，不是 AI 的回覆') && !st.includes('JSON 格式錯誤'), st);
+  assert.strictEqual(g.run('state.days.length'), 0);
+  g.el('json-paste').value = '```json\n' + JSON.stringify({ tripName: 'x', days: [{ day: 1, date: '4/1', wd: '三', theme: 't', emoji: '📍', acts: [] }] }) + '\n```';
+  g.run('importAiJson()');
+  assert.ok(g.el('ai-import-status').innerHTML.includes('匯入成功'));
 });
 test('A10 第二步把成員改名：組別與日卡仍指向同一個 id，標籤顯示新名字', () => {
   const g = loadGenerator();
