@@ -331,13 +331,6 @@ function newGroup() {
 }
 function reindexGroups() { state.groups.forEach((g, k) => { g.order = k; }); }
 let _groupSeq = 0;
-function findOrCreateMember(name) {
-  const n = String(name || '').trim();
-  if (!n) return null;
-  let m = state.members.find(x => x.name === n);
-  if (!m) { m = { id: newMemberId(), name: n, avatar: '' }; state.members.push(m); }
-  return m;
-}
 // 改某組的名單；名單完全吻合的卡一起改（G-9）
 function setGroupMembers(gi, newIds) {
   const g = state.groups[gi];
@@ -405,26 +398,7 @@ function splitOffNoticeText() {
 function setSplitUp(on) {
   _splitOffNotice = on ? '' : splitOffNoticeText();
   state.splitUp = !!on;
-  if (on && !state.groups.length) { state.groups.push(newGroup(), newGroup()); reindexGroups(); }
-  refreshGroupViews();
-}
-function addGroupMemberFromInput(gi, inputEl) {
-  const m = findOrCreateMember(inputEl.value);
-  if (!m) return;
-  inputEl.value = '';
-  const g = state.groups[gi];
-  if (g && !g.memberIds.includes(m.id)) setGroupMembers(gi, [...g.memberIds, m.id]);
-  refreshGroupViews();
-  const again = document.querySelector(`#split-setup [data-gi="${gi}"] .g-member-input`);
-  if (again) again.focus();
-}
-function removeGroupMember(gi, id) {
-  const g = state.groups[gi];
-  if (!g) return;
-  setGroupMembers(gi, g.memberIds.filter(x => x !== id));
-  // 行程還沒匯入、也沒屬於其他組：這個人是為了分組才建的，一起移除
-  const inOther = state.groups.some(x => x.memberIds.includes(id));
-  if (!inOther && !state.days.length) state.members = state.members.filter(m => m.id !== id);
+  // 方向 A（2026-11-13）：組別改由 AI 從草稿找出，第一步不再預先建立空白組別
   refreshGroupViews();
 }
 // 圓點：第 1 組實心深色、第 2 組白底深框、第 3 組淡底深框
@@ -435,34 +409,20 @@ function gDotStyle(k, ctx) {
   return `background:${ctx.pale};box-shadow:0 0 0 2px ${ctx.deep} inset`;
 }
 // 「有人分頭行動嗎？」入口（步驟 1）。行程 App 端支援分組後（包 3～5），入口對所有人開放。
+// 2026-11-13 方向 A：只剩開關＋說明，組別由 AI 從草稿找出（docs/acceptance/group-ai-detect.md）
 function renderSplitSetup() {
   const ta = document.getElementById('trip-text');
   if (!ta || !ta.parentNode) return;
   const host = gSlot('split-setup', ta.parentNode, ta.nextSibling);
   const on = !!state.splitUp;
-  const t = gTheme();
-  const ctx = { deep: t.deep, pale: t.pale };
   let html = `<div class="g-split-q">有人分頭行動嗎？</div>
     <div class="g-toggle" role="radiogroup" aria-label="有人分頭行動嗎？">
       <button class="g-tog${on ? '' : ' on'}" role="radio" aria-checked="${!on}" onclick="setSplitUp(false)">全程一起</button>
       <button class="g-tog${on ? ' on' : ''}" role="radio" aria-checked="${on}" onclick="setSplitUp(true)">有分頭</button>
     </div>${!on && _splitOffNotice ? `<div class="g-hint" style="margin-top:10px;">${escHtml(_splitOffNotice)}</div>` : ''}`;
   if (on) {
-    html += `<div class="g-split-groups"><div class="g-split-title">各組成員</div><div class="g-hint">組名照草稿的寫法填，AI 才對得上</div>`;
-    html += state.groups.map((g, k) => `<div class="g-group" data-gi="${k}">
-        <div class="g-gname">
-          <span class="g-dot g-dot-lg" style="${gDotStyle(k, ctx)}"></span>
-          <input class="g-inp" aria-label="組名" placeholder="例：福岡組" value="${escHtml(g.name)}" oninput="setGroupName(${k},this.value)">
-          <button class="g-x" aria-label="刪除這組" onclick="deleteGroup(${k})">✕</button>
-        </div>
-        <div class="g-bad" data-hint="${k}">${escHtml(groupNameHint(k))}</div>
-        ${g.memberIds.length ? `<div class="g-chips">${g.memberIds.map(id => `<span class="g-chip">${escHtml(memberAvatar(memberById(id)))} ${escHtml(memberName(id))}<button class="g-x" aria-label="移除${escHtml(memberName(id))}" onclick="removeGroupMember(${k},'${id}')">✕</button></span>`).join('')}</div>` : ''}
-        <input class="g-inp g-member-input" aria-label="成員" placeholder="代號或暱稱"
-          onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229){event.preventDefault();addGroupMemberFromInput(${k},this)}"
-          onblur="if(this.value.trim())addGroupMemberFromInput(${k},this)">
-      </div>`).join('');
-    if (state.groups.length < G_MAX_GROUPS) html += `<button class="btn btn-secondary" style="align-self:flex-start;" onclick="addGroup()">＋ 再加一組</button>`;
-    html += `</div>`;
+    // 方向 A：不在這裡填組名與成員（草稿的人名和代號常對不上），由 AI 從草稿找出旅伴與分組
+    html += `<div class="g-hint" style="margin-top:10px;">AI 會從草稿找出誰跟誰一起行動；下一步可以改組名、把真名改成暱稱。</div>`;
   }
   host.innerHTML = html;
 }

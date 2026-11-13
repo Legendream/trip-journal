@@ -400,6 +400,18 @@
       padding: 12px; font-size: 14px; font-weight: 700; font-family: inherit;
       cursor: pointer; -webkit-tap-highlight-color: transparent;
     }
+    .day-theme-edit-row { padding: 8px 16px 0; text-align: right; }
+    .day-theme-edit-btn {
+      background: none; border: none; color: var(--pink); font-size: 13px; font-weight: 600;
+      font-family: inherit; padding: 4px 2px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    }
+    .day-theme-orig { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+    .day-theme-err { font-size: 12px; color: #c0392b; margin-top: 6px; }
+    .day-theme-reset-btn {
+      width: 100%; margin-top: 10px; background: #fff; color: var(--text-2);
+      border: 1px solid var(--border); border-radius: 10px; padding: 11px;
+      font-size: 14px; font-family: inherit; cursor: pointer;
+    }
     .day-share-row { padding: 6px 16px 14px; }
     .day-share-btn {
       width: 100%; background: #fff; color: var(--pink);
@@ -1268,6 +1280,17 @@
   </div>
 </div>
 
+<!-- Day Theme Form Overlay -->
+<div class="exp-overlay" id="day-theme-overlay" style="display:none" onclick="if(event.target===this)hideDayThemeForm()">
+  <div class="exp-form-sheet">
+    <div class="msg-form-header">
+      <span class="msg-form-title" id="day-theme-overlay-title">改這天的標題</span>
+      <button class="msg-close-btn" onclick="hideDayThemeForm()">✕</button>
+    </div>
+    <div id="day-theme-form-body"></div>
+  </div>
+</div>
+
 <!-- Hotel Form Overlay -->
 <div class="exp-overlay" id="hotel-overlay" onclick="if(event.target===this)hideHotelForm()">
   <div class="exp-form-sheet">
@@ -1432,6 +1455,14 @@ function _byCard(map, d) {
   const ld = _legacyDay(d);
   return ld != null ? map[ld] : undefined;
 }
+// 這張日卡現在的主題：App 裡改過的優先，沒改過用產生器的原始主題
+function _themeEditedVal(d) {
+  const v = d ? _byCard(dayThemeEdited, d) : null;
+  return typeof v === "string" && v.trim() ? v : null;
+}
+function _theme(d) { return _themeEditedVal(d) || (d && d.theme) || ""; }
+// 放進 HTML：原始主題維持原樣輸出（跟以前一樣），改過的主題是使用者輸入，要跳脫
+function _themeHtml(d) { const v = _themeEditedVal(d); return v ? _esc(v) : ((d && d.theme) || ""); }
 // 旅伴新增的景點屬於哪張卡：有卡片 id 就看卡片 id；只有 day（舊資料、或卡片 id 已不存在）歸到那天的第一張卡
 function _actOnCard(a, d) {
   if (!IS_GROUPED) return a.day === d.day;
@@ -1701,6 +1732,8 @@ let itinEditTarget = null; // null=新增 | {kind:"added",key} | {kind:"preset",
 let itinFormSeed   = { name:"", time:"", sub:"", map:"" };
 let itinMenuKey    = null; // id of the act whose ⋯ menu is open
 let hotelEdited  = {}, hotelHidden  = {};     // 住宿：每日覆寫 / 隱藏
+let dayThemeEdited = {};   // { "<卡片 key>": "主題" } — 旅伴在 App 裡改過的每日主題
+let dayThemeFormKey = null;
 let hotelFormDay  = null, hotelFormSeed  = {}, hotelFormPaid = false, hotelFormBooked = true, hotelFormApply = null;
 let notesAdded   = [];      // [{_key, icon, text}] — Firebase/localStorage added
 let notesEdited  = {};      // {idx: {icon,text}} — preset overrides
@@ -1849,6 +1882,7 @@ function initItinSync() {
       refreshWeather();
     });
     _dbRef(ITIN_PATH + "/hotelEdited").on("value", snap => { hotelEdited = snap.val() || {}; renderItinerary({ cardsOnly: true }); refreshWeather(); });
+    _dbRef(ITIN_PATH + "/dayTheme").on("value", snap => { dayThemeEdited = snap.val() || {}; renderItinerary({ cardsOnly: true }); });
     _dbRef(ITIN_PATH + "/hotelHidden").on("value", snap => { hotelHidden = snap.val() || {}; renderItinerary({ cardsOnly: true }); refreshWeather(); });
     _dbRef(ITIN_PATH + "/trash").on("value", snap => {
       const data = snap.val() || {};
@@ -2934,7 +2968,7 @@ function renderItinerary(opts) {
             <span class="day-date">${d.date.split("/")[1]}</span>
           </div>
           <div class="day-info">
-            <div class="day-theme">${d.theme}</div>
+            <div class="day-theme">${_themeHtml(d)}</div>
             <div class="day-meta${_dayTag || _hotelUnbooked ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點${_hotelUnbooked ? `<span class="hotel-unbooked-tag">住宿未訂</span>` : ""}</div>
           </div>
           <span class="day-emoji">${d.emoji}</span>
@@ -2943,6 +2977,7 @@ function renderItinerary(opts) {
           </svg>
         </div>
         <div class="day-body">
+          ${_canEdit ? `<div class="day-theme-edit-row"><button class="day-theme-edit-btn" onclick="showDayThemeForm(${_kl})">✎ 改這天的標題</button></div>` : ""}
           <div class="act-list">${actsHtml}</div>
           ${_canEdit ? `<div class="itin-add-row"><button class="itin-add-btn" onclick="showItinForm(${_kl})">新增景點</button></div>` : ""}
           ${hotelHtml}
@@ -3061,7 +3096,7 @@ function openSwap(day) {
     const on = !!cur && _ck(cur) === _ck(c);
     return `<button class="swap-opt" role="radio" aria-checked="${on}" onclick="chooseSwap(${day},${i})">
       <span class="swap-radio"></span><span class="swap-emoji">${c.emoji || "📍"}</span>
-      <span class="swap-body"><span class="swap-theme">${_esc(c.theme || "")}</span>${_listTagHtml(c.with)}</span>
+      <span class="swap-body"><span class="swap-theme">${_esc(_theme(c))}</span>${_listTagHtml(c.with)}</span>
     </button>`;
   }).join("");
   document.getElementById("swap-body").innerHTML = `
@@ -3160,7 +3195,8 @@ function _daySnapshot(d) {
   const acts  = _dayMergedActs(d).map(a => ({ n: a.name, t: a.time, s: a.sub, r: a.ref }));
   const hotel = _dayHotelInfo(d);
   const _shown = hotel && hotel.booked !== false;   // 未訂不上圖卡，也不算內容變動
-  return JSON.stringify({ acts, hotel: _shown ? { n: hotel.name, m: hotel.map } : null });
+  const _th = _themeEditedVal(d);   // 只有改過主題才放進快照：沒改過的天，快照跟以前一樣，不會誤標「已更新」
+  return JSON.stringify({ acts, hotel: _shown ? { n: hotel.name, m: hotel.map } : null, ...(_th ? { th: _th } : {}) });
 }
 function _dayHasShareUpdate(d) {
   let saved;
@@ -3283,7 +3319,7 @@ function renderShowcaseOverlay() {
     const withContent = _showcaseDaysWithContent();
     if (!withContent.some(d => _ck(d) === _showcaseDay)) _showcaseDay = _ck(withContent[0]);
     const dayOptions = withContent
-      .map(d => `<option value="${_ck(d)}" ${_ck(d) === _showcaseDay ? "selected" : ""}>Day ${_dispDay(d)}${_cardLabel(d) ? "・" + _esc(_cardLabel(d)) : ""}・${_esc(d.theme)}</option>`)
+      .map(d => `<option value="${_ck(d)}" ${_ck(d) === _showcaseDay ? "selected" : ""}>Day ${_dispDay(d)}${_cardLabel(d) ? "・" + _esc(_cardLabel(d)) : ""}・${_esc(_theme(d))}</option>`)
       .join("");
     fieldsHtml = `
       <div class="showcase-day-row">
@@ -3641,7 +3677,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
         { str: String(_dispDay(d)), px: 128, weight: 900, color: WHITE, spacing: -4, gap: 16 },
         { str: totalText, px: 30, weight: 600, color: DIM },
       ], { str: dateText, px: 40, weight: 800 });
-      const title = layoutTitle(d.theme || "", [64, 77], [52, 62]);
+      const title = layoutTitle(_theme(d), [64, 77], [52, 62]);
       const themeBottom = drawTitle(title, 272);
       const bottom = layoutBottom(hotelName, cap, { hotelF: 30, hotelLH: 44, capF: 32, capLH: 46, gap: 20 });
       const list = fitList(acts, themeBottom + 44, bottom.any ? bottom.top - 40 : LIMIT, [
@@ -3654,7 +3690,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
       // 照片高度 P ＝ 放完文字後剩下的最大空間（上限 896＝70%、下限 320＝25%）：
       // 勾的景點越少照片越大。先用大字級求 P，P 低於下限才換小一級字；最小字級仍放不下才截斷清單。
       // 單日海報沒有 QR footer，底部只留 80 邊距（整趟海報才需要 LIMIT 以下的空間）。
-      const title = layoutTitle(d.theme || "", [56, 67], [48, 58]);
+      const title = layoutTitle(_theme(d), [56, 67], [48, 58]);
       const bottom = layoutBottom(hotelName, cap, { hotelF: 28, hotelLH: 40, capF: 30, capLH: 42, gap: 12, limit: H - 80 });
       const listLimit = bottom.any ? bottom.top - 32 : H - 80;
       const headH = 80 + title.lines.length * title.lh + 32;
@@ -3721,7 +3757,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
       const geo = t => n <= 9
         ? { ...t, w: CW, dW: 76, eW: 60, dF: 28, eF: 40 }
         : { ...t, w: CW, dW: Math.round(t.f * 2.4), eW: Math.round(t.f * 1.7), dF: Math.round(t.f * 0.8), eF: Math.round(t.f * 1.1) };
-      const heights = (t, maxL) => { const g = geo(t); return days.map(d => Math.min(maxL, countLines(d.theme || "", t.f, 700, CW - g.dW - g.eW)) * t.lh + (t.date ? 28 : 0)); };
+      const heights = (t, maxL) => { const g = geo(t); return days.map(d => Math.min(maxL, countLines(_theme(d), t.f, 700, CW - g.dW - g.eW)) * t.lh + (t.date ? 28 : 0)); };
       const sum = a => a.reduce((s, v) => s + v, 0);
       let maxL = 2, tier = tiers.find(t => sum(heights(t, 2)) + n * 16 <= avail);
       if (!tier) { tier = tiers[tiers.length - 1]; maxL = 1; }
@@ -3730,7 +3766,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
       let y = top;
       days.forEach((d, i) => {
         const rowH = hs[i] + pad;
-        const lines = clamp(d.theme || "", g.f, 700, CW - g.dW - g.eW, maxL);
+        const lines = clamp(_theme(d), g.f, 700, CW - g.dW - g.eW, maxL);
         drawRow(PAD, y, rowH, g, `D${_dispDay(d)}`, pal.acc, d.emoji || "", lines, WHITE, g.date ? `${d.date}（${d.wd}）` : "", i < n - 1);
         y += rowH;
       });
@@ -3746,7 +3782,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
       const cellAt = i => ({ x: PAD + Math.floor(i / per) * (296 + 32), y: top + (i % per) * rh, border: (i % per) < per - 1 && i < m - 1 });
       cells.forEach((d, i) => {
         const c = cellAt(i);
-        drawRow(c.x, c.y, rh, g, `D${_dispDay(d)}`, pal.acc, d.emoji || "", clamp(d.theme || "", f, 700, nameW, two ? 2 : 1), WHITE, "", c.border);
+        drawRow(c.x, c.y, rh, g, `D${_dispDay(d)}`, pal.acc, d.emoji || "", clamp(_theme(d), f, 700, nameW, two ? 2 : 1), WHITE, "", c.border);
       });
       if (over) {
         const c = cellAt(29);
@@ -3807,7 +3843,7 @@ function sendShowcaseShare() {
   // 單日是傳給同行旅伴看今天的行程，分享文字不附生成器首頁連結；
   // 整趟是給非同行者看的展示海報，才附回訪入口。
   const shareText = isDay
-    ? `Day ${d ? _dispDay(d) : _showcaseDay}${d && _cardLabel(d) ? "・" + _cardLabel(d) : ""}・${(d && d.theme) || title}`
+    ? `Day ${d ? _dispDay(d) : _showcaseDay}${d && _cardLabel(d) ? "・" + _cardLabel(d) : ""}・${(d && _theme(d)) || title}`
     : `${title}\n${SHOWCASE_HOMEPAGE_URL}`;
   const afterDelivered = () => { if (isDay) { _markDayShared(_showcaseDay); renderItinerary({ cardsOnly: true }); } };
 
@@ -4095,6 +4131,61 @@ function deleteHotel(day) {   // day = 卡片 key
   // 最近刪除：day 留給畫面顯示（第幾天）；card 存卡片 key，還原時寫回同一張卡（沒分組沒有 card，行為不變）
   _trashDelete("已刪除住宿", { kind: "hotel", day: d ? d.day : day, ...(IS_GROUPED && d ? { card: day } : {}), label: cur.name || "住宿", hadPreset: hadPreset, data: hadPreset ? null : prev });
   _maybeShowLocalEditToast();
+}
+
+// ─── 每日主題：旅伴在 App 裡改（存在 itinerary/dayTheme/<卡片 key>） ──
+function showDayThemeForm(key) {
+  const d = _cardByKey(key);
+  if (!d || !firebaseReady) return;
+  dayThemeFormKey = key;
+  const edited = !!_themeEditedVal(d);
+  document.getElementById("day-theme-overlay-title").textContent =
+    `改 Day ${_dispDay(d)}${_cardLabel(d) ? "・" + _cardLabel(d) : ""} 的標題`;
+  document.getElementById("day-theme-form-body").innerHTML = `
+    <div style="margin-bottom:16px">
+      <input type="text" id="day-theme-input" value="${_esc(_theme(d))}" maxlength="40" placeholder="例：仙台市區賞櫻"
+        style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:16px;font-family:inherit"
+        onkeydown="if(event.key==='Enter')saveDayTheme()" oninput="document.getElementById('day-theme-err').textContent=''">
+      <div class="day-theme-err" id="day-theme-err" role="alert"></div>
+      ${edited ? `<div class="day-theme-orig">原本的標題：${_esc(d.theme || "（無）")}</div>` : ""}
+    </div>
+    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="saveDayTheme()">儲存</button>
+    ${edited ? `<button class="day-theme-reset-btn" onclick="resetDayTheme()">恢復原本的標題</button>` : ""}
+  `;
+  document.getElementById("day-theme-overlay").style.display = "flex";
+  const inp = document.getElementById("day-theme-input");
+  if (inp) { const len = inp.value.length; inp.focus(); inp.setSelectionRange(len, len); }
+}
+function hideDayThemeForm() {
+  document.getElementById("day-theme-overlay").style.display = "none";
+  dayThemeFormKey = null;
+}
+// 舊資料備援（_byCard 會讀以 day 存的值）：寫入或清除時，以 day 存的那筆也一起清掉
+function _clearLegacyDayTheme(d) {
+  const ld = _legacyDay(d);
+  if (ld != null) _dbRef(ITIN_PATH + "/dayTheme/" + ld).remove();
+}
+function saveDayTheme() {
+  const d = _cardByKey(dayThemeFormKey);
+  if (!d) { hideDayThemeForm(); return; }
+  const v = (document.getElementById("day-theme-input").value || "").trim();
+  if (!v) { document.getElementById("day-theme-err").textContent = "請填這天的標題"; return; }
+  const key = _ck(d);
+  if (v === (d.theme || "").trim()) _dbRef(ITIN_PATH + "/dayTheme/" + key).remove();   // 改回原樣＝沒改過
+  else _dbRef(ITIN_PATH + "/dayTheme/" + key).set(v);
+  _clearLegacyDayTheme(d);
+  hideDayThemeForm();
+  _maybeShowLocalEditToast();
+}
+function resetDayTheme() {
+  const d = _cardByKey(dayThemeFormKey);
+  if (!d) { hideDayThemeForm(); return; }
+  const prev = _themeEditedVal(d);
+  const key = _ck(d);
+  _dbRef(ITIN_PATH + "/dayTheme/" + key).remove();
+  _clearLegacyDayTheme(d);
+  hideDayThemeForm();
+  if (prev) showUndoToast("已恢復原本的標題", () => _dbRef(ITIN_PATH + "/dayTheme/" + key).set(prev));
 }
 
 // ─── 最近刪除：寫入 trash + 還原 + 渲染 ───────────────────────────
@@ -4672,7 +4763,7 @@ function renderNoteFormBody() {
         style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical"
         oninput="noteFormSeed.text=this.value">${_escHtml(noteFormSeed.text)}</textarea>
     </div>
-    <button class="primary-btn" style="width:100%" onclick="saveNoteEdit()">儲存</button>
+    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="saveNoteEdit()">儲存</button>
   `;
   // 游標移到文字尾端
   const ta = document.getElementById("note-form-text");
@@ -5228,7 +5319,7 @@ function relativeTime(ts) {
 function getDayLabel(day) {
   if (day === 0) return "整趟旅程";
   const d = DAYS.find(x => x.day === day);
-  return d ? `第 ${day} 天・${d.date}（${d.wd}）${d.theme}` : `第 ${day} 天`;
+  return d ? `第 ${day} 天・${d.date}（${d.wd}）${_theme(d)}` : `第 ${day} 天`;
 }
 
 // ─── Expenses ─────────────────────────────────────────────────────

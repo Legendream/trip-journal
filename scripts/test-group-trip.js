@@ -20,10 +20,13 @@ function test(name, fn) {
   } catch (e) { bad(e); }
 }
 
-// 以 ai-test 的組別（用名字）建立產生器狀態，再匯入 AI 回傳的 JSON（走真正的 applyParsedData）
+// 匯入 AI 回傳的 JSON（走真正的 applyParsedData）。
+// 方向 A（2026-11-13）起組別由 AI 回傳的 groups 建立；ai-test 的 out-*.json 是第 3 版指令的結果、沒有 groups，
+// 這裡補上 groups.json 的組別，模擬第 4 版 AI 會一起回傳的內容（人名與草稿一致）
 function importAi(outFile, tweak) {
   const { groups, year } = readJson(path.join(AI, 'groups.json'));
   const out = readJson(outFile);
+  if (!out.groups) out.groups = groups.map(gr => ({ name: gr.name, members: [...gr.members] }));
   if (tweak) tweak(out);
   const g = loadGenerator();
   g.ctx.__groups = groups; g.ctx.__out = out;
@@ -154,14 +157,17 @@ test('3-1 沒分組：schema-example.json 匯入→匯出，拿掉 members[].id 
     assert.strictEqual(stripMemberIds(now), fs.readFileSync(path.join(FIX, f), 'utf8'), f + ' 與基準不同');
   }
 });
-test('1-3 沒分組時 buildPrompt() 與基準只差 notes 範例那一行', () => {
+test('1-3 沒分組時 buildPrompt() 與基準只差 notes 範例、程式碼框要求這兩行（A19 刻意改動）', () => {
   const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'gt-'));
   capture(path.join(root, 'generator/generator-app.js'), tmp);
   const a = fs.readFileSync(path.join(FIX, 'prompt.txt'), 'utf8').split('\n');
   const b = fs.readFileSync(path.join(tmp, 'prompt.txt'), 'utf8').split('\n');
   assert.strictEqual(a.length, b.length);
   const diff = a.map((l, i) => [l, b[i]]).filter(([x, y]) => x !== y);
-  assert.deepStrictEqual(diff, [['  "notes": []', '  "notes": [{ "icon": "⚠️", "text": "…" }]']]);
+  assert.deepStrictEqual(diff, [
+    ['- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 ``` 包起來', '- 只回傳一個 ```json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字'],
+    ['  "notes": []', '  "notes": [{ "icon": "⚠️", "text": "…" }]'],
+  ]);
 });
 
 // ── 其他保護 ────────────────────────────────────────────────────
@@ -296,7 +302,9 @@ test('G-9 只計日卡張數', () => {
 function groupedSandbox() {
   const { groups } = readJson(path.join(AI, 'groups.json'));
   const g = loadGenerator();
-  g.ctx.__groups = groups; g.ctx.__out = readJson(path.join(AI, 'out-antigravity-v3.json'));
+  const out = readJson(path.join(AI, 'out-antigravity-v3.json'));
+  out.groups = groups.map(gr => ({ name: gr.name, members: [...gr.members] }));   // 第 4 版 AI 會一起回傳組別（見 importAi）
+  g.ctx.__groups = groups; g.ctx.__out = out;
   g.run(`
     state.splitUp = true;
     __groups.forEach(gr => gr.members.forEach(n => { if (!state.members.some(m => m.name === n)) state.members.push({ name: n, avatar: '' }); }));
@@ -354,17 +362,113 @@ test('2-1 沒分組：renderDays 不產生任何分組元素；切回「全程�
   g.run(`state.members.slice(0,2).forEach(m => {}); state.groups = [{ id: 'g0', name: 'X組', memberIds: [state.members[0].id], order: 0 }]; state.splitUp = false; renderStep2();`);
   assert.ok(!bad(g.el('day-cards').innerHTML));
 });
-test('2-2 D1 分組設定文字（G-1～G-8）', () => {
-  const g = loadGenerator({ search: '?groups=1' });
+test('A1 第一步選「有分頭」：只顯示說明，沒有組名、成員輸入欄；不預先建立組別', () => {
+  const g = loadGenerator();
   g.run('renderSplitSetup()');
   let h = g.el('split-setup').innerHTML;
   assert.ok(h.includes('有人分頭行動嗎？') && h.includes('全程一起') && h.includes('有分頭'));
-  assert.ok(!h.includes('各組成員'), '預設「全程一起」不顯示組別區塊');
+  assert.ok(!h.includes('AI 會從草稿找出'), '預設「全程一起」不顯示說明');
   g.run('setSplitUp(true)');
   h = g.el('split-setup').innerHTML;
-  for (const t of ['各組成員', '組名照草稿的寫法填，AI 才對得上', '例：福岡組', '代號或暱稱', '＋ 再加一組']) assert.ok(h.includes(t), '缺 ' + t);
-  g.run('addGroup()');
-  assert.ok(!g.el('split-setup').innerHTML.includes('＋ 再加一組'), '第 3 組建立後隱藏');
+  assert.ok(h.includes('AI 會從草稿找出誰跟誰一起行動；下一步可以改組名、把真名改成暱稱。'));
+  for (const t of ['各組成員', '例：福岡組', '代號或暱稱', '再加一組', 'g-inp']) assert.ok(!h.includes(t), '不該有 ' + t);
+  assert.strictEqual(g.run('state.groups.length'), 0);
+});
+test('A3 選「有分頭」：指令帶第 4 版分組段落（不列使用者名單），緊接在 Schema 標題前', () => {
+  const g = loadGenerator();
+  g.run('setSplitUp(true)');
+  g.el('trip-text').value = SAMPLE_TRIP_TEXT;
+  const prompt = g.run('buildPrompt()');
+  const anchor = 'JSON Schema（嚴格遵守）：';
+  assert.ok(prompt.includes(gt.GROUP_SECTION_TEMPLATE + anchor));
+  assert.ok(prompt.includes('"groups": [{ "name": "組名"'));
+  assert.ok(!prompt.includes('{分組清單}'));
+});
+test('A4 匯入 AI 的 groups：成員取自 members、groups 多出的人補成成員、組別建立、with 換成 id；成功訊息列出組別', () => {
+  const g = loadGenerator();
+  g.run('setSplitUp(true)');
+  g.el('json-paste').value = JSON.stringify({
+    members: [{ name: '小貓咪', avatar: '🐱' }, { name: '阿熊' }],
+    groups: [{ name: '小貓咪＋阿熊', members: ['小貓咪', '阿熊'] }, { name: '小魚', members: ['小魚'] }],
+    days: [
+      { day: 1, date: '11/1', wd: '日', theme: '出發', emoji: '✈️', with: ['小貓咪＋阿熊'], acts: [] },
+      { day: 2, date: '11/2', wd: '一', theme: '會合', emoji: '🤝', acts: [{ icon: '🛬', name: '小魚抵達', with: ['小魚'] }] },
+    ],
+  });
+  g.run('importAiJson()');
+  const names = g.run('state.members.map(m => m.name)');
+  assert.deepStrictEqual([...names], ['小貓咪', '阿熊', '小魚']);
+  assert.deepStrictEqual([...g.run('activeGroups().map(x => x.name)')], ['小貓咪＋阿熊', '小魚']);
+  const ids = g.run('state.members.map(m => m.id)');
+  assert.deepStrictEqual([...g.run('state.days[0].with')], [ids[0], ids[1]]);
+  const st = g.el('ai-import-status').innerHTML;
+  assert.ok(st.includes('匯入成功') && st.includes('找到 2 組：小貓咪＋阿熊（小貓咪、阿熊）、小魚（小魚）'), st);
+});
+test('A5 有分頭但 AI 沒回 groups：照樣匯入，提醒重新複製指令', () => {
+  const g = loadGenerator();
+  g.run('setSplitUp(true)');
+  g.el('json-paste').value = JSON.stringify({ members: [{ name: '甲' }], days: [{ day: 1, date: '4/1', wd: '三', theme: 't', emoji: '📍', acts: [] }] });
+  g.run('importAiJson()');
+  const st = g.el('ai-import-status').innerHTML;
+  assert.ok(st.includes('匯入成功') && st.includes('AI 沒有找到分組') && st.includes('複製整理指令'), st);
+  assert.strictEqual(g.run('activeGroups().length'), 0);
+  assert.strictEqual(g.run('state.days.length'), 1);
+});
+test('A6 AI 回超過 3 組：只保留前 3 組，第 4 組的人仍是成員', () => {
+  const r = gt.groupsFromImport({ members: [], groups: ['A', 'B', 'C', 'D'].map(n => ({ name: n + '組', members: [n] })) }, [], (() => { let i = 0; return () => 'id' + (i++); })());
+  assert.deepStrictEqual(r.groups.map(x => x.name), ['A組', 'B組', 'C組']);
+  assert.deepStrictEqual(r.members.map(m => m.name), ['A', 'B', 'C', 'D']);
+  assert.strictEqual(r.found, 4); assert.strictEqual(r.kept, 3);
+});
+test('A7 重新匯入：成員與組別以新的一份為準；同名成員沿用 id', () => {
+  const g = loadGenerator();
+  g.run('setSplitUp(true)');
+  const one = (members, groups) => JSON.stringify({ members: members.map(n => ({ name: n })), groups, days: [{ day: 1, date: '4/1', wd: '三', theme: 't', emoji: '📍', acts: [] }] });
+  g.el('json-paste').value = one(['甲', '乙'], [{ name: 'X', members: ['甲'] }, { name: 'Y', members: ['乙'] }]);
+  g.run('importAiJson()');
+  const idA = g.run('state.members[0].id');
+  g.el('json-paste').value = one(['甲', '丙'], [{ name: 'Z', members: ['甲', '丙'] }]);
+  g.run('importAiJson()');
+  assert.deepStrictEqual([...g.run('state.members.map(m => m.name)')], ['甲', '丙']);
+  assert.strictEqual(g.run('state.members[0].id'), idA);
+  assert.deepStrictEqual([...g.run('state.groups.map(x => x.name)')], ['Z']);
+});
+test('A20 貼到整理指令：提示貼錯、不匯入；A21 程式碼框照舊可匯入', () => {
+  const g = loadGenerator();
+  g.el('trip-text').value = SAMPLE_TRIP_TEXT;
+  g.el('json-paste').value = g.run('buildPrompt()');
+  g.run('importAiJson()');
+  const st = g.el('ai-import-status').innerHTML;
+  assert.ok(st.includes('這是整理指令，不是 AI 的回覆') && !st.includes('JSON 格式錯誤'), st);
+  assert.strictEqual(g.run('state.days.length'), 0);
+  g.el('json-paste').value = '```json\n' + JSON.stringify({ tripName: 'x', days: [{ day: 1, date: '4/1', wd: '三', theme: 't', emoji: '📍', acts: [] }] }) + '\n```';
+  g.run('importAiJson()');
+  assert.ok(g.el('ai-import-status').innerHTML.includes('匯入成功'));
+});
+test('A10 第二步把成員改名：組別與日卡仍指向同一個 id，標籤顯示新名字', () => {
+  const g = loadGenerator();
+  g.run('setSplitUp(true)');
+  g.el('json-paste').value = JSON.stringify({ members: [{ name: '小貓咪' }, { name: '阿熊' }, { name: '小魚' }],
+    groups: [{ name: 'A組', members: ['小貓咪', '阿熊'] }, { name: 'B組', members: ['小魚'] }],
+    days: [{ day: 1, date: '11/1', wd: '日', theme: 't', emoji: '📍', with: ['小貓咪'], acts: [] }] });
+  g.run('importAiJson()');
+  const id = g.run('state.members[0].id');
+  g.run(`state.members[0].name = '貓'; renderStep2();`);
+  assert.deepStrictEqual([...g.run('state.days[0].with')], [id]);
+  assert.ok(g.el('day-cards').innerHTML.includes('貓'));
+  const cfg = JSON.parse(JSON.stringify(g.run('collectConfig()')));
+  assert.strictEqual(cfg.members[0].name, '貓');
+  assert.deepStrictEqual(cfg.days[0].with, [id]);
+});
+test('A12 Gemini 複製格式（行尾 \\、&#x20;）可以匯入；A13 真的壞掉時提示「複製時格式跑掉」', () => {
+  const g = loadGenerator();
+  const pretty = JSON.stringify({ tripName: 'x', days: [{ day: 1, date: '4/1', wd: '三', theme: 't', emoji: '📍', acts: [] }] }, null, 2);
+  g.el('json-paste').value = pretty.split('\n').map(l => l.replace(/^ /, '&#x20;') + '\\').join('\n');
+  g.run('importAiJson()');
+  assert.ok(g.el('ai-import-status').innerHTML.includes('匯入成功'), g.el('ai-import-status').innerHTML);
+  g.el('json-paste').value = '{ 不是 json }';
+  g.run('importAiJson()');
+  assert.ok(g.el('ai-import-status').innerHTML.includes('複製時格式跑掉'));
 });
 
 test('5-21 入口已對外開放：不帶任何網址參數也顯示「有人分頭行動嗎？」；預設「全程一起」不顯示組別區塊', () => {
@@ -385,7 +489,7 @@ test('切回「全程一起」：同日有 2 張以上的卡時顯示說明，�
 });
 test('組名重複或沒填：顯示提醒', () => {
   const g = loadGenerator({ search: '?groups=1' });
-  g.run(`setSplitUp(true); const m = findOrCreateMember('甲'); state.groups[0].memberIds.push(m.id); state.groups[1].name = 'X'; state.groups[0].name = '';`);
+  g.run(`setSplitUp(true); state.groups = [newGroup(), newGroup()]; reindexGroups(); const m = { id: newMemberId(), name: '甲', avatar: '' }; state.members.push(m); state.groups[0].memberIds.push(m.id); state.groups[1].name = 'X'; state.groups[0].name = '';`);
   assert.match(g.run('groupNameHint(0)'), /還沒填組名/);
   g.run(`state.groups[0].name = 'X'`);
   assert.match(g.run('groupNameHint(0)'), /重複/);

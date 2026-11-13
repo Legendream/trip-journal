@@ -16,7 +16,7 @@ const PARSE_PROMPT = `你是行程資料整理助手。請把以下行程資訊�
 - 若該天有班機（去程或回程），請填 flight 物件：label（去程航班/回程航班）、num（如 BR 198）、from/to（機場 IATA 代碼如 TPE/NRT）、fromCity/toCity（如桃園/成田）、dept（起飛 HH:MM）、arr（抵達 HH:MM）、boarding（登機 HH:MM，可選）；同時也在 acts 內保留對應活動
 - 住宿（hotel）：該天資料有飯店但沒寫付款狀況 → "paid": false；寫已付／已付清 → "paid": true；草稿寫「還沒訂／待訂／未訂」→ 加 "booked": false（此時 paid 為 false）；其餘已訂的住宿不要加 booked 欄位；該天完全沒提住宿 → "hotel": null
 - 缺漏資訊一律用 null 或空陣列，不要瞎編
-- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 \`\`\` 包起來
+- 只回傳一個 \`\`\`json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字
 
 JSON Schema（嚴格遵守）：
 {
@@ -185,6 +185,7 @@ function setIndicator(cls, txt) {
 // Sync the right-masthead doc title with the current trip name so users always
 // know which trip they're editing (especially after switching tabs).
 function refreshMastheadTitle() {
+  renderHomeNamePreview();
   const el = document.getElementById('masthead-doctitle');
   if (!el) return;
   const title = (state.fields['f-title'] || '').trim();
@@ -195,6 +196,21 @@ function refreshMastheadTitle() {
     el.textContent = '未命名旅程';
     el.classList.add('empty');
   }
+}
+
+// 加到手機桌面後，圖示下方顯示的名稱（manifest short_name／apple-mobile-web-app-title）：
+// 去掉結尾年份、取前 6 個字。第 2 步的預覽與匯出共用這個算法，預覽才會跟實際一致
+function homeNameFor(title) {
+  const t = String(title || '').trim();
+  return t.replace(/\s*\d{4}$/, '').slice(0, 6) || t.slice(0, 6);
+}
+function renderHomeNamePreview() {
+  const el = document.getElementById('f-title-home');
+  if (!el) return;
+  const name = homeNameFor(state.fields['f-title']);
+  el.hidden = !name;
+  const v = document.getElementById('f-title-home-name');
+  if (v) v.textContent = name;
 }
 
 // Hydrate DOM from state
@@ -381,10 +397,9 @@ function switchChecklistSubtab(tab) {
 function buildPrompt() {
   const text = document.getElementById('trip-text').value.trim();
   let head = PARSE_PROMPT;
-  const groups = activeGroups();
-  if (groups.length) {
-    // 分組段落插在 Schema 之前；沒分組時提示詞不動（規則 7）
-    const section = buildGroupSection(groups.map(g => ({ name: g.name, members: g.memberIds.map(memberName) })));
+  if (state.splitUp) {
+    // 選了「有分頭」：分組段落插在 Schema 之前，請 AI 從草稿找出旅伴與分組（方向 A）；沒分組時提示詞不動（規則 7）
+    const section = buildGroupSection();
     head = head.replace(GROUP_PROMPT_ANCHOR, () => section + GROUP_PROMPT_ANCHOR);
   }
   return head + (text || '（請使用者把行程貼到這裡）');
@@ -441,8 +456,15 @@ function importAiJson() {
     stat.innerHTML = '<div class="status-box status-err">請先貼上 AI 回的 JSON</div>';
     return;
   }
+  // 貼到的是整理指令本身（剪貼簿還是指令）：直接說明，不顯示看不懂的 JSON 錯誤
+  if (raw.includes('你是行程資料整理助手')) {
+    stat.innerHTML = '<div class="status-box status-err">這是整理指令，不是 AI 的回覆。請到 AI 那邊複製它回給你的內容（程式碼框右上角的複製鈕），再貼回來。</div>';
+    return;
+  }
   try {
-    let cleaned = raw;
+    // Gemini 等用「複製回應」複製時，會帶 Markdown 跳脫：行尾多一個 \、行首空格變 &#x20;
+    // 合法 JSON 不會有「\ 後面直接換行」，清掉不影響正常內容
+    let cleaned = raw.replace(/\\\r?\n/g, '\n').replace(/&#x20;|&#32;/g, ' ');
     // Strip ```json / ``` fences
     const fence = cleaned.match(/```(?:json)?\s*([\s\S]+?)\s*```/);
     if (fence) cleaned = fence[1];
@@ -455,11 +477,12 @@ function importAiJson() {
       stat.innerHTML = '<div class="status-box status-err">這份 JSON 裡沒有 days（行程），沒有更新任何東西。請確認 AI 回的是完整的行程 JSON。</div>';
       return;
     }
-    applyParsedData(data);
+    const groupNote = applyParsedData(data);
     document.getElementById('ai-step-3').classList.add('done');
-    stat.innerHTML = `<div class="status-box status-ok">✓ 匯入成功！${state.days.length} 天行程、${state.members.length} 位成員、${state.hotels.length} 間住宿。點下方「下一步」確認。</div>`;
+    stat.innerHTML = `<div class="status-box status-ok">✓ 匯入成功！${state.days.length} 天行程、${state.members.length} 位成員、${state.hotels.length} 間住宿。點下方「下一步」確認。</div>`
+      + (groupNote ? `<div class="status-box ${groupNote.warn ? 'status-err' : 'status-ok'}" style="margin-top:8px;">${escHtml(groupNote.text)}</div>` : '');
   } catch (e) {
-    stat.innerHTML = `<div class="status-box status-err">JSON 格式錯誤：${e.message}<br><br>常見原因：AI 回了多餘的解釋文字。請只複製 <code>{</code> 到 <code>}</code> 之間的內容。</div>`;
+    stat.innerHTML = `<div class="status-box status-err">JSON 格式錯誤：${e.message}<br><br>常見原因：AI 回了多餘的解釋文字，或複製時格式跑掉。請只複製 <code>{</code> 到 <code>}</code> 之間的內容。</div>`;
   }
 }
 
@@ -472,11 +495,24 @@ function applyParsedData(d) {
   const year = d.year || new Date().getFullYear();
   const baseKey = (d.tripName || 'trip').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
   state.fields['f-storage-prefix'] = baseKey + year;
-  const groups = activeGroups();
-  if (d.members?.length) {
-    // 有分組時成員已在 D1 建好（組別指向成員 id），用名字對上並保留 id；沒分組維持原行為
-    state.members = groups.length ? mergeMembers(state.members, d.members) : [...d.members];
+  let groupNote = null;
+  if (state.splitUp) {
+    // 方向 A：成員與組別都以 AI 從草稿找到的為準（人名照草稿寫法，下一步可改組名、改暱稱）
+    const r = groupsFromImport(d, state.members, newMemberId);
+    if (r.members.length) state.members = r.members;   // AI 完全沒給人名時，保留原本的成員
+    state.groups = r.groups;
+    if (state.members.length) state.fields['f-people-pill'] = String(state.members.length);
+    if (!r.kept) {
+      groupNote = { warn: true, text: 'AI 沒有找到分組，行程先當成全程一起。如果有人分頭行動，請重新按「複製整理指令」，再問一次 AI。' };
+    } else {
+      const list = r.groups.map(g => `${g.name}（${g.memberIds.map(memberName).join('、')}）`).join('、');
+      groupNote = { warn: false, text: `找到 ${r.kept} 組：${list}。下一步可以改組名，或把真名改成暱稱。`
+        + (r.found > r.kept ? `AI 找到 ${r.found} 組，最多 3 組，只保留前 3 組，可在下一步調整。` : '') };
+    }
+  } else if (d.members?.length) {
+    state.members = [...d.members];
   }
+  const groups = activeGroups();
   ensureMemberIds();
   d = normalizeImported(d, groups, state.members);   // with／unsure → 內部格式；沒分組時丟掉
   if (d.days?.length) { state.days = d.days.map(fromLegacyDay); state.days.forEach(_orderTimeline); }
@@ -499,6 +535,7 @@ function applyParsedData(d) {
   onSelfDriveToggle(true);
   renderSplitSetup();
   saveState();
+  return groupNote;
 }
 
 // AI 可能把 notes 回成字串陣列；行程 App 與編輯器都讀 { icon, text }
@@ -1382,10 +1419,15 @@ function renderMembers() {
     `<div class="member-chip">
       <input class="chip-name-input" value="${escHtml(m.name || '')}" size="${Math.max(2, (m.name || '').length)}"
         aria-label="成員名字"
-        oninput="state.members[${i}].name=this.value;this.size=Math.max(2,this.value.length);saveState()">
+        oninput="state.members[${i}].name=this.value;this.size=Math.max(2,this.value.length);saveState()"
+        onchange="onMemberRenamed()">
       <button class="chip-del" onclick="removeMember(${i})" title="刪除成員">✕</button>
     </div>`
   ).join('');
+}
+// 改完成員名字（離開欄位）：分組行程的組別摘要、日卡標籤跟著顯示新名字（內部用 id，資料不用改）
+function onMemberRenamed() {
+  if (groupsGrouped() || _groupEditOpen) { renderGroupMembers(); renderDays(); }
 }
 function addMember() {
   const name = document.getElementById('new-name').value.trim();
@@ -2367,7 +2409,7 @@ function collectConfig() {
   ensureMemberIds();
   const groups = activeGroups();   // 有生效的組別才輸出分組欄位（規則 7）
   const title = (f['f-title'] || '').trim();
-  const shortTitle = title.replace(/\s*\d{4}$/, '').slice(0, 6) || title.slice(0, 6);
+  const shortTitle = homeNameFor(title);
   const firstEmoji = state.days[0]?.emoji || '✈️';
   const heading = firstEmoji + ' ' + title;
   const yearMatch = (f['f-date-pill'] || '').match(/\d{4}/);
