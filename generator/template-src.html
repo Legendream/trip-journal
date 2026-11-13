@@ -4748,7 +4748,7 @@ function renderNoteFormBody() {
         style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;font-family:inherit;resize:vertical"
         oninput="noteFormSeed.text=this.value">${_escHtml(noteFormSeed.text)}</textarea>
     </div>
-    <button class="primary-btn" style="width:100%" onclick="saveNoteEdit()">儲存</button>
+    <button class="btn btn-pink" style="width:100%;font-size:16px;padding:16px;margin-top:4px" onclick="saveNoteEdit()">儲存</button>
   `;
   // 游標移到文字尾端
   const ta = document.getElementById("note-form-text");
