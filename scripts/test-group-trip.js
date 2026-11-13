@@ -567,7 +567,7 @@ test('分組模式匯入沒有 days 的 JSON：顯示錯誤，不顯示成功', 
   const g = groupedSandbox();
   g.el('json-paste').value = '{"tripName":"x"}';
   g.run('importAiJson()');
-  assert.ok(g.el('ai-import-status').innerHTML.includes('沒有 days'));
+  assert.ok(g.el('ai-import-status').innerHTML.includes('找不到行程'));
 });
 
 

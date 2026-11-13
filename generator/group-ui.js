@@ -192,7 +192,7 @@ function buildAlertRows(alerts) {
       const r = a3.get(a.date) || { code: 'A-3', keys: [], dismissable: true, names: [], date: a.date };
       r.keys.push(a.key); r.names.push(a.name); a3.set(a.date, r);
     } else if (a.code === 'A-6') rows.push({ code: 'A-6', keys: [a.key], dismissable: false, text: `日期「${a.date}」看不懂，請改成 月/日（例：11/3）`, dayIds: [a.dayId] });
-    else if (a.code === 'A-4') rows.push({ code: 'A-4', keys: [a.key], dismissable: true, text: `${a.groupName} 沒有活動`, dayIds: [a.dayId] });
+    else if (a.code === 'A-4') rows.push({ code: 'A-4', keys: [a.key], dismissable: true, text: `${a.groupName} 沒有景點`, dayIds: [a.dayId] });
     else if (a.code === 'A-5') {
       const r = a5.get(a.dayId) || { code: 'A-5', keys: [], dismissable: true, text: 'AI 沒把握，請確認同行的人', dayIds: [a.dayId] };
       r.keys.push(a.key); a5.set(a.dayId, r);
