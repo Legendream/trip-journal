@@ -10,26 +10,33 @@
 //   `unsure`：AI 標示沒把握（A-5 用）
 // ═══════════════════════════════════════════════════════════════════
 
-// 提示詞分組段落（第 3 版定稿，文字以 docs/design-handoff/group-trip/ai-test/group-section.txt 為準）
-const GROUP_SECTION_TEMPLATE = `分組（使用者已設定，只能用這些組名與代號，不要新增或改寫）：
-{分組清單}
+// 提示詞分組段落（第 4 版，2026-11-13 方向 A：由 AI 從草稿找出旅伴與分組）
+// 文字以 docs/design-handoff/group-trip/ai-test/group-section.txt 為準；第 3 版（使用者先填組別）的實測結果見同資料夾 out-*-v3.json
+const GROUP_SECTION_TEMPLATE = `分組（使用者說這趟有人分頭行動，請你從草稿找出來）：
+- 找出所有旅伴，人名照草稿的寫法（草稿怎麼稱呼就怎麼寫），members 列出每一位
+- 找出分組：一起行動的人歸成一組，最多 3 組；在最外層加 "groups": [{ "name": "組名", "members": ["人名", "人名"] }]
+- 組名：草稿有寫組名（例：某某團）就照抄；沒有就用成員名字組合（例：小明＋小華）
+- 每位旅伴只屬於一組；groups、members、with 裡的人名寫法要完全一樣
+- 草稿看不出有人分頭行動：groups 回空陣列 []
 
 分組規則：
-- members 只列上面的代號，name 照抄
 - 同一天兩組在不同地方：拆成兩筆 days，date、day 相同，各自填 with、theme、emoji、hotel、acts
 - 全員一起的日子：一筆 days，不填 with
 - 只有部分人在旅途中的日子（還沒出發、已經離開）：只建那些人的卡，with 填他們的組名
 - 會合日、分開日：一筆全員卡；只屬於某組的活動，在那筆活動填 with
-- with 是陣列，只能放上面的組名或代號；整組同行寫組名，不要拆成組員；跨組或單獨行動才列代號
+- with 是陣列，只能放 groups 的組名或 members 的人名；整組同行寫組名，不要拆成組員；跨組或單獨行動才列人名
 - 活動沒填 with = 跟這張卡同一批人
 - day = 全團第幾天，從草稿最早的日期算起；同一天的兩張卡 day 相同
-- 草稿裡的組名寫法不同（例：某某團、簡稱），對應到上面最接近的組名
 - 草稿沒寫清楚是誰，或你是推測的：在那筆加 "unsure": true；不要為了填滿而猜
 - 各組住不同地方時，hotels 也加 with；全員卡上的 hotel 只有部分人住時（例：分開日），那張卡的 hotel 也加 with；flight 同理
 - 會合日各組的抵達活動，time 填抵達時間（不是出發時間），出發時間寫在 sub
 
-分組時 days 的格式範例（其他欄位照下方 Schema）：
-[
+分組時 groups 與 days 的格式範例（其他欄位照下方 Schema）：
+"groups": [
+  { "name": "A組", "members": ["小明", "小華"] },
+  { "name": "B組", "members": ["阿德", "阿美"] }
+],
+"days": [
   { "day": 2, "date": "5/2", "wd": "六", "theme": "大阪", "emoji": "🏯", "with": ["A組"], "acts": [] },
   { "day": 2, "date": "5/2", "wd": "六", "theme": "京都", "emoji": "⛩️", "with": ["B組", "小明"], "unsure": true, "acts": [] },
   { "day": 3, "date": "5/3", "wd": "日", "theme": "奈良會合", "emoji": "🦌",
@@ -46,10 +53,41 @@ const GROUP_SECTION_TEMPLATE = `分組（使用者已設定，只能用這些組
 // 插在 PARSE_PROMPT「JSON Schema（嚴格遵守）：」之前
 const GROUP_PROMPT_ANCHOR = 'JSON Schema（嚴格遵守）：';
 
-// groups：[{ name, members: [代號…] }]，一組一行
-function buildGroupSection(groups) {
-  const list = (groups || []).map(g => `- ${g.name}：${(g.members || []).join('、')}`).join('\n');
-  return GROUP_SECTION_TEMPLATE.replace('{分組清單}', list);
+// 第 4 版起分組段落不帶使用者名單（由 AI 從草稿找出）
+function buildGroupSection() {
+  return GROUP_SECTION_TEMPLATE;
+}
+
+// 方向 A：匯入時用 AI 找到的旅伴與分組建立成員、組別（最多 3 組）
+// data：AI 回傳的 JSON；prev：匯入前的成員（同名沿用 id 與頭像）；newId：產生成員 id 的函式
+// 回傳 { members, groups, found（AI 回的有效組數）, kept（保留的組數）}
+const G_IMPORT_MAX_GROUPS = 3;
+function groupsFromImport(data, prev, newId) {
+  const members = [];
+  const clean = v => String(v == null ? '' : v).trim();
+  const add = (name, avatar) => {
+    const n = clean(name);
+    if (!n) return null;
+    let m = members.find(x => x.name === n);
+    if (!m) {
+      const old = (prev || []).find(x => x.name === n);
+      m = { id: old ? old.id : newId(), name: n, avatar: avatar || (old && old.avatar) || '' };
+      members.push(m);
+    } else if (avatar && !m.avatar) m.avatar = avatar;
+    return m;
+  };
+  (Array.isArray(data && data.members) ? data.members : []).forEach(m => {
+    if (m && typeof m === 'object') add(m.name, m.avatar); else add(m);
+  });
+  const valid = (Array.isArray(data && data.groups) ? data.groups : [])
+    .filter(g => g && clean(g.name) && Array.isArray(g.members) && g.members.some(n => clean(n)));
+  const groups = valid.slice(0, G_IMPORT_MAX_GROUPS).map((g, k) => ({
+    id: 'g' + newId(), name: clean(g.name), order: k,
+    memberIds: [...new Set(g.members.map(n => (add(n) || {}).id).filter(Boolean))],
+  }));
+  // 超過 3 組的人也要留在成員裡（只是不分組）
+  valid.slice(G_IMPORT_MAX_GROUPS).forEach(g => g.members.forEach(n => add(n)));
+  return { members, groups, found: valid.length, kept: groups.length };
 }
 
 // ── 名單換算 ────────────────────────────────────────────────────────
@@ -382,5 +420,5 @@ function renumberDaysByDate(days) {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { listIdsOf, deepTagColor, groupTagStyle, describeList, setWithList, syncGroupLists, keepMemberOnlyIn, mergeSameDateCards, splitDateCards, removeMemberFromLists, renumberDaysByDate, GROUP_SECTION_TEMPLATE, GROUP_PROMPT_ANCHOR, buildGroupSection, resolveWith, mergeMembers, normalizeImported, computeAlerts, effectiveIds, sameIdSet };
+  module.exports = { listIdsOf, deepTagColor, groupTagStyle, describeList, setWithList, syncGroupLists, keepMemberOnlyIn, mergeSameDateCards, splitDateCards, removeMemberFromLists, renumberDaysByDate, GROUP_SECTION_TEMPLATE, GROUP_PROMPT_ANCHOR, buildGroupSection, groupsFromImport, resolveWith, mergeMembers, normalizeImported, computeAlerts, effectiveIds, sameIdSet };
 }
