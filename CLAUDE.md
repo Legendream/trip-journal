@@ -23,6 +23,8 @@
 | G11 | 沒有分組的行程，產生器匯出結果與分組功能上線前相同 | 產生器 | `scripts/fixtures/no-group`、`test-group-trip.js` |
 | G13 | 沒有天氣的天要看得見原因：產生器日卡「這天沒有天氣」標籤＋最後一步摘要；App 在那天第一個景點說明「沒有貼地圖連結」 | `dayWxState`、`renderWxSummary`（產生器）、`_noWxNoteHtml`（樣板） | `docs/acceptance/weather-hint.md` |
 | G12 | 示範行程 `trip-app-v2/` 不手動修改；樣板改了就用 `node scripts/build-demo.js` 重新產生 | `trip-app-v2/` | `PLAN.md`；2026-10-17 Claire 確認跟著樣板同步 |
+| G14 | 行程 App 可改每日標題（按日卡存，分組各組分開）、可恢復原本標題並復原；日卡、海報、選天選單、分享文字都顯示改過的標題；同步範圍跟景點相同 | `_theme`、`showDayThemeForm`（樣板） | `docs/acceptance/day-theme-home-name.md` |
+| G15 | 分組由 AI 從草稿找出：第一步「有分頭」只有開關＋說明；匯入以 AI 的 `groups` 建立成員與組別（最多 3 組）；沒分組時整理指令只多「程式碼框」一行；匯入能讀 Gemini 複製格式、貼到整理指令時直接說明 | `groupsFromImport`、`buildGroupSection`、`importAiJson` | `docs/acceptance/group-ai-detect.md` |
 
 新功能合併後，把它「做完後應有的行為」補進這張表（一行一項，附依據）。
 
