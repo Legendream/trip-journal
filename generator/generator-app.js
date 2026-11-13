@@ -185,6 +185,7 @@ function setIndicator(cls, txt) {
 // Sync the right-masthead doc title with the current trip name so users always
 // know which trip they're editing (especially after switching tabs).
 function refreshMastheadTitle() {
+  renderHomeNamePreview();
   const el = document.getElementById('masthead-doctitle');
   if (!el) return;
   const title = (state.fields['f-title'] || '').trim();
@@ -195,6 +196,21 @@ function refreshMastheadTitle() {
     el.textContent = '未命名旅程';
     el.classList.add('empty');
   }
+}
+
+// 加到手機桌面後，圖示下方顯示的名稱（manifest short_name／apple-mobile-web-app-title）：
+// 去掉結尾年份、取前 6 個字。第 2 步的預覽與匯出共用這個算法，預覽才會跟實際一致
+function homeNameFor(title) {
+  const t = String(title || '').trim();
+  return t.replace(/\s*\d{4}$/, '').slice(0, 6) || t.slice(0, 6);
+}
+function renderHomeNamePreview() {
+  const el = document.getElementById('f-title-home');
+  if (!el) return;
+  const name = homeNameFor(state.fields['f-title']);
+  el.hidden = !name;
+  const v = document.getElementById('f-title-home-name');
+  if (v) v.textContent = name;
 }
 
 // Hydrate DOM from state
@@ -2367,7 +2383,7 @@ function collectConfig() {
   ensureMemberIds();
   const groups = activeGroups();   // 有生效的組別才輸出分組欄位（規則 7）
   const title = (f['f-title'] || '').trim();
-  const shortTitle = title.replace(/\s*\d{4}$/, '').slice(0, 6) || title.slice(0, 6);
+  const shortTitle = homeNameFor(title);
   const firstEmoji = state.days[0]?.emoji || '✈️';
   const heading = firstEmoji + ' ' + title;
   const yearMatch = (f['f-date-pill'] || '').match(/\d{4}/);
