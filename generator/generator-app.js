@@ -8,14 +8,14 @@ const PARSE_PROMPT = `你是行程資料整理助手。請把以下行程資訊�
 規則：
 - date 格式：M/D（例：4/15）
 - wd（星期）：用一二三四五六日，從日期計算
-- acts 內每個活動的 icon：只能從下面清單挑一個，依「這個時段主要在做什麼」：
-  移動：✈️ 飛機、🚆 鐵路（火車／地鐵／纜車）、🚌 巴士（公車／接駁車）、⛴️ 船、🚗 汽車（自駕／租車／計程車）
-  住宿：🏨 住宿
-  飲食：🍴 用餐、☕ 咖啡甜點
-  遊覽：🏛️ 文化歷史（寺廟／博物館／古蹟）、🌲 自然戶外（公園／步道／海邊）、🎟️ 體驗娛樂（樂園／表演／溫泉／導覽）
-  購物：🛍️ 購物
-  其他：📍 其他（集合、辦手續、判斷不了的）
-  一件事只選一類，依主要目的（夜市逛吃→用餐、市場採買→購物）；搭交通工具的那段是移動，到了之後做的事另算一項
+- acts 內每個活動的 icon：只能從下面清單挑一個最貼近的，依「這個時段主要在做什麼」：
+  交通：✈️ 飛機、🚆 火車電車、🚄 新幹線高鐵、🚇 地鐵、🚌 巴士、🚕 計程車、🚗 開車、⛴️ 船
+  住宿：🏨 飯店、🏠 民宿、⛺ 露營
+  飲食：🍴 吃飯、🍜 麵食、🍣 壽司、🍱 便當、🍻 喝酒、☕ 咖啡、🍰 甜點
+  遊覽：🏛️ 博物館古蹟、⛩️ 神社寺廟、🏯 城堡、🌲 森林步道、🌸 賞花、🏖️ 海邊、🌅 看風景、♨️ 溫泉、🎡 樂園、🎭 表演、📷 拍照景點
+  購物：🛍️ 購物、🎁 伴手禮、🏪 超商
+  其他：📍 地點、🤝 集合會合、🧳 寄放行李、🛂 出入境、💱 換錢、🏧 提款、🧺 洗衣、📮 寄信、⏰ 提醒
+  一件事只選一個，依主要目的（夜市逛吃→吃飯、市場採買→購物）；搭交通工具的那段算交通，到了之後做的事另算一項；都不像就用 📍
 - map：適合 Google Maps 搜尋的地點關鍵字
 - 如有附上圖片（機票、訂房確認截圖等），請一併從圖片中擷取資訊，與文字資料合併整理
 - 若資料含班機、列車、演唱會等有明確時間的事件，務必擷取 time（格式 HH:MM）；圖片中的起飛/抵達時間優先於文字
@@ -55,15 +55,15 @@ JSON Schema（嚴格遵守）：
 行程資訊：
 `;
 
-// ── 景點圖示分類（MECE：依「這個時段主要在做什麼」）＋使用者自訂 ─────────────
+// ── 景點圖示：6 大類精選 emoji（AI 與使用者共用；介面只顯示大類名稱）＋使用者自訂 ─────────────
 // 規格：docs/acceptance/activity-icons.md。行程 App 樣板有同一份（ITIN_ICON_CATALOG），test-group-trip.js 會比對。
 const ICON_CATALOG = [
-  { group: '移動', items: [['✈️', '飛機'], ['🚆', '鐵路'], ['🚌', '巴士'], ['⛴️', '船'], ['🚗', '汽車']] },
-  { group: '住宿', items: [['🏨', '住宿']] },
-  { group: '飲食', items: [['🍴', '用餐'], ['☕', '咖啡甜點']] },
-  { group: '遊覽', items: [['🏛️', '文化歷史'], ['🌲', '自然戶外'], ['🎟️', '體驗娛樂']] },
-  { group: '購物', items: [['🛍️', '購物']] },
-  { group: '其他', items: [['📍', '其他']] },
+  { group: '交通', items: [['✈️', '飛機'], ['🚆', '火車電車'], ['🚄', '新幹線高鐵'], ['🚇', '地鐵'], ['🚌', '巴士'], ['🚕', '計程車'], ['🚗', '開車'], ['⛴️', '船']] },
+  { group: '住宿', items: [['🏨', '飯店'], ['🏠', '民宿'], ['⛺', '露營']] },
+  { group: '飲食', items: [['🍴', '吃飯'], ['🍜', '麵食'], ['🍣', '壽司'], ['🍱', '便當'], ['🍻', '喝酒'], ['☕', '咖啡'], ['🍰', '甜點']] },
+  { group: '遊覽', items: [['🏛️', '博物館古蹟'], ['⛩️', '神社寺廟'], ['🏯', '城堡'], ['🌲', '森林步道'], ['🌸', '賞花'], ['🏖️', '海邊'], ['🌅', '看風景'], ['♨️', '溫泉'], ['🎡', '樂園'], ['🎭', '表演'], ['📷', '拍照景點']] },
+  { group: '購物', items: [['🛍️', '購物'], ['🎁', '伴手禮'], ['🏪', '超商']] },
+  { group: '其他', items: [['📍', '地點'], ['🤝', '集合會合'], ['🧳', '寄放行李'], ['🛂', '出入境'], ['💱', '換錢'], ['🏧', '提款'], ['🧺', '洗衣'], ['📮', '寄信'], ['⏰', '提醒']] },
 ];
 // 比對時忽略變體選擇符（AI 常回 ✈ 而不是 ✈️）
 const _iconKey = ic => String(ic || '').replace(/\uFE0F/g, '').trim();
@@ -765,7 +765,7 @@ function newDay(n) {
 }
 
 // 交通類活動 icon（搭機/搭車/搭船）— 與 template 的 isTransit 對齊，自駕日也不查停車場
-function isTransitIcon(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌]/u.test(icon || ''); }
+function isTransitIcon(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌🚕]/u.test(icon || ''); }
 
 // 唯一的匯入收斂點：吃舊格式（acts/flight/hotel）或新格式（items），都轉成統一模型
 function fromLegacyDay(d) {
@@ -1617,9 +1617,9 @@ function actIconFieldHtml(it, i, idx) {
       onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">`;
   }
   const inCat = catalogIcon(cur);
-  const opts = (inCat ? '' : `<option value="${escHtml(cur)}" selected>${escHtml(cur)} 自訂</option>`)
+  const opts = (inCat ? '' : `<option value="${escHtml(cur)}" title="自訂" selected>${escHtml(cur)}</option>`)
     + ICON_CATALOG.map(g => `<optgroup label="${g.group}">${g.items.map(([ic, name]) =>
-      `<option value="${ic}"${inCat === ic ? ' selected' : ''}>${ic} ${name}</option>`).join('')}</optgroup>`).join('')
+      `<option value="${ic}" title="${name}" aria-label="${name}"${inCat === ic ? ' selected' : ''}>${ic}</option>`).join('')}</optgroup>`).join('')
     + `<option value="__custom">✎ 自訂…</option>`;
   return `<select class="act-icon-sel" aria-label="圖示" onchange="onActIconSelect(${i},${idx},this.value)">${opts}</select>`;
 }

@@ -172,14 +172,14 @@ test('1-3 沒分組時 buildPrompt() 與基準只差列出的刻意改動（note
     ['- 只回傳 JSON 物件本身，前後不要加任何說明文字、不要用 ``` 包起來', '- 只回傳一個 ```json 程式碼框，框內是 JSON 物件本身；框外不要加任何說明文字'],
     // activity-icons I1：景點圖示改成分類清單、不再請 AI 挑每天的 emoji
     ['- emoji：為每天主題挑一個合適的 emoji\n- acts 內每個活動的 icon：挑合適的 emoji', [
-      '- acts 內每個活動的 icon：只能從下面清單挑一個，依「這個時段主要在做什麼」：',
-      '  移動：✈️ 飛機、🚆 鐵路（火車／地鐵／纜車）、🚌 巴士（公車／接駁車）、⛴️ 船、🚗 汽車（自駕／租車／計程車）',
-      '  住宿：🏨 住宿',
-      '  飲食：🍴 用餐、☕ 咖啡甜點',
-      '  遊覽：🏛️ 文化歷史（寺廟／博物館／古蹟）、🌲 自然戶外（公園／步道／海邊）、🎟️ 體驗娛樂（樂園／表演／溫泉／導覽）',
-      '  購物：🛍️ 購物',
-      '  其他：📍 其他（集合、辦手續、判斷不了的）',
-      '  一件事只選一類，依主要目的（夜市逛吃→用餐、市場採買→購物）；搭交通工具的那段是移動，到了之後做的事另算一項',
+      "- acts 內每個活動的 icon：只能從下面清單挑一個最貼近的，依「這個時段主要在做什麼」：",
+      "  交通：✈️ 飛機、🚆 火車電車、🚄 新幹線高鐵、🚇 地鐵、🚌 巴士、🚕 計程車、🚗 開車、⛴️ 船",
+      "  住宿：🏨 飯店、🏠 民宿、⛺ 露營",
+      "  飲食：🍴 吃飯、🍜 麵食、🍣 壽司、🍱 便當、🍻 喝酒、☕ 咖啡、🍰 甜點",
+      "  遊覽：🏛️ 博物館古蹟、⛩️ 神社寺廟、🏯 城堡、🌲 森林步道、🌸 賞花、🏖️ 海邊、🌅 看風景、♨️ 溫泉、🎡 樂園、🎭 表演、📷 拍照景點",
+      "  購物：🛍️ 購物、🎁 伴手禮、🏪 超商",
+      "  其他：📍 地點、🤝 集合會合、🧳 寄放行李、🛂 出入境、💱 換錢、🏧 提款、🧺 洗衣、📮 寄信、⏰ 提醒",
+      "  一件事只選一個，依主要目的（夜市逛吃→吃飯、市場採買→購物）；搭交通工具的那段算交通，到了之後做的事另算一項；都不像就用 📍",
     ].join('\n')],
     ['      "theme": "抵達仙台", "emoji": "✈️",', '      "theme": "抵達仙台",'],
   ];
@@ -474,29 +474,30 @@ test('I2 AI 匯入：分類以外的景點圖示換成 📍；分類內的保留
   g.run('importAiJson()');
   assert.deepStrictEqual([...g.run("state.days[0].items.filter(x => x.type === 'activity').map(x => x.icon)")], ['📍', '✈️', '🍴', '📍']);
 });
-test('I14 產生器與行程 App 樣板的圖示分類完全相同；6 大類 13 個', () => {
+test('I14/J1 產生器與行程 App 樣板的圖示清單完全相同；6 大類 41 個', () => {
   const g = loadGenerator();
   const gen = JSON.parse(JSON.stringify(g.run('ICON_CATALOG')));
   const tplSrc = fs.readFileSync(path.join(root, 'generator/template-src.html'), 'utf8');
   const m = /const ITIN_ICON_CATALOG = (\[[\s\S]*?\n\]);/.exec(tplSrc);
   assert.ok(m, '樣板找不到 ITIN_ICON_CATALOG');
   assert.deepStrictEqual(eval(m[1]), gen);
-  assert.deepStrictEqual(gen.map(x => x.group), ['移動', '住宿', '飲食', '遊覽', '購物', '其他']);
-  assert.strictEqual(gen.flatMap(x => x.items).length, 13);
+  assert.deepStrictEqual(gen.map(x => x.group), ['交通', '住宿', '飲食', '遊覽', '購物', '其他']);
+  assert.strictEqual(gen.flatMap(x => x.items).length, 41);
 });
-test('I4/I5/I7 第 2 步圖示選單：依大類分組＋「自訂…」；自訂圖示顯示為目前選項', () => {
+test('I4/I5/I7/J2/J4 第 2 步圖示選單：分組標題是大類、選項只有 emoji（細項名稱在 aria-label）＋「自訂…」；自訂圖示顯示為目前選項', () => {
   const g = loadGenerator();
   let h = g.run(`actIconFieldHtml({ id: 'x', icon: '🍴' }, 0, 0)`);
-  for (const t of ['<optgroup label="移動">', '<optgroup label="其他">', 'value="__custom"', '🍴 用餐</option>']) assert.ok(h.includes(t), '缺 ' + t);
-  assert.ok(/value="🍴" selected/.test(h));
+  for (const t of ['<optgroup label="交通">', '<optgroup label="其他">', 'value="__custom"', 'aria-label="吃飯"']) assert.ok(h.includes(t), '缺 ' + t);
+  assert.ok(!h.includes('吃飯</option>'), '選項只顯示 emoji，不顯示細項名稱');
+  assert.ok(/value="🍴"[^>]*selected>🍴<\/option>/.test(h), h.slice(0, 300));
   h = g.run(`actIconFieldHtml({ id: 'y', icon: '🦌' }, 0, 0)`);
-  assert.ok(h.includes('<option value="🦌" selected>🦌 自訂</option>'), h.slice(0, 200));
+  assert.ok(h.includes('<option value="🦌" title="自訂" selected>🦌</option>'), h.slice(0, 200));
   g.run(`_customIconItem = 'z'`);
   assert.ok(g.run(`actIconFieldHtml({ id: 'z', icon: '🦌' }, 0, 0)`).includes('aria-label="自訂圖示"'));
 });
-test('I11 交通判斷：🚌 也算交通（不顯示停車）；✈️ 仍要填時間', () => {
+test('I11/J5 交通判斷：🚌🚇🚕 也算交通（不顯示停車）；✈️ 仍要填時間', () => {
   const g = loadGenerator();
-  assert.ok(g.run(`isTransitIcon('🚌')`) && g.run(`isTransitIcon('✈️')`) && g.run(`isTransitIcon('🚄')`));
+  assert.ok(['🚌', '✈️', '🚄', '🚇', '🚕'].every(ic => g.run(`isTransitIcon('${ic}')`)));
   assert.ok(!g.run(`isTransitIcon('🚗')`));
   assert.ok(g.run(`needsTime({ icon: '✈️', title: '' })`));
 });

@@ -414,8 +414,8 @@
     .icon-group { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; width: 100%; }
     .icon-group-name { font-size: 12px; color: var(--text-3); width: 2.6em; flex-shrink: 0; padding-top: 8px; }
     .icon-group-items { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
-    .icon-pill { font-size: 14px; }
-    .icon-custom-input { flex: 1; min-width: 0; max-width: 160px; }
+    .icon-pill { font-size: 20px; padding: 4px 10px; }
+    .icon-custom-input { flex: 1; min-width: 0; }
     .day-share-row { padding: 6px 16px 14px; }
     .day-share-btn {
       width: 100%; background: #fff; color: var(--pink);
@@ -1082,8 +1082,6 @@
       margin-bottom: 14px; background: #fff;
     }
     .share-preview-wrap canvas { display: block; width: 100%; height: auto; }
-    .share-link-row { display: flex; gap: 8px; margin-bottom: 14px; }
-    .share-link-input { flex: 1; font-size: 12px; min-width: 0; }
 
     /* ─── 行程展示分享 (Showcase Poster) ─────────────────────── */
     .showcase-scope-row { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -1329,10 +1327,6 @@
     </div>
     <div id="showcase-fields"></div>
     <div class="share-preview-wrap"><canvas id="showcase-canvas"></canvas></div>
-    <div class="share-link-row" id="showcase-link-row">
-      <input class="form-input share-link-input" id="showcase-link-input" readonly onclick="this.select()">
-      <button class="mini-btn" id="showcase-copy-btn" onclick="copyShowcaseLink()">複製連結</button>
-    </div>
     <button class="btn btn-pink" id="showcase-send-btn" style="width:100%;font-size:16px;padding:16px" onclick="sendShowcaseShare()">分享</button>
     <div class="showcase-share-hint" id="showcase-share-hint" hidden>用 Chrome 或 Safari 開啟可直接分享</div>
   </div>
@@ -2159,7 +2153,7 @@ function parkQuery(a) {
   return map || (a && a.name) || "";
 }
 // 交通類活動（搭機/搭車/搭船）不需要找停車場
-function isTransit(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌]/u.test(icon || ""); }
+function isTransit(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌🚕]/u.test(icon || ""); }
 function isTodayDate(ds) {
   const [m, d] = ds.split("/").map(Number);
   const date = new Date(_CFG.meta.year, m-1, d);
@@ -3160,21 +3154,6 @@ function openDayShare(day) {   // day = 卡片 key
   renderShowcaseOverlay();
 }
 
-async function _copyLinkToClipboard(inputId, btnId) {
-  const input = document.getElementById(inputId);
-  const btn   = document.getElementById(btnId);
-  try { await navigator.clipboard.writeText(input.value); }
-  catch (e) {
-    input.select();
-    try { document.execCommand("copy"); } catch (e2) {}
-  }
-  if (btn) {
-    const orig = btn.textContent;
-    btn.textContent = "✓ 已複製";
-    setTimeout(() => { btn.textContent = orig; }, 1500);
-  }
-}
-
 // ─── 單日行程分享：已更新提示（跟上次分享時的內容快照比對） ──────────
 function _daySnapshotKey(key) { return _PFX + "-share-snapshot-" + key; }   // key = 卡片 key（沒分組 = day）
 function _daySnapshot(d) {
@@ -3298,7 +3277,6 @@ function renderShowcaseOverlay() {
   const isDay = _showcaseScope === "day";
   document.getElementById("showcase-form-title").textContent = isDay ? "分享這天" : "製作行程海報";
   // 單日是傳給同行旅伴看今天的行程，不需要「複製回訪首頁連結」這個給非同行者的入口
-  document.getElementById("showcase-link-row").style.display = isDay ? "none" : "";
 
   let fieldsHtml = "";
   if (_showcaseScope === "day") {
@@ -3343,7 +3321,6 @@ function renderShowcaseOverlay() {
   }
   document.getElementById("showcase-fields").innerHTML = fieldsHtml;
   _syncShowcasePhotoPos();
-  document.getElementById("showcase-link-input").value = SHOWCASE_HOMEPAGE_URL;
 
   const canShareFiles = _canShareImageFile();
   document.getElementById("showcase-send-btn").textContent = canShareFiles ? "分享" : "下載海報圖片";
@@ -3799,7 +3776,6 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
   return { photoAxis };
 }
 
-function copyShowcaseLink() { return _copyLinkToClipboard("showcase-link-input", "showcase-copy-btn"); }
 
 // 瀏覽器能不能把「圖片檔」交給系統分享選單（Firefox 有分享功能但不支援檔案）
 function _canShareImageFile() {
@@ -3879,12 +3855,12 @@ function deleteItinAct(key) {
 // 圖示選單：固定分類（MECE，與產生器 ICON_CATALOG 相同；test-group-trip.js 比對）＋「自訂」
 // 不再帶入這趟 AI 挑過的圖示（docs/acceptance/activity-icons.md I6）
 const ITIN_ICON_CATALOG = [
-  { group: "移動", items: [["✈️", "飛機"], ["🚆", "鐵路"], ["🚌", "巴士"], ["⛴️", "船"], ["🚗", "汽車"]] },
-  { group: "住宿", items: [["🏨", "住宿"]] },
-  { group: "飲食", items: [["🍴", "用餐"], ["☕", "咖啡甜點"]] },
-  { group: "遊覽", items: [["🏛️", "文化歷史"], ["🌲", "自然戶外"], ["🎟️", "體驗娛樂"]] },
-  { group: "購物", items: [["🛍️", "購物"]] },
-  { group: "其他", items: [["📍", "其他"]] },
+  { group: "交通", items: [["✈️", "飛機"], ["🚆", "火車電車"], ["🚄", "新幹線高鐵"], ["🚇", "地鐵"], ["🚌", "巴士"], ["🚕", "計程車"], ["🚗", "開車"], ["⛴️", "船"]] },
+  { group: "住宿", items: [["🏨", "飯店"], ["🏠", "民宿"], ["⛺", "露營"]] },
+  { group: "飲食", items: [["🍴", "吃飯"], ["🍜", "麵食"], ["🍣", "壽司"], ["🍱", "便當"], ["🍻", "喝酒"], ["☕", "咖啡"], ["🍰", "甜點"]] },
+  { group: "遊覽", items: [["🏛️", "博物館古蹟"], ["⛩️", "神社寺廟"], ["🏯", "城堡"], ["🌲", "森林步道"], ["🌸", "賞花"], ["🏖️", "海邊"], ["🌅", "看風景"], ["♨️", "溫泉"], ["🎡", "樂園"], ["🎭", "表演"], ["📷", "拍照景點"]] },
+  { group: "購物", items: [["🛍️", "購物"], ["🎁", "伴手禮"], ["🏪", "超商"]] },
+  { group: "其他", items: [["📍", "地點"], ["🤝", "集合會合"], ["🧳", "寄放行李"], ["🛂", "出入境"], ["💱", "換錢"], ["🏧", "提款"], ["🧺", "洗衣"], ["📮", "寄信"], ["⏰", "提醒"]] },
 ];
 const _ITIN_ICON_SET = new Set(ITIN_ICON_CATALOG.flatMap(g => g.items.map(x => x[0])));
 let itinIconCustom = false;   // 表單正在用「自訂」圖示
@@ -4474,10 +4450,10 @@ function renderItinFormBody() {
   const isEdit = !!itinEditTarget;
   const _isCustom = itinIconCustom || !_ITIN_ICON_SET.has(itinFormIcon);
   const iconBtns = ITIN_ICON_CATALOG.map(g => `<div class="icon-group"><span class="icon-group-name">${g.group}</span><div class="icon-group-items">${g.items.map(([ic, name]) =>
-    `<button class="member-pill icon-pill${!_isCustom && itinFormIcon===ic?" selected":""}" onclick="selectItinIcon('${ic}')">${ic} ${name}</button>`).join("")}</div></div>`).join("")
+    `<button class="member-pill icon-pill${!_isCustom && itinFormIcon===ic?" selected":""}" title="${name}" aria-label="${name}" onclick="selectItinIcon('${ic}')">${ic}</button>`).join("")}</div></div>`).join("")
     + `<div class="icon-group"><span class="icon-group-name">自訂</span><div class="icon-group-items">`
     + (_isCustom
-      ? `<input class="form-input icon-custom-input" id="itin-icon-custom" value="${_esc(itinIconCustom && _ITIN_ICON_SET.has(itinFormIcon) ? "" : itinFormIcon)}" maxlength="8" placeholder="輸入一個 emoji" oninput="itinFormIcon=this.value.trim()||'📍'">`
+      ? `<input class="form-input icon-custom-input" id="itin-icon-custom" value="${_esc(itinIconCustom && _ITIN_ICON_SET.has(itinFormIcon) ? "" : itinFormIcon)}" maxlength="8" placeholder="手機切到表情鍵盤；Mac 按 ⌃⌘空白鍵、Windows 按 ⊞＋." oninput="itinFormIcon=this.value.trim()||'📍'">`
       : `<button class="member-pill icon-pill" onclick="startCustomItinIcon()">✎ 自訂</button>`)
     + `</div></div>`;
   // 一張卡一個選項；同日多卡時後面加組名（Day 3・11/3（二）・福岡組）
