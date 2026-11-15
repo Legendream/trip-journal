@@ -117,6 +117,7 @@
     font-size: 30px; font-weight: 700;
     letter-spacing: .14em; color: var(--ink);
     line-height: 1;
+    white-space: nowrap;   /* 字中間是全形空白：不設的話窄螢幕會在空白處斷行 */
   }
   .masthead-right {
     text-align: right; line-height: 1;
@@ -192,6 +193,12 @@
     .masthead-title { font-size: 22px; letter-spacing: .08em; }
     .masthead-doctitle { font-size: 14px; max-width: 160px; }
     .masthead-birds { display: none; }
+  }
+  @media (max-width: 420px) {
+    .topbar { padding-left: 16px; padding-right: 16px; }
+    .masthead-left { gap: 10px; }
+    .masthead-title { font-size: 19px; letter-spacing: .04em; }
+    .masthead-doctitle { max-width: 120px; }
   }
 
   /* ── Menu (⋯) dropdown ─────────────────────────────────────── */
