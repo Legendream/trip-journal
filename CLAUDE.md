@@ -25,6 +25,9 @@
 | G12 | 示範行程 `trip-app-v2/` 不手動修改；樣板改了就用 `node scripts/build-demo.js` 重新產生 | `trip-app-v2/` | `PLAN.md`；2026-10-17 Claire 確認跟著樣板同步 |
 | G14 | 行程 App 可改每日標題（按日卡存，分組各組分開）、可恢復原本標題並復原；日卡、海報、選天選單、分享文字都顯示改過的標題；同步範圍跟景點相同 | `_theme`、`showDayThemeForm`（樣板） | `docs/acceptance/day-theme-home-name.md` |
 | G15 | 分組由 AI 從草稿找出：第一步「有分頭」只有開關＋說明；匯入以 AI 的 `groups` 建立成員與組別（最多 3 組）；沒分組時整理指令只多「程式碼框」一行；匯入能讀 Gemini 複製格式、貼到整理指令時直接說明 | `groupsFromImport`、`buildGroupSection`、`importAiJson` | `docs/acceptance/group-ai-detect.md` |
+| G16 | 景點圖示：6 大類 41 個精選 emoji，AI 與使用者共用；介面只顯示大類名稱（交通、住宿、飲食、遊覽、購物、其他）＋「自訂」可放任何 emoji；AI 挑清單以外的匯入時換成 📍；不顯示每天的 emoji | `ICON_CATALOG`（產生器）、`ITIN_ICON_CATALOG`（樣板，兩份要相同） | `docs/acceptance/activity-icons.md` |
+| G17 | 整趟海報下方沒有網址列（圖片上的網址與 QR code 保留）；單日海報不邀請使用產生器 | 樣板的海報分享視窗 | `docs/acceptance/activity-icons.md` J6 |
+| G18 | 品牌名稱「旅　人　手　帖」在手機（320px 起）首頁頂部、首頁大標題、產生器頂部都一行顯示 | `index.html`、`generator/index.html` 的 CSS | `docs/acceptance/brand-title-wrap.md` |
 
 新功能合併後，把它「做完後應有的行為」補進這張表（一行一項，附依據）。
 
