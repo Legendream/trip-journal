@@ -28,6 +28,8 @@
 | G16 | 景點圖示：6 大類 41 個精選 emoji，AI 與使用者共用；介面只顯示大類名稱（交通、住宿、飲食、遊覽、購物、其他）＋「自訂」可放任何 emoji；AI 挑清單以外的匯入時換成 📍；不顯示每天的 emoji | `ICON_CATALOG`（產生器）、`ITIN_ICON_CATALOG`（樣板，兩份要相同） | `docs/acceptance/activity-icons.md` |
 | G17 | 整趟海報下方沒有網址列（圖片上的網址與 QR code 保留）；單日海報不邀請使用產生器 | 樣板的海報分享視窗 | `docs/acceptance/activity-icons.md` J6 |
 | G18 | 品牌名稱「旅　人　手　帖」在手機（320px 起）首頁頂部、首頁大標題、產生器頂部都一行顯示 | `index.html`、`generator/index.html` 的 CSS | `docs/acceptance/brand-title-wrap.md` |
+| G19 | 首頁「雜誌左邊線」排版：首屏（小字、品牌名稱＋墨線、說明、標籤）與各區標題靠左、上方墨線，和下方卡片左緣對齊；結尾「翻開手帖」維持置中；手機與桌機一致 | `index.html` 的 `.hero*`、`.section-header`、`.section-eyebrow` | `docs/acceptance/landing-b-bird-logo.md` L1–L5 |
+| G20 | 品牌圖記「飛鳥與手帖」全站一致：首頁頂部、產生器頂部、`icon.svg`／`v/icon.svg`、`favicon.svg`（小尺寸加粗）、分享行程 App 圖示（產生器下載版、Android 圓形裁切版、`/v/` 版，底色用行程主題色）、樣板 `.trip-mark` | 上述檔案；`buildTripIconSvg`、`buildTripIconMaskableSvg`、`generateIconSvg` | `docs/acceptance/landing-b-bird-logo.md` L6–L10 |
 
 新功能合併後，把它「做完後應有的行為」補進這張表（一行一項，附依據）。
 
