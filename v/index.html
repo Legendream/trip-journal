@@ -13,7 +13,7 @@
 <meta name="twitter:card" content="summary">
 <!-- PWA / Add-to-home-screen support — actual manifest is generated dynamically
      after the trip loads (so the home-screen name uses the trip title) -->
-<link rel="icon" type="image/svg+xml" href="./icon.svg">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="apple-touch-icon" href="./icon.svg">
 <meta name="theme-color" content="#a8362f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -175,12 +175,10 @@ function generateIconSvg(cfg) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
     <rect width="512" height="512" fill="${bg}"/>
     <rect x="28" y="28" width="456" height="456" rx="10" fill="none" stroke="${fg}" stroke-width="2" opacity="0.3"/>
-    <g transform="translate(256 256) scale(8.2)" fill="none" stroke="${fg}" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="-23" y="-28" width="46" height="49" rx="4" stroke-width="1.7"/>
-      <circle cx="12" cy="-17" r="4.5" fill="${fg}" opacity="0.85" stroke="none"/>
-      <path d="M-20,10 L-6,-6 L2,3 L12,-13 L20,10" stroke-width="1.5"/>
-      <line x1="-17" y1="14" x2="17" y2="14" stroke-width="0.9" stroke-dasharray="2,2.5" opacity="0.6"/>
-      <path d="M-2.5,21 L-2.5,28.5 L0,26 L2.5,28.5 L2.5,21" stroke-width="1.5"/>
+    <g transform="translate(256 246) scale(7.3)" fill="none" stroke="${fg}" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-15 -9 Q-7.5 -20 0 -12 Q7.5 -20 15 -9" stroke-width="4.2"/>
+      <path d="M-22 9 Q-11 3 0 9 Q11 3 22 9 V20 Q11 14 0 20 Q-11 14 -22 20 Z" stroke-width="3.6"/>
+      <path d="M0 9 V20" stroke-width="3.6"/>
     </g>
     <text x="256" y="476" font-size="22" font-family="'Songti TC',serif" font-style="italic"
           fill="${fg}" opacity="0.6" text-anchor="middle" letter-spacing="5">TRIP JOURNAL</text>

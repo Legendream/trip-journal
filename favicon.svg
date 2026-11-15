@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-26 -26 52 52">
+  <!-- 瀏覽器分頁用的小尺寸品牌圖記：線條加粗、省略書脊，16px 也看得出鳥和書 -->
+  <g fill="none" stroke="#a8362f" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-15 -9 Q-7.5 -20 0 -12 Q7.5 -20 15 -9" stroke-width="5.6"/>
+    <path d="M-22 9 Q-11 3 0 9 Q11 3 22 9 V20 Q11 14 0 20 Q-11 14 -22 20 Z" stroke-width="4.8"/>
+  </g>
+</svg>

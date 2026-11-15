@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>旅人手帖 · 為旅伴做的小本子</title>
-<link rel="icon" type="image/svg+xml" href="../icon.svg">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <link rel="apple-touch-icon" href="../icon.svg">
 <script src="https://unpkg.com/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
@@ -1598,24 +1598,15 @@
   </div>
   <div class="topbar-inner">
     <a href="../" class="masthead-home-link" title="返回封面">
-      <!-- Compass rose -->
-      <svg class="masthead-mark" viewBox="0 0 60 60" aria-hidden="true">
-        <!-- 框架 -->
-        <rect x="7" y="2" width="46" height="49" rx="4" fill="none" stroke="currentColor" stroke-width="1.7"/>
-        <!-- 太陽 -->
-        <circle cx="42" cy="13" r="4.5" fill="currentColor" opacity="0.85"/>
-        <!-- 山脈線稿 -->
-        <path d="M10,40 L24,24 L32,33 L42,17 L50,40"
-              fill="none" stroke="currentColor" stroke-width="1.5"
-              stroke-linejoin="round" stroke-linecap="round"/>
-        <!-- 虛線路徑 -->
-        <line x1="13" y1="44" x2="47" y2="44"
-              stroke="currentColor" stroke-width="0.9"
-              stroke-dasharray="2,2.5" opacity="0.6"/>
-        <!-- 書籤尾 -->
-        <path d="M27.5,51 L27.5,58.5 L30,56 L32.5,58.5 L32.5,51"
-              fill="none" stroke="currentColor" stroke-width="1.5"
-              stroke-linejoin="round" stroke-linecap="round"/>
+      <!-- 品牌圖記「飛鳥與手帖」：一隻鳥飛過翻開的本子 -->
+      <svg class="masthead-mark" viewBox="0 0 60 60" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+        <!-- 飛鳥 -->
+        <path d="M15 22 Q22.5 11 30 19 Q37.5 11 45 22" stroke-width="4.2"/>
+        <!-- 翻開的手帖 -->
+        <path d="M8 40 Q19 34 30 40 Q41 34 52 40 V51 Q41 45 30 51 Q19 45 8 51 Z" stroke-width="3.6"/>
+        <!-- 書脊 -->
+        <path d="M30 40 V51" stroke-width="3.6"/>
       </svg>
       <div class="masthead-titles">
         <div class="masthead-kicker">Made for trip mates</div>
