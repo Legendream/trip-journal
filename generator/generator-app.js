@@ -8,8 +8,14 @@ const PARSE_PROMPT = `你是行程資料整理助手。請把以下行程資訊�
 規則：
 - date 格式：M/D（例：4/15）
 - wd（星期）：用一二三四五六日，從日期計算
-- emoji：為每天主題挑一個合適的 emoji
-- acts 內每個活動的 icon：挑合適的 emoji
+- acts 內每個活動的 icon：只能從下面清單挑一個最貼近的，依「這個時段主要在做什麼」：
+  交通：✈️ 飛機、🚆 火車電車、🚄 新幹線高鐵、🚇 地鐵、🚌 巴士、🚕 計程車、🚗 開車、⛴️ 船
+  住宿：🏨 飯店、🏠 民宿、⛺ 露營
+  飲食：🍴 吃飯、🍜 麵食、🍣 壽司、🍱 便當、🍻 喝酒、☕ 咖啡、🍰 甜點
+  遊覽：🏛️ 博物館古蹟、⛩️ 神社寺廟、🏯 城堡、🌲 森林步道、🌸 賞花、🏖️ 海邊、🌅 看風景、♨️ 溫泉、🎡 樂園、🎭 表演、📷 拍照景點
+  購物：🛍️ 購物、🎁 伴手禮、🏪 超商
+  其他：📍 地點、🤝 集合會合、🧳 寄放行李、🛂 出入境、💱 換錢、🏧 提款、🧺 洗衣、📮 寄信、⏰ 提醒
+  一件事只選一個，依主要目的（夜市逛吃→吃飯、市場採買→購物）；搭交通工具的那段算交通，到了之後做的事另算一項；都不像就用 📍
 - map：適合 Google Maps 搜尋的地點關鍵字
 - 如有附上圖片（機票、訂房確認截圖等），請一併從圖片中擷取資訊，與文字資料合併整理
 - 若資料含班機、列車、演唱會等有明確時間的事件，務必擷取 time（格式 HH:MM）；圖片中的起飛/抵達時間優先於文字
@@ -29,7 +35,7 @@ JSON Schema（嚴格遵守）：
   "days": [
     {
       "day": 1, "date": "4/15", "wd": "三",
-      "theme": "抵達仙台", "emoji": "✈️",
+      "theme": "抵達仙台",
       "acts": [
         { "icon": "✈️", "name": "桃園飛仙台", "sub": "BR-198", "time": "10:30", "map": "仙台機場" }
       ],
@@ -49,6 +55,23 @@ JSON Schema（嚴格遵守）：
 行程資訊：
 `;
 
+// ── 景點圖示：6 大類精選 emoji（AI 與使用者共用；介面只顯示大類名稱）＋使用者自訂 ─────────────
+// 規格：docs/acceptance/activity-icons.md。行程 App 樣板有同一份（ITIN_ICON_CATALOG），test-group-trip.js 會比對。
+const ICON_CATALOG = [
+  { group: '交通', items: [['✈️', '飛機'], ['🚆', '火車電車'], ['🚄', '新幹線高鐵'], ['🚇', '地鐵'], ['🚌', '巴士'], ['🚕', '計程車'], ['🚗', '開車'], ['⛴️', '船']] },
+  { group: '住宿', items: [['🏨', '飯店'], ['🏠', '民宿'], ['⛺', '露營']] },
+  { group: '飲食', items: [['🍴', '吃飯'], ['🍜', '麵食'], ['🍣', '壽司'], ['🍱', '便當'], ['🍻', '喝酒'], ['☕', '咖啡'], ['🍰', '甜點']] },
+  { group: '遊覽', items: [['🏛️', '博物館古蹟'], ['⛩️', '神社寺廟'], ['🏯', '城堡'], ['🌲', '森林步道'], ['🌸', '賞花'], ['🏖️', '海邊'], ['🌅', '看風景'], ['♨️', '溫泉'], ['🎡', '樂園'], ['🎭', '表演'], ['📷', '拍照景點']] },
+  { group: '購物', items: [['🛍️', '購物'], ['🎁', '伴手禮'], ['🏪', '超商']] },
+  { group: '其他', items: [['📍', '地點'], ['🤝', '集合會合'], ['🧳', '寄放行李'], ['🛂', '出入境'], ['💱', '換錢'], ['🏧', '提款'], ['🧺', '洗衣'], ['📮', '寄信'], ['⏰', '提醒']] },
+];
+// 比對時忽略變體選擇符（AI 常回 ✈ 而不是 ✈️）
+const _iconKey = ic => String(ic || '').replace(/\uFE0F/g, '').trim();
+const _ICON_BY_KEY = new Map(ICON_CATALOG.flatMap(g => g.items.map(([ic]) => [_iconKey(ic), ic])));
+function catalogIcon(ic) { return _ICON_BY_KEY.get(_iconKey(ic)) || null; }
+// AI 整理的結果：不在分類清單裡的圖示一律換成 📍（使用者自訂只在產生器、App 裡手動選）
+function normalizeAiIcon(ic) { return catalogIcon(ic) || '📍'; }
+
 // ── People pill helpers ────────────────────────────────────────────
 // 欄位儲存純數字（如 "2"）；輸出和預覽時組合成「2人同行」
 function formatPeoplePill(n) {
@@ -63,12 +86,12 @@ function extractPeopleNumber(s) {
 
 // ── State ──────────────────────────────────────────────────────────
 const STATE_KEY = 'trip-gen-state-v2';
-const STEPS = ['匯入行程', '補齊資料', '挑選外觀', '產出分享'];
+const STEPS = ['建立行程', '編輯行程', '挑選顏色', '分享行程'];
 const STEPS_META = [
-  { name: '匯入行程' },
-  { name: '補齊資料' },
-  { name: '挑選外觀' },
-  { name: '產出分享' },
+  { name: '建立行程' },
+  { name: '編輯行程' },
+  { name: '挑選顏色' },
+  { name: '分享行程' },
 ];
 
 let state = {
@@ -440,7 +463,7 @@ function copyPromptToClipboard() {
       btn.style.borderColor = '';
     }, 2400);
   }).catch(() => {
-    alert('複製失敗，請手動選取「預覽 Prompt」內的文字複製');
+    alert('複製失敗，請點「先看看指令內容」展開，手動選取文字複製');
   });
 }
 
@@ -453,7 +476,7 @@ function importAiJson() {
   const raw = document.getElementById('json-paste').value.trim();
   const stat = document.getElementById('ai-import-status');
   if (!raw) {
-    stat.innerHTML = '<div class="status-box status-err">請先貼上 AI 回的 JSON</div>';
+    stat.innerHTML = '<div class="status-box status-err">請先貼上 AI 的回覆</div>';
     return;
   }
   // 貼到的是整理指令本身（剪貼簿還是指令）：直接說明，不顯示看不懂的 JSON 錯誤
@@ -474,7 +497,7 @@ function importAiJson() {
     if (first >= 0 && last > first) cleaned = cleaned.slice(first, last + 1);
     const data = JSON.parse(cleaned);
     if (state.splitUp && !(data.days && data.days.length)) {
-      stat.innerHTML = '<div class="status-box status-err">這份 JSON 裡沒有 days（行程），沒有更新任何東西。請確認 AI 回的是完整的行程 JSON。</div>';
+      stat.innerHTML = '<div class="status-box status-err">這段回覆裡找不到行程，沒有更新任何東西。請確認貼的是 AI 整理好的完整結果。</div>';
       return;
     }
     const groupNote = applyParsedData(data);
@@ -514,6 +537,8 @@ function applyParsedData(d) {
   }
   const groups = activeGroups();
   ensureMemberIds();
+  // 景點圖示只能是分類清單裡的；AI 挑了別的就換成 📍（activity-icons I2）
+  (d.days || []).forEach(day => (day && Array.isArray(day.acts) ? day.acts : []).forEach(a => { if (a) a.icon = normalizeAiIcon(a.icon); }));
   d = normalizeImported(d, groups, state.members);   // with／unsure → 內部格式；沒分組時丟掉
   if (d.days?.length) { state.days = d.days.map(fromLegacyDay); state.days.forEach(_orderTimeline); }
   if (d.hotels?.length) state.hotels = [...d.hotels];
@@ -740,7 +765,7 @@ function newDay(n) {
 }
 
 // 交通類活動 icon（搭機/搭車/搭船）— 與 template 的 isTransit 對齊，自駕日也不查停車場
-function isTransitIcon(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤]/u.test(icon || ''); }
+function isTransitIcon(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌🚕]/u.test(icon || ''); }
 
 // 唯一的匯入收斂點：吃舊格式（acts/flight/hotel）或新格式（items），都轉成統一模型
 function fromLegacyDay(d) {
@@ -929,12 +954,12 @@ function handleFileLoad(e) {
 }
 async function loadHtmlFile(file) {
   const stat = document.getElementById('restore-status');
-  stat.innerHTML = '<div class="status-box status-info">解析 .html 檔中…</div>';
+  stat.innerHTML = '<div class="status-box status-info">讀取 .html 檔中…</div>';
   try {
     const text = await file.text();
     await importHtmlText(text, stat);   // 同時支援 generator 產出（_CFG）與手刻舊格式（const DAYS）
   } catch (e) {
-    stat.innerHTML = `<div class="status-box status-err">解析失敗：${e.message}</div>`;
+    stat.innerHTML = `<div class="status-box status-err">讀取失敗：${e.message}</div>`;
   }
 }
 
@@ -974,7 +999,7 @@ async function loadFromRestoreInput() {
   }
   // Heuristic 1: looks like a share URL / hash fragment
   if (/(^|[#?&])z=[A-Za-z0-9_-]+/.test(raw) || raw.includes('/v/')) {
-    stat.innerHTML = '<div class="status-box status-info">解析分享連結中…</div>';
+    stat.innerHTML = '<div class="status-box status-info">讀取分享連結中…</div>';
     try {
       const z = extractShareHash(raw);
       if (!z) throw new Error('連結看起來不像分享連結 — 應包含 #z=... 片段。');
@@ -982,10 +1007,10 @@ async function loadFromRestoreInput() {
       const json = new TextDecoder().decode(await gunzipBytes(bytes));
       const cfg = JSON.parse(json);
       importLoadedConfig(cfg);
-      stat.innerHTML = `<div class="status-box status-ok">✓ 還原成功！${state.days.length} 天、${state.members.length} 位成員。可從「步驟 2」開始修改。</div>`;
+      stat.innerHTML = `<div class="status-box status-ok">✓ 讀取成功！${state.days.length} 天、${state.members.length} 位成員，正在前往步驟 2。</div>`;
       setTimeout(() => goTo(1), 800);
     } catch (e) {
-      stat.innerHTML = `<div class="status-box status-err">還原失敗：${e.message}</div>`;
+      stat.innerHTML = `<div class="status-box status-err">讀取失敗：${e.message}</div>`;
     }
     return;
   }
@@ -1045,7 +1070,7 @@ function extractInlinedConfig(text) {
         if (depth === 0) {
           const jsonStr = text.slice(start, i + 1);
           try { return JSON.parse(jsonStr); }
-          catch (e) { throw new Error('找到設定區塊但 JSON 解析失敗：' + e.message); }
+          catch (e) { throw new Error('找到行程資料，但讀不懂內容：' + e.message); }
         }
       }
     }
@@ -1145,23 +1170,23 @@ function extractLegacyConfig(html) {
 
 // 從一段 HTML 文字（貼上或 fetch 來的）解析 config：先試 _CFG，再試 legacy
 async function importHtmlText(text, stat) {
-  stat.innerHTML = '<div class="status-box status-info">解析內容中…</div>';
+  stat.innerHTML = '<div class="status-box status-info">讀取內容中…</div>';
   try {
     let cfg = null, legacy = false;
     try { cfg = extractInlinedConfig(text); } catch (e) { cfg = null; }
     if (!cfg) { cfg = extractLegacyConfig(text); legacy = !!cfg; }
-    if (!cfg) throw new Error('找不到行程資料（既不是 generator 產出的 _CFG，也不是 const DAYS 舊格式）。');
+    if (!cfg) throw new Error('找不到行程資料。請確認這是旅人手帖做出來的檔案或網址。');
     importLoadedConfig(cfg);
     let extra = '';
     if (legacy) {
       extra = ' <span style="color:var(--ink-2);font-size:var(--fs-fine);">（舊格式已自動轉入；租車訂位號碼、停車場、主題色、日期、PIN、目的地地區等請在下方再確認）</span>';
     } else if (state._loadedSwCacheKey) {
-      extra = `<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">SW cache key 已自動升版為 <code style="font-family:ui-monospace,monospace;background:var(--bg);padding:1px 5px;border-radius:3px;">${state._loadedSwCacheKey}</code>，重新部署後旅伴 PWA 會自動更新。</span>`;
+      extra = `<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">已更新版本號，重新上傳後，旅伴的 App 會自動更新。</span>`;
     }
-    stat.innerHTML = `<div class="status-box status-ok">✓ 載入成功！${state.days.length} 天、${state.members.length} 位成員。可從「步驟 2」開始修改。${extra}</div>`;
+    stat.innerHTML = `<div class="status-box status-ok">✓ 讀取成功！${state.days.length} 天、${state.members.length} 位成員，正在前往步驟 2。${extra}</div>`;
     setTimeout(() => goTo(1), 900);
   } catch (e) {
-    stat.innerHTML = `<div class="status-box status-err">解析失敗：${e.message}</div>`;
+    stat.innerHTML = `<div class="status-box status-err">讀取失敗：${e.message}</div>`;
   }
 }
 
@@ -1465,9 +1490,9 @@ function mapPreviewTitle(it) {
     return `將以「${loc.query}」於 Google Maps 搜尋；找到正確地點後按「分享 → 複製連結」貼回左方欄位，才會有這個地點的天氣`;
   }
   if (name) {
-    return `地點欄位空白，將以活動名稱「${name}」搜尋 — 找到正確地點後按「分享 → 複製連結」貼回左方欄位，才會有這個地點的天氣`;
+    return `地點欄位空白，將以景點名稱「${name}」搜尋 — 找到正確地點後按「分享 → 複製連結」貼回左方欄位，才會有這個地點的天氣`;
   }
-  return '請先填寫地點名稱或活動名稱';
+  return '請先填寫地點或景點名稱';
 }
 
 // 📍 欄位輸入：單一字串可能是名稱或連結，存進統一的 location 物件
@@ -1582,6 +1607,45 @@ function actTimeToPicker(di, ai, field) {
   document.getElementById('day-' + di)?.classList.add('open');
 }
 
+// 第 2 步景點圖示：分類選單（依大類分組）＋最後的「自訂…」；自訂中改成文字框，可輸入任何 emoji
+let _customIconItem = null;   // 正在自訂圖示的景點 id
+function actIconFieldHtml(it, i, idx) {
+  const cur = it.icon || '📍';
+  if (_customIconItem === it.id) {
+    return `<input class="act-icon-i" id="icon-custom-${it.id}" value="${escHtml(cur)}" maxlength="8" aria-label="自訂圖示"
+      oninput="state.days[${i}].items[${idx}].icon=this.value;saveState()" onblur="endCustomIcon()"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">`;
+  }
+  const inCat = catalogIcon(cur);
+  const opts = (inCat ? '' : `<option value="${escHtml(cur)}" title="自訂" selected>${escHtml(cur)}</option>`)
+    + ICON_CATALOG.map(g => `<optgroup label="${g.group}">${g.items.map(([ic, name]) =>
+      `<option value="${ic}" title="${name}" aria-label="${name}"${inCat === ic ? ' selected' : ''}>${ic}</option>`).join('')}</optgroup>`).join('')
+    + `<option value="__custom">✎ 自訂…</option>`;
+  return `<select class="act-icon-sel" aria-label="圖示" onchange="onActIconSelect(${i},${idx},this.value)">${opts}</select>`;
+}
+function onActIconSelect(i, idx, v) {
+  const it = state.days[i] && state.days[i].items[idx];
+  if (!it) return;
+  if (v === '__custom') {
+    _customIconItem = it.id;
+    renderDays();
+    const el = document.getElementById('icon-custom-' + it.id);
+    if (el) { el.focus(); el.select(); }
+    return;
+  }
+  it.icon = v;
+  saveState();
+  renderDays();
+}
+function endCustomIcon() {
+  if (!_customIconItem) return;
+  // 自訂框清空就回到 📍
+  state.days.forEach(d => d.items.forEach(x => { if (x.id === _customIconItem && !String(x.icon || '').trim()) x.icon = '📍'; }));
+  _customIconItem = null;
+  saveState();
+  renderDays();
+}
+
 // 判斷活動是否「應該有時間」——班機、列車、演唱會等（吃 timeline item）
 function needsTime(it) {
   if (!it) return false;
@@ -1622,9 +1686,9 @@ function renderDays() {
             ondragstart="actDragStart(event,${i},${idx})"
             ondragend="actDragEnd(event)"
             title="拖曳排序">⋮⋮</span>
-          <input class="act-icon-i" value="${escHtml(it.icon || '📍')}" oninput="state.days[${i}].items[${idx}].icon=this.value;saveState()">
-          <input class="act-name-i" value="${escHtml(it.title)}" placeholder="活動名稱" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})">
-          <input class="act-sub-i" value="${escHtml(it.sub || '')}" placeholder="副標題（選填）" oninput="state.days[${i}].items[${idx}].sub=this.value;saveState()">
+          ${actIconFieldHtml(it, i, idx)}
+          <input class="act-name-i" value="${escHtml(it.title)}" placeholder="景點名稱" oninput="state.days[${i}].items[${idx}].title=this.value;saveState();updateMapStatus(${i},${idx})">
+          <input class="act-sub-i" value="${escHtml(it.sub || '')}" placeholder="補充說明（選填）" oninput="state.days[${i}].items[${idx}].sub=this.value;saveState()">
           ${actTimeFieldHtml(it.time, {
             cls: needsTime(it) && !it.time ? ' suggest' : '',
             placeholder: needsTime(it) ? '抵達時間' : '選填',
@@ -1745,15 +1809,14 @@ function renderDays() {
           <input type="checkbox" ${d.selfDrive ? 'checked' : ''} onchange="toggleDaySelfDrive(${i})">
           這天自駕 <span class="day-selfdrive-hint">— 開啟後本日景點會出現「停車」，徒步的可逐一關掉</span>
         </label>` : '';
-    const addFlightBtn = `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增機票</button>
+    const addFlightBtn = `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i})">＋ 新增航班</button>
         <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addFlight(${i},'ship')">＋ 新增船班</button>`;
     const addHotelBtn  = hasHotel  ? '' : `<button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="addHotel(${i})">＋ 新增住宿</button>`;
     return `<div class="day-card${gctx && gctx.byDay.has(d.id) ? ' g-warned' : ''}" id="day-${i}">
       <div class="day-card-header" onclick="toggleDay(${i})">
         <span class="day-badge">Day ${d.day || i + 1}</span>
-        <span class="day-emoji">${d.emoji || '📍'}</span>
         <div style="flex:1;min-width:0;">
-          <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入今日主題…')}</div>
+          <div class="day-theme ${d.theme ? '' : 'empty'}">${escHtml(d.theme || '填入這天的標題…')}</div>
           <div class="day-date-wd">${escHtml(d.date || '無日期')}${d.wd ? ' (' + d.wd + ')' : ''}${hasUnbooked ? ' <span class="hotel-unbooked-tag">住宿未訂</span>' : ''} <span class="day-nowx-tag" id="day-nowx-${i}"${dayWxState(d) === 'none' ? '' : ' hidden'}>這天沒有天氣</span></div>
           ${gctx ? dayGroupHeadHtml(gctx, d, i) : ''}
         </div>
@@ -1772,14 +1835,14 @@ function renderDays() {
             <input type="text" value="${escHtml(d.wd || '')}" placeholder="三" maxlength="1" oninput="state.days[${i}].wd=this.value;saveState()">
           </div>
           <div class="field" style="margin-bottom:0;">
-            <label style="font-size:var(--fs-fine);">今日主題 <span style="font-weight:400;color:var(--ink-3);font-family:var(--font-sans);">— 這天的標題</span></label>
+            <label style="font-size:var(--fs-fine);">這天的標題</label>
             <input type="text" value="${escHtml(d.theme || '')}" placeholder="抵達仙台、青葉城跡" oninput="state.days[${i}].theme=this.value;saveState();renderDayHeader(${i})">
           </div>
         </div>
         ${selfDriveRow}
-        <div class="card-label">活動 <span style="font-weight:400;color:var(--ink-3);text-transform:none;letter-spacing:0;">— 📍 欄位貼 Google 地圖的分享連結（地圖上找到地點 → 分享 → 複製連結），才會有這個地點的天氣；只填地名也行，但不查天氣</span></div>
-        <div class="act-list">${acts || '<div class="muted" style="padding:6px 0;">尚無活動</div>'}</div>
-        <button class="btn btn-secondary btn-block btn-sm" onclick="addAct(${i})">＋ 新增活動</button>
+        <div class="card-label">景點 <span style="font-weight:400;color:var(--ink-3);text-transform:none;letter-spacing:0;">— 📍 欄位貼 Google 地圖的分享連結（地圖上找到地點 → 分享 → 複製連結），才會有這個地點的天氣；只填地名也行，但不查天氣</span></div>
+        <div class="act-list">${acts || '<div class="muted" style="padding:6px 0;">尚無景點</div>'}</div>
+        <button class="btn btn-secondary btn-block btn-sm" onclick="addAct(${i})">＋ 新增景點</button>
         ${addFlightBtn}
         ${addHotelBtn}
         ${gctx ? dayGroupActionsHtml(gctx, d) : ''}
@@ -1797,7 +1860,7 @@ function renderDayHeader(i) {
   if (!card) return;
   const themeEl = card.querySelector('.day-theme');
   if (themeEl) {
-    themeEl.textContent = state.days[i].theme || '填入今日主題…';
+    themeEl.textContent = state.days[i].theme || '填入這天的標題…';
     themeEl.classList.toggle('empty', !state.days[i].theme);
   }
 }
@@ -1911,7 +1974,7 @@ function onHotelCommit(di, ai) {
   const labels = { name: '名稱', note: '備註', paid: '付款狀態', booked: '訂房狀態', map: '地圖' };
   showPickPanel(
     `同時套用到同一間的其他晚？（只更新：${Object.keys(changes).map(k => labels[k]).join('、')}）`,
-    targets.map(i => ({ value: i, num: 'Day ' + state.days[i].day, theme: state.days[i].theme || '（未填主題）' })),
+    targets.map(i => ({ value: i, num: 'Day ' + state.days[i].day, theme: state.days[i].theme || '（未填標題）' })),
     true, '套用',
     picked => {
       picked.forEach(i => {
@@ -1959,7 +2022,7 @@ function startCopyItem(di, ai) {
   _copyPending = { di, ai };
   const d = state.days[di];
   const item = d.items[ai];
-  const typeLabel = item.type === 'flight' ? ((item.data || {}).mode === 'ship' ? '船班' : '航班') : item.type === 'lodging' ? '住宿' : '活動';
+  const typeLabel = item.type === 'flight' ? ((item.data || {}).mode === 'ship' ? '船班' : '航班') : item.type === 'lodging' ? '住宿' : '景點';
   const panel = document.getElementById('copy-panel');
   const title = document.getElementById('copy-panel-title');
   const btns  = document.getElementById('copy-day-btns');
@@ -1967,7 +2030,7 @@ function startCopyItem(di, ai) {
   if (item.type === 'lodging') {   // 住宿：一次勾選多天（一天一筆，目標天已有住宿直接取代）
     showPickPanel(
       `複製「${item.title || '住宿未訂'}」到哪幾天？`,
-      state.days.map((day, i) => ({ value: i, num: 'Day ' + day.day, theme: day.theme || '（未填主題）' }))
+      state.days.map((day, i) => ({ value: i, num: 'Day ' + day.day, theme: day.theme || '（未填標題）' }))
         .filter(r => r.value !== di),
       false, '複製',
       picked => picked.forEach(t => copyItemTo(di, ai, t)));
@@ -1978,7 +2041,7 @@ function startCopyItem(di, ai) {
   btns.innerHTML = state.days.map((day, i) =>
     `<button class="copy-day-btn${i === di ? ' copy-day-same' : ''}" onclick="executeCopy(${i})">
       <span class="copy-day-num">Day ${day.day}</span>
-      <span class="copy-day-theme">${escHtml(day.theme || '（未填主題）')}</span>
+      <span class="copy-day-theme">${escHtml(day.theme || '（未填標題）')}</span>
     </button>`
   ).join('');
   panel.classList.add('show');
@@ -2016,7 +2079,7 @@ function cancelCopy() {
 
 function removeAct(di, ai) {
   const removed = JSON.parse(JSON.stringify(state.days[di].items[ai]));
-  const label = `已刪除「${removed.title || '活動'}」`;
+  const label = `已刪除「${removed.title || '景點'}」`;
   state.days[di].items.splice(ai, 1);
   renderDays();
   saveState();
@@ -2210,7 +2273,7 @@ function updateMissingSummary() {
   if (!state.days.length) issues.push('每日行程');
   state.days.forEach((d, i) => {
     if (!d.date) issues.push(`Day ${i + 1} 日期`);
-    if (!d.theme) issues.push(`Day ${i + 1} 主題`);
+    if (!d.theme) issues.push(`Day ${i + 1} 標題`);
   });
   document.querySelectorAll('#panel-1 .field.invalid').forEach(el => el.classList.remove('invalid'));
   invalidFieldIds.forEach(id => document.getElementById(id)?.classList.add('invalid'));
@@ -2232,7 +2295,7 @@ function updateMissingSummary() {
       <div class="alert-banner-head">
         <span class="mark">⚠</span>
         <span class="lede">還有 <span class="count">${issues.length}</span> 處待補</span>
-        <span class="sub">Outstanding · 補齊後即可下一步</span>
+        <span class="sub">補齊後就能下一步</span>
       </div>
       <div class="alert-banner-list">${items}${more}</div>
     `;
@@ -2314,7 +2377,7 @@ async function testFirebase() {
   const raw = document.getElementById('f-firebase').value.trim();
   const btn = document.getElementById('fb-test-btn');
   const st = document.getElementById('fb-status');
-  if (!raw) { st.innerHTML = '<div class="status-box status-err">請先貼上 Firebase Config</div>'; return; }
+  if (!raw) { st.innerHTML = '<div class="status-box status-err">請先貼上 firebaseConfig</div>'; return; }
   const cfg = parseFirebaseConfig(raw);
   if (!cfg) { st.innerHTML = '<div class="status-box status-err">看不懂這段設定。請回到 Firebase「註冊應用程式」後出現的畫面，把含 firebaseConfig 的整段程式碼複製、重新貼上</div>'; return; }
   if (!cfg.databaseURL) { st.innerHTML = '<div class="status-box status-err">缺少 databaseURL，請確認已建立 Realtime Database</div>'; return; }
@@ -2325,7 +2388,7 @@ async function testFirebase() {
     if (r.ok) {
       st.innerHTML = '<div class="status-box status-ok">✓ Firebase 連線成功，已就緒</div>';
     } else if (r.status === 401 || r.status === 403) {
-      st.innerHTML = '<div class="status-box status-err">資料庫拒絕存取。請照步驟 3 到「規則」分頁發布規則，並確認規則裡的代碼是「' + escHtml(fbPrefix()) + '」（和步驟二的旅程代碼相同）</div>';
+      st.innerHTML = '<div class="status-box status-err">資料庫拒絕存取。請照上面第 2 點到「規則」分頁發布規則，並確認規則裡的代碼是「' + escHtml(fbPrefix()) + '」（和步驟 2 的旅程代碼相同）</div>';
     } else {
       st.innerHTML = '<div class="status-box status-err">連線失敗 HTTP ' + r.status + '。請確認 Realtime Database 已建立。</div>';
     }
@@ -2386,9 +2449,9 @@ function renderSummary() {
     [title, '旅程名稱'],
     [state.days.length + ' 天', '行程天數'],
     [state.members.length + ' 人', '旅行成員'],
-    [pin, 'PIN 碼'],
-    [state.useFirebase ? '✓' : '—', 'Firebase 共享'],
-    [themeName, '主題色彩'],
+    [pin, '進入密碼'],
+    [state.useFirebase ? '✓' : '—', '多人同步'],
+    [themeName, '主題色'],
     [pfx, '旅程代碼'],
   ].map(([v, k]) => `<div class="sum-item"><div class="sv">${escHtml(v)}</div><div class="sk">${k}</div></div>`).join('');
   renderWxSummary();
@@ -2705,8 +2768,8 @@ function selectDeliveryMode(mode) {
   const previewDesc = document.getElementById('preview-card-desc');
   if (previewCard) previewCard.style.display = '';
   if (previewDesc) previewDesc.textContent = isBasic
-    ? '以下預覽是「一行連結」模式：2 個分頁（行程、清單）。旅伴可看可改，但只存自己手機、不同步。預覽用模擬資料，不連到任何伺服器。'
-    : '以下預覽是「進階」模式：4 個分頁（行程、清單、集合、記帳），旅伴可即時同步編輯。預覽用模擬資料、重開歸零，不連到真實 Firebase。';
+    ? '以下預覽是「分享連結」：2 個分頁（行程、清單）。旅伴可以看、可以改，但改了只存在自己手機，不會同步。預覽用的是模擬資料，不會連到任何伺服器。'
+    : '以下預覽是「進階版」：4 個分頁（行程、清單、集合、記帳），大家可以即時同步編輯。預覽用的是模擬資料，重開就歸零，不會連到真的 Firebase。';
   // show/hide operation sections
   const sBasic = document.getElementById('section-basic');
   const sAdv   = document.getElementById('section-advanced');
@@ -2729,8 +2792,8 @@ function previewApp(mode) {
   const html = buildPreviewHtml(_previewMode);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
-  const label = _previewMode === 'advanced' ? '進階模擬' : '最低門檻';
-  const note = '（' + label + '預覽：模擬資料、單機、重開歸零，不會連到真實 Firebase）';
+  const label = _previewMode === 'advanced' ? '進階版' : '分享連結';
+  const note = '（' + label + '預覽：模擬資料，重開就歸零）';
   if (mode === 'phone') {
     // iPhone 14 Pro 大小，模擬旅伴實際在手機上看到的樣子
     window.open(url, '_blank', 'width=390,height=844');
@@ -2749,7 +2812,7 @@ async function downloadZip() {
     return;
   }
   if (!window.JSZip) {
-    stat.innerHTML = '<div class="status-box status-err">JSZip 未載入，請重新整理頁面</div>';
+    stat.innerHTML = '<div class="status-box status-err">下載功能還沒準備好，請重新整理頁面</div>';
     return;
   }
   const blocked = exportBlockedHtml();
@@ -2789,7 +2852,7 @@ async function downloadZip() {
     a.download = safeTitle + '.zip';
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    stat.innerHTML = '<div class="status-box status-ok">✓ 下載完成！解壓縮後依下方步驟部署。</div>';
+    stat.innerHTML = '<div class="status-box status-ok">✓ 下載完成！解壓縮後照下方 B 上傳到 Netlify。</div>';
   } catch (e) {
     stat.innerHTML = '<div class="status-box status-err">打包失敗：' + e.message + '</div>';
   }
@@ -2860,13 +2923,13 @@ async function generateShareUrl({ refreshed = false } = {}) {
     if (url.length > 8000) {
       warn = ' <span style="color:var(--warn);">⚠ 連結較長（' + sizeKb + ' KB），LINE 仍可貼但部分 QR 掃描可能困難。</span>';
     }
-    const via = '<strong>QR Code</strong>' + (navigator.share ? ' 或 <strong>傳送給旅伴</strong>' : '');
+    const via = '<strong>顯示 QR Code</strong>' + (navigator.share ? ' 或 <strong>傳送給旅伴</strong>' : '');
     const lead = refreshed
       ? '<strong>行程有修改，連結已自動更新成最新版。</strong>之前傳出去的舊連結不會跟著變，請用 ' + via + ' 把新連結重新傳給旅伴。'
       : '✓ 連結已產生。建議直接用 ' + via + ' 分享，不必貼那一長串網址。';
     stat.innerHTML = '<div class="status-box ' + (refreshed ? 'status-warn' : 'status-ok') + '">' + lead +
       '<br><span style="color:var(--ink-2);font-size:var(--fs-fine);">' +
-      '連結包含整份行程的所有資料（' + sizeKb + ' KB）所以較長——這是「不經外部伺服器、兼顧隱私安全」的優點。</span>' + warn + '</div>';
+      '連結比較長，是因為整份行程都存在連結裡（' + sizeKb + ' KB），不經過外部伺服器。</span>' + warn + '</div>';
   } catch (e) {
     // 產生失敗就收掉舊連結，免得按鈕把舊版傳出去
     out.value = '';
@@ -2916,7 +2979,7 @@ async function shareNative() {
   } catch (e) {
     // User cancelled or share failed — no toast needed
     if (e && e.name !== 'AbortError') {
-      showToast('分享失敗', '請改用「複製連結」');
+      showToast('分享失敗', '請改用「複製最新連結」');
     }
   }
 }
@@ -2948,7 +3011,7 @@ async function showQrCode() {
   } catch (e) {
     canvas.style.display = 'none';
     note.innerHTML = '<span style="color:var(--err);">連結太長無法產生 QR Code（' +
-      (url.length / 1024).toFixed(1) + ' KB）。請改用「複製連結」分享。</span>';
+      (url.length / 1024).toFixed(1) + ' KB）。請改用「複製最新連結」分享。</span>';
   }
 }
 
@@ -3068,7 +3131,7 @@ function showStorageInfo() {
   closeMenu();
   alert(
     '關於自動儲存：\n\n' +
-    '✓ 你填的所有欄位（含 Firebase Config）都會自動存到「這個瀏覽器」的進度備份。\n\n' +
+    '✓ 你填的所有欄位（含 firebaseConfig）都會自動存到「這個瀏覽器」的進度備份。\n\n' +
     '⚠️ 注意限制：\n' +
     '・換裝置、換瀏覽器看不到（同一台電腦的 Chrome 和 Safari 也是分開的）\n' +
     '・無痕模式關掉視窗就消失\n' +

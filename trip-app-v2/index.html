@@ -196,8 +196,6 @@
     .day-info { flex: 1; min-width: 0; }
     .day-theme { font-size: 15px; font-weight: 700; line-height: 1.3; }
     .day-meta  { font-size: 12px; color: var(--text-3); margin-top: 2px; }
-    .day-emoji   { font-size: 22px; flex-shrink: 0; }
-    .day-card.open .day-emoji { visibility: hidden; }   /* 展開後已有活動圖示；用 hidden 保留位置，箭頭不跳動 */
     .day-chevron {
       width: 20px; height: 20px; color: var(--text-3);
       transition: transform 0.25s ease; flex-shrink: 0;
@@ -262,7 +260,6 @@
     .swap-radio { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--text-3); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
     .swap-opt[aria-checked="true"] .swap-radio { border-color: var(--pink); }
     .swap-opt[aria-checked="true"] .swap-radio::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--pink); }
-    .swap-emoji { font-size: 22px; flex-shrink: 0; }
     .swap-body { flex: 1; min-width: 0; }
     .swap-theme { display: block; font-size: 15px; font-weight: 700; color: var(--text); }
     .swap-body .gt { margin-top: 4px; }
@@ -412,6 +409,11 @@
       border: 1px solid var(--border); border-radius: 10px; padding: 11px;
       font-size: 14px; font-family: inherit; cursor: pointer;
     }
+    .icon-group { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; width: 100%; }
+    .icon-group-name { font-size: 12px; color: var(--text-3); width: 2.6em; flex-shrink: 0; padding-top: 8px; }
+    .icon-group-items { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
+    .icon-pill { font-size: 20px; padding: 4px 10px; }
+    .icon-custom-input { flex: 1; min-width: 0; }
     .day-share-row { padding: 6px 16px 14px; }
     .day-share-btn {
       width: 100%; background: #fff; color: var(--pink);
@@ -1078,8 +1080,6 @@
       margin-bottom: 14px; background: #fff;
     }
     .share-preview-wrap canvas { display: block; width: 100%; height: auto; }
-    .share-link-row { display: flex; gap: 8px; margin-bottom: 14px; }
-    .share-link-input { flex: 1; font-size: 12px; min-width: 0; }
 
     /* ─── 行程展示分享 (Showcase Poster) ─────────────────────── */
     .showcase-scope-row { display: flex; gap: 8px; margin-bottom: 14px; }
@@ -1325,10 +1325,6 @@
     </div>
     <div id="showcase-fields"></div>
     <div class="share-preview-wrap"><canvas id="showcase-canvas"></canvas></div>
-    <div class="share-link-row" id="showcase-link-row">
-      <input class="form-input share-link-input" id="showcase-link-input" readonly onclick="this.select()">
-      <button class="mini-btn" id="showcase-copy-btn" onclick="copyShowcaseLink()">複製連結</button>
-    </div>
     <button class="btn btn-pink" id="showcase-send-btn" style="width:100%;font-size:16px;padding:16px" onclick="sendShowcaseShare()">分享</button>
     <div class="showcase-share-hint" id="showcase-share-hint" hidden>用 Chrome 或 Safari 開啟可直接分享</div>
   </div>
@@ -2172,7 +2168,7 @@ function parkQuery(a) {
   return map || (a && a.name) || "";
 }
 // 交通類活動（搭機/搭車/搭船）不需要找停車場
-function isTransit(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤]/u.test(icon || ""); }
+function isTransit(icon) { return /[✈🚄🚅🚃🚆🚇🚈🚝🛫🛬🚢⛴🚤🚌🚕]/u.test(icon || ""); }
 function isTodayDate(ds) {
   const [m, d] = ds.split("/").map(Number);
   const date = new Date(_CFG.meta.year, m-1, d);
@@ -2971,7 +2967,6 @@ function renderItinerary(opts) {
             <div class="day-theme">${_themeHtml(d)}</div>
             <div class="day-meta${_dayTag || _hotelUnbooked ? " has-tag" : ""}">${_dayTag}${d.date}（${d.wd}）・${_mergedActs.length} 個景點${_hotelUnbooked ? `<span class="hotel-unbooked-tag">住宿未訂</span>` : ""}</div>
           </div>
-          <span class="day-emoji">${d.emoji}</span>
           <svg class="day-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -3095,7 +3090,7 @@ function openSwap(day) {
   const opts = cards.map((c, i) => {
     const on = !!cur && _ck(cur) === _ck(c);
     return `<button class="swap-opt" role="radio" aria-checked="${on}" onclick="chooseSwap(${day},${i})">
-      <span class="swap-radio"></span><span class="swap-emoji">${c.emoji || "📍"}</span>
+      <span class="swap-radio"></span>
       <span class="swap-body"><span class="swap-theme">${_esc(_theme(c))}</span>${_listTagHtml(c.with)}</span>
     </button>`;
   }).join("");
@@ -3172,21 +3167,6 @@ function openDayShare(day) {   // day = 卡片 key
   _setShowcasePhotoUrl(null);
   document.getElementById("showcase-overlay").classList.add("visible");
   renderShowcaseOverlay();
-}
-
-async function _copyLinkToClipboard(inputId, btnId) {
-  const input = document.getElementById(inputId);
-  const btn   = document.getElementById(btnId);
-  try { await navigator.clipboard.writeText(input.value); }
-  catch (e) {
-    input.select();
-    try { document.execCommand("copy"); } catch (e2) {}
-  }
-  if (btn) {
-    const orig = btn.textContent;
-    btn.textContent = "✓ 已複製";
-    setTimeout(() => { btn.textContent = orig; }, 1500);
-  }
 }
 
 // ─── 單日行程分享：已更新提示（跟上次分享時的內容快照比對） ──────────
@@ -3312,7 +3292,6 @@ function renderShowcaseOverlay() {
   const isDay = _showcaseScope === "day";
   document.getElementById("showcase-form-title").textContent = isDay ? "分享這天" : "製作行程海報";
   // 單日是傳給同行旅伴看今天的行程，不需要「複製回訪首頁連結」這個給非同行者的入口
-  document.getElementById("showcase-link-row").style.display = isDay ? "none" : "";
 
   let fieldsHtml = "";
   if (_showcaseScope === "day") {
@@ -3357,7 +3336,6 @@ function renderShowcaseOverlay() {
   }
   document.getElementById("showcase-fields").innerHTML = fieldsHtml;
   _syncShowcasePhotoPos();
-  document.getElementById("showcase-link-input").value = SHOWCASE_HOMEPAGE_URL;
 
   const canShareFiles = _canShareImageFile();
   document.getElementById("showcase-send-btn").textContent = canShareFiles ? "分享" : "下載海報圖片";
@@ -3755,8 +3733,8 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
         ? [{ f: 36, lh: 44, date: true }, { f: 32, lh: 40, date: true }, { f: 30, lh: 38, date: false }, { f: 28, lh: 36, date: false }]
         : [{ f: 34, lh: 44, date: false }, { f: 30, lh: 40, date: false }, { f: 28, lh: 36, date: false }];
       const geo = t => n <= 9
-        ? { ...t, w: CW, dW: 76, eW: 60, dF: 28, eF: 40 }
-        : { ...t, w: CW, dW: Math.round(t.f * 2.4), eW: Math.round(t.f * 1.7), dF: Math.round(t.f * 0.8), eF: Math.round(t.f * 1.1) };
+        ? { ...t, w: CW, dW: 76, eW: 0, dF: 28, eF: 40 }      // eW＝emoji 欄寬；每天的 emoji 已移除（activity-icons I9）
+        : { ...t, w: CW, dW: Math.round(t.f * 2.4), eW: 0, dF: Math.round(t.f * 0.8), eF: Math.round(t.f * 1.1) };
       const heights = (t, maxL) => { const g = geo(t); return days.map(d => Math.min(maxL, countLines(_theme(d), t.f, 700, CW - g.dW - g.eW)) * t.lh + (t.date ? 28 : 0)); };
       const sum = a => a.reduce((s, v) => s + v, 0);
       let maxL = 2, tier = tiers.find(t => sum(heights(t, 2)) + n * 16 <= avail);
@@ -3767,7 +3745,7 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
       days.forEach((d, i) => {
         const rowH = hs[i] + pad;
         const lines = clamp(_theme(d), g.f, 700, CW - g.dW - g.eW, maxL);
-        drawRow(PAD, y, rowH, g, `D${_dispDay(d)}`, pal.acc, d.emoji || "", lines, WHITE, g.date ? `${d.date}（${d.wd}）` : "", i < n - 1);
+        drawRow(PAD, y, rowH, g, `D${_dispDay(d)}`, pal.acc, "", lines, WHITE, g.date ? `${d.date}（${d.wd}）` : "", i < n - 1);
         y += rowH;
       });
     } else {
@@ -3777,12 +3755,12 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
       const m = over ? 30 : n, per = Math.ceil(m / 2), rh = avail / per;
       const two = rh >= 70;
       const f = two ? 26 : Math.max(22, Math.min(28, Math.floor(rh * 0.5)));
-      const g = { f, lh: two ? 32 : Math.round(f * 1.3), w: 296, dW: Math.round(f * 2.3), dF: Math.round(f * 0.85), eW: Math.round(f * 1.5), eF: Math.round(f * 1.05) };
+      const g = { f, lh: two ? 32 : Math.round(f * 1.3), w: 296, dW: Math.round(f * 2.3), dF: Math.round(f * 0.85), eW: 0, eF: Math.round(f * 1.05) };
       const nameW = 296 - g.dW - g.eW;
       const cellAt = i => ({ x: PAD + Math.floor(i / per) * (296 + 32), y: top + (i % per) * rh, border: (i % per) < per - 1 && i < m - 1 });
       cells.forEach((d, i) => {
         const c = cellAt(i);
-        drawRow(c.x, c.y, rh, g, `D${_dispDay(d)}`, pal.acc, d.emoji || "", clamp(_theme(d), f, 700, nameW, two ? 2 : 1), WHITE, "", c.border);
+        drawRow(c.x, c.y, rh, g, `D${_dispDay(d)}`, pal.acc, "", clamp(_theme(d), f, 700, nameW, two ? 2 : 1), WHITE, "", c.border);
       });
       if (over) {
         const c = cellAt(29);
@@ -3813,7 +3791,6 @@ async function drawShowcaseCanvas(canvas, scope, day, caption, photoDataUrl, pho
   return { photoAxis };
 }
 
-function copyShowcaseLink() { return _copyLinkToClipboard("showcase-link-input", "showcase-copy-btn"); }
 
 // 瀏覽器能不能把「圖片檔」交給系統分享選單（Firefox 有分享功能但不支援檔案）
 function _canShareImageFile() {
@@ -3890,17 +3867,18 @@ function deleteItinAct(key) {
   _maybeShowLocalEditToast();
 }
 
-// 圖示選單：這趟行程已用過的圖示排前面（新增的景點跟既有行程視覺一致），再補通用預設
-const ITIN_ICONS = (() => {
-  const list = [];
-  (DAYS || []).forEach(d => (d.acts || []).forEach(a => {
-    if (a && a.icon && !list.includes(a.icon)) list.push(a.icon);
-  }));
-  ["📍","🍜","☕","🏯","⛩️","🏞️","🌸","🛍️","🎡","♨️","🚆","🚗","✈️","🏨","📷"].forEach(ic => {
-    if (!list.includes(ic)) list.push(ic);
-  });
-  return list.slice(0, 24);
-})();
+// 圖示選單：固定分類（MECE，與產生器 ICON_CATALOG 相同；test-group-trip.js 比對）＋「自訂」
+// 不再帶入這趟 AI 挑過的圖示（docs/acceptance/activity-icons.md I6）
+const ITIN_ICON_CATALOG = [
+  { group: "交通", items: [["✈️", "飛機"], ["🚆", "火車電車"], ["🚄", "新幹線高鐵"], ["🚇", "地鐵"], ["🚌", "巴士"], ["🚕", "計程車"], ["🚗", "開車"], ["⛴️", "船"]] },
+  { group: "住宿", items: [["🏨", "飯店"], ["🏠", "民宿"], ["⛺", "露營"]] },
+  { group: "飲食", items: [["🍴", "吃飯"], ["🍜", "麵食"], ["🍣", "壽司"], ["🍱", "便當"], ["🍻", "喝酒"], ["☕", "咖啡"], ["🍰", "甜點"]] },
+  { group: "遊覽", items: [["🏛️", "博物館古蹟"], ["⛩️", "神社寺廟"], ["🏯", "城堡"], ["🌲", "森林步道"], ["🌸", "賞花"], ["🏖️", "海邊"], ["🌅", "看風景"], ["♨️", "溫泉"], ["🎡", "樂園"], ["🎭", "表演"], ["📷", "拍照景點"]] },
+  { group: "購物", items: [["🛍️", "購物"], ["🎁", "伴手禮"], ["🏪", "超商"]] },
+  { group: "其他", items: [["📍", "地點"], ["🤝", "集合會合"], ["🧳", "寄放行李"], ["🛂", "出入境"], ["💱", "換錢"], ["🏧", "提款"], ["🧺", "洗衣"], ["📮", "寄信"], ["⏰", "提醒"]] },
+];
+const _ITIN_ICON_SET = new Set(ITIN_ICON_CATALOG.flatMap(g => g.items.map(x => x[0])));
+let itinIconCustom = false;   // 表單正在用「自訂」圖示
 
 function toggleItinMenu(id) {
   itinMenuKey = (itinMenuKey === id) ? null : id;
@@ -4290,7 +4268,7 @@ function showItinForm(day) {   // day = 卡片 key
   if (!firebaseReady) { alert("目前無法連線，請稍後再試"); return; }
   itinEditTarget = null;
   itinFormDay  = day;
-  itinFormIcon = "📍";
+  itinFormIcon = "📍"; itinIconCustom = false;
   itinFormSeed = { name: "", time: "", sub: "", map: "", geo: "" };
   _itinWithReset(null);
   document.getElementById("itin-form-title").textContent = "新增景點";
@@ -4305,7 +4283,7 @@ function startEditItin(id) {
   if (!it) { renderItinerary({ cardsOnly: true }); return; }
   itinEditTarget = (it.kind === "added") ? { kind: "added", key: it.key } : { kind: "preset", pid: it.pid };
   itinFormDay  = it.day;
-  itinFormIcon = it.icon;
+  itinFormIcon = it.icon; itinIconCustom = false;
   // map 等於名稱＝當初沒貼連結（儲存時以名稱補上）→ 連結欄位顯示空白
   itinFormSeed = { name: it.name, time: it.time, sub: it.sub, map: (it.map && it.map !== it.name) ? it.map : "", geo: it.geo || "" };
   _itinWithReset(it.kind === "added" ? it.with : null);
@@ -4320,7 +4298,13 @@ function hideItinForm() {
   itinEditTarget = null;
 }
 
-function selectItinIcon(ic) { itinFormIcon = ic; renderItinFormBody(); }
+function selectItinIcon(ic) { itinFormIcon = ic; itinIconCustom = false; renderItinFormBody(); }
+function startCustomItinIcon() {
+  itinIconCustom = true;
+  renderItinFormBody();
+  const el = document.getElementById("itin-icon-custom");
+  if (el) el.focus();
+}
 
 // 景點時間：空白或「時:分」用手機原生時間選擇器（「9:00」補成「09:00」）；
 // 「夜」「上午」這類文字原樣保留成一般文字框，不然一存檔就被清空——要改再按「改用時間選擇器」。
@@ -4479,9 +4463,14 @@ function _itinFormVals() {
 function renderItinFormBody() {
   const v = _itinFormVals();
   const isEdit = !!itinEditTarget;
-  const iconBtns = ITIN_ICONS.map(ic =>
-    `<button class="member-pill${itinFormIcon===ic?" selected":""}" onclick="selectItinIcon('${ic}')" style="font-size:18px">${ic}</button>`
-  ).join("");
+  const _isCustom = itinIconCustom || !_ITIN_ICON_SET.has(itinFormIcon);
+  const iconBtns = ITIN_ICON_CATALOG.map(g => `<div class="icon-group"><span class="icon-group-name">${g.group}</span><div class="icon-group-items">${g.items.map(([ic, name]) =>
+    `<button class="member-pill icon-pill${!_isCustom && itinFormIcon===ic?" selected":""}" title="${name}" aria-label="${name}" onclick="selectItinIcon('${ic}')">${ic}</button>`).join("")}</div></div>`).join("")
+    + `<div class="icon-group"><span class="icon-group-name">自訂</span><div class="icon-group-items">`
+    + (_isCustom
+      ? `<input class="form-input icon-custom-input" id="itin-icon-custom" value="${_esc(itinIconCustom && _ITIN_ICON_SET.has(itinFormIcon) ? "" : itinFormIcon)}" maxlength="8" placeholder="手機切到表情鍵盤；Mac 按 ⌃⌘空白鍵、Windows 按 ⊞＋." oninput="itinFormIcon=this.value.trim()||'📍'">`
+      : `<button class="member-pill icon-pill" onclick="startCustomItinIcon()">✎ 自訂</button>`)
+    + `</div></div>`;
   // 一張卡一個選項；同日多卡時後面加組名（Day 3・11/3（二）・福岡組）
   const dayOpts = _viewCards().map(d => {
     const lb = _cardLabel(d);

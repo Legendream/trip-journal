@@ -117,6 +117,7 @@
     font-size: 30px; font-weight: 700;
     letter-spacing: .14em; color: var(--ink);
     line-height: 1;
+    white-space: nowrap;   /* 字中間是全形空白：不設的話窄螢幕會在空白處斷行 */
   }
   .masthead-right {
     text-align: right; line-height: 1;
@@ -192,6 +193,12 @@
     .masthead-title { font-size: 22px; letter-spacing: .08em; }
     .masthead-doctitle { font-size: 14px; max-width: 160px; }
     .masthead-birds { display: none; }
+  }
+  @media (max-width: 420px) {
+    .topbar { padding-left: 16px; padding-right: 16px; }
+    .masthead-left { gap: 10px; }
+    .masthead-title { font-size: 19px; letter-spacing: .04em; }
+    .masthead-doctitle { max-width: 120px; }
   }
 
   /* ── Menu (⋯) dropdown ─────────────────────────────────────── */
@@ -872,7 +879,6 @@
     padding: 3px 8px; font-size: var(--fs-fine); font-weight: 700;
     font-variant-numeric: tabular-nums; white-space: nowrap;
   }
-  .day-emoji { font-size: 17px; }
   .day-theme { font-size: var(--fs-fine); font-weight: 600; flex: 1; min-width: 0; }
   .day-theme.empty { color: var(--ink-3); font-weight: 500; }
   .day-date-wd {
@@ -926,6 +932,11 @@
     background: var(--card);
   }
   .act-icon-i { width: 40px; text-align: center; font-size: 15px; }
+  /* 景點圖示選單（只顯示 emoji；分組標題是大類名稱） */
+  .act-icon-sel {
+    width: 64px; flex-shrink: 0; padding: 5px 4px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: var(--fs-fine); font-family: inherit; background: var(--card);
+  }
   .act-name-i { flex: 2; min-width: 80px; font-weight: 600; }
   .act-sub-i  { flex: 1.5; min-width: 70px; font-size: var(--fs-fine); }
   .act-time-i { width: 70px; font-size: var(--fs-fine); color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -1553,7 +1564,7 @@
     /* Activity row 1: wrap sub + time to a second line */
     .act-row1 { flex-wrap: wrap; }
     .act-drag-handle { order: 1; }
-    .act-icon-i  { order: 2; }
+    .act-icon-i, .act-icon-sel { order: 2; }
     .act-name-i  { order: 3; flex: 1 1 80px; min-width: 0; }
     .act-del     { order: 4; }
     .act-sub-i   { order: 5; flex: 1 1 100px; min-width: 0; margin-top: 4px; }
@@ -1669,23 +1680,23 @@
   <div class="panel-head">
     <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
     <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
-    <span class="panel-title">匯入或建立行程</span>
-    <p class="panel-desc">選擇手邊現有的資料形式，或直接從空白開始。</p>
+    <span class="panel-title">建立行程</span>
+    <p class="panel-desc">選一個最符合你現在情況的方式。</p>
   </div>
 
   <div class="card">
     <div class="path-tabs" style="margin-top:16px;">
       <div class="path-tab active" data-path="ai" onclick="setPath('ai')">
-        <div>用 AI 整理</div>
-        <div class="tab-sub">推薦 · 貼草稿自動整理</div>
+        <div>我有草稿</div>
+        <div class="tab-sub">推薦 · AI 幫你整理</div>
       </div>
       <div class="path-tab" data-path="manual" onclick="setPath('manual')">
-        <div>從空白開始</div>
-        <div class="tab-sub">手動逐天填寫</div>
+        <div>從零開始</div>
+        <div class="tab-sub">自己一天天填</div>
       </div>
       <div class="path-tab" data-path="load" onclick="setPath('load')">
-        <div>還原既有行程</div>
-        <div class="tab-sub">貼分享連結或檔案</div>
+        <div>繼續修改</div>
+        <div class="tab-sub">貼分享連結或 .html 檔</div>
       </div>
     </div>
 
@@ -1693,7 +1704,7 @@
     <div class="path-panel active" id="path-ai">
       <div class="ai-step active" id="ai-step-1" data-step="1">
         <div class="ai-step-title">貼上行程文字草稿</div>
-        <div class="ai-step-desc">任何隨手記錄的格式皆可，不用事先排版；若有機票或訂房截圖，下一步直接交給 AI 即可。</div>
+        <div class="ai-step-desc">隨手記的就可以，不用先排版。</div>
         <textarea id="trip-text" rows="8"
           placeholder="例：&#10;4/15 (三) 抵達仙台&#10;  10:30 桃園飛仙台 CI-118&#10;  下午 仙台車站、青葉城跡&#10;  晚餐 牛舌利久&#10;  住 仙台國際飯店&#10;..."
           oninput="updateTripText()"></textarea>
@@ -1702,11 +1713,11 @@
       <div class="ai-step" id="ai-step-2" data-step="2">
         <div class="ai-step-title">複製整理指令，貼到常用 AI</div>
         <div class="ai-step-desc">
-          指令已打包好整理規則與你的行程。貼進 AI 視窗送出即可，<strong>免費版即可使用，免 API Key</strong>。
+          指令裡已經包含整理規則和你的草稿。貼進 AI 對話框送出就好，<strong>用免費版就可以</strong>。
         </div>
         <button class="btn btn-primary btn-block" id="copy-prompt-btn"
           onclick="copyPromptToClipboard()" disabled>
-          複製整理指令（Prompt）
+          複製整理指令
         </button>
         <div class="ai-launch-buttons">
           <a class="ai-btn" href="https://claude.ai/new" target="_blank" rel="noopener">
@@ -1723,7 +1734,7 @@
           </a>
         </div>
         <div class="mt-12">
-          <span style="font-size:var(--fs-fine);color:var(--ink-3);text-decoration:underline;cursor:pointer;" onclick="togglePromptPreview()">▸ 想先看指令完整內容？點此展開預覽</span>
+          <span style="font-size:var(--fs-fine);color:var(--ink-3);text-decoration:underline;cursor:pointer;" onclick="togglePromptPreview()">▸ 先看看指令內容</span>
         </div>
         <div class="ai-screenshot-note">
           <span class="scr-emoji">📸</span>
@@ -1737,11 +1748,11 @@
       <div class="ai-step" id="ai-step-3" data-step="3">
         <div class="ai-step-title">把 AI 整理的結果貼回這裡</div>
         <div class="ai-step-desc">
-          直接把 AI 回覆的文字整段貼上。包含前後的問候或多餘對話也沒關係，系統會自動抓出行程資料。
+          把 AI 的回覆整段貼上就好，前後多了問候或說明也沒關係，會自動找出行程。
         </div>
         <textarea id="json-paste" rows="6" style="font-family:ui-monospace,monospace;font-size:var(--fs-fine);"
           placeholder='{ "tripName": "東北賞櫻之旅 2026", "days": [ ... ] }' oninput="updateJsonPaste()"></textarea>
-        <button class="btn btn-primary mt-12" onclick="importAiJson()">匯入行程 → 進入步驟二</button>
+        <button class="btn btn-primary mt-12" onclick="importAiJson()">匯入行程</button>
         <div id="ai-import-status"></div>
       </div>
     </div>
@@ -1749,17 +1760,17 @@
     <!-- Path manual -->
     <div class="path-panel" id="path-manual">
       <div class="card-desc" style="margin-bottom: 14px;">
-        從一張空白行程表開始，下一步逐日排定景點。適合手邊還沒有現成筆記的人。
+        從空白行程表開始，下一步再一天天填景點。
       </div>
       <button class="btn btn-primary" onclick="startManual()">
-        建立空白行程 → 進入步驟二
+        建立空白行程 →
       </button>
     </div>
 
     <!-- Path load -->
     <div class="path-panel" id="path-load">
       <div class="card-desc" style="margin-bottom: 14px;">
-        貼上旅伴傳給你的<strong>分享連結</strong>，或拖入下載過的 <strong>.html 檔案</strong>，即可完整還原整份行程。
+        貼上你或旅伴的<strong>分享連結</strong>，或拖入下載過的 <strong>.html 檔</strong>，就能接著修改整份行程。
       </div>
 
       <div class="restore-zone" id="restore-zone"
@@ -1780,11 +1791,11 @@
       </div>
       <button class="btn btn-primary btn-block mt-12" id="restore-btn"
         onclick="loadFromRestoreInput()" disabled>
-        還原行程 → 進入步驟二
+        打開這份行程 →
       </button>
       <div id="restore-status"></div>
       <div class="hint mt-12">
-        在 LINE 或通訊軟體收到的分享連結，直接貼上即可；<code style="font-family:ui-monospace,monospace;background:var(--bg-2);padding:1px 4px;border-radius:3px;">.html</code> 檔案則是進階部署過的使用者才會有。
+        在 LINE 或通訊軟體收到的分享連結，直接貼上即可；<code style="font-family:ui-monospace,monospace;background:var(--bg-2);padding:1px 4px;border-radius:3px;">.html</code> 檔只有用過進階版的人才會有。
       </div>
     </div>
   </div>
@@ -1795,19 +1806,19 @@
   <div class="panel-head">
     <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
     <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
-    <span class="panel-title">確認與微調行程</span>
+    <span class="panel-title">編輯行程</span>
     <p class="panel-desc">
-      確認 AI 整理的內容，微調時間或地點。這一步多留心，旅行現場就少翻找。
+      確認每天的行程，補上或修改時間、地點。這一步多留心，旅行現場就少翻找。
     </p>
   </div>
 
   <div class="alert-banner" id="missing-summary" role="status" aria-live="polite"></div>
 
-  <p class="desktop-hint">建議使用電腦瀏覽器編輯：螢幕較寬闊，校對長篇行程與地圖連結更順手。</p>
+  <p class="desktop-hint">建議使用電腦瀏覽器編輯：螢幕較寬闊，核對長篇行程與地圖連結更順手。</p>
 
   <div class="card">
     <div class="card-title">基本資訊</div>
-    <div class="card-desc">會顯示在首頁標題、分頁名稱、日期橫條等位置。</div>
+    <div class="card-desc">會顯示在 App 最上方，以及瀏覽器的分頁名稱。</div>
     <div class="grid2 mt-16">
       <div class="field required" id="ff-title">
         <label>旅程名稱</label>
@@ -1816,9 +1827,9 @@
         <div class="hint home-name-preview" id="f-title-home" hidden>加到手機桌面後，圖示下方會顯示：<strong id="f-title-home-name"></strong></div>
       </div>
       <div class="field" id="ff-subtitle">
-        <label>城市列表</label>
+        <label>副標</label>
         <input type="text" id="f-subtitle" placeholder="仙台・平泉・青森・弘前" oninput="onAnyInput()">
-        <div class="hint">標題下方的副標</div>
+        <div class="hint">標題下方的一行小字，例如經過的城市</div>
       </div>
     </div>
     <div class="grid3">
@@ -1844,7 +1855,7 @@
         <label>結束日期（選填）</label>
         <input type="text" id="f-end-date" placeholder="4/22"
           inputmode="numeric" oninput="onAnyInput()">
-        <div class="hint">供回程倒數計時器精確計算使用。留空會自動算到最後一天。</div>
+        <div class="hint">回程倒數用。留空就算到最後一天。</div>
       </div>
       <div class="field" id="ff-end-time">
         <label>結束時間（選填）</label>
@@ -1857,7 +1868,7 @@
         <input type="checkbox" id="f-self-drive" onchange="onSelfDriveToggle()">
         <span>這趟是自駕行程</span>
       </label>
-      <div class="hint">開啟後，每天可標記<strong>「這天自駕」</strong>，該天的景點與住宿才會出現「停車」按鈕。整趟不開車就免開。</div>
+      <div class="hint">開啟後，每天可標記<strong>「這天自駕」</strong>，該天的景點與住宿才會出現「停車」按鈕。整趟不開車就不用開。</div>
     </div>
     <div class="field" id="ff-region" style="display:none;">
       <label>目的地地區</label>
@@ -1875,7 +1886,7 @@
         <label>進入密碼（PIN）</label>
         <input type="text" id="f-pin" placeholder="0415" maxlength="4" pattern="[0-9]*" inputmode="numeric"
           oninput="this.value=this.value.replace(/[^0-9]/g,'');onAnyInput()">
-        <div class="hint">4 位數字防看門檻，旅伴打開 App 時要輸入。建議用出發日（如 0415）最方便記</div>
+        <div class="hint">旅伴打開 App 時要輸入的 4 位數字，擋掉不相干的人。用出發日（如 0415）最好記。</div>
       </div>
       <div class="field" id="ff-storage-prefix">
         <label>
@@ -1884,7 +1895,7 @@
         </label>
         <input type="text" id="f-storage-prefix" placeholder="trip2026a"
           oninput="this.value=this.value.replace(/[^a-z0-9]/g,'');onAnyInput()">
-        <div class="hint">系統自動產生，確保多趟旅程在手機上的暫存資料不會打架混淆</div>
+        <div class="hint">自動產生，用來區分同一支手機上的不同行程，通常不用改。</div>
       </div>
     </div>
   </div>
@@ -1893,7 +1904,7 @@
     <div class="row-spread">
       <div>
         <div class="card-title">旅行成員</div>
-        <div class="card-desc">用於費用分攤、分帳結算<strong>（進階 Firebase 模式才會即時同步分帳）</strong>。點 ✕ 可刪除。</div>
+        <div class="card-desc">記帳分攤會用到<strong>（進階版才會即時同步記帳）</strong>。點 ✕ 可刪除。</div>
       </div>
     </div>
     <div class="member-chips mt-16" id="member-chips"></div>
@@ -1906,24 +1917,24 @@
 
   <div class="card">
     <div class="card-title">每日行程</div>
-    <div class="card-desc">點開每天可增修活動。<strong>時間選填</strong>，有固定時刻（班機、訂位、表演）才需要——用 <strong>24 小時制</strong>（如 15:00），填了會自動排序。</div>
+    <div class="card-desc">點開每天可以新增、修改景點。<strong>時間選填</strong>，有固定時刻（班機、訂位、表演）才需要——用 <strong>24 小時制</strong>（如 15:00），填了會自動排序。</div>
     <div id="day-cards" class="mt-16"></div>
     <button class="btn btn-secondary mt-12" onclick="addDay()">＋ 新增一天</button>
   </div>
 
   <div class="card">
     <div class="card-title">行前與備忘清單　<span class="muted" style="font-weight:400;font-size:var(--fs-fine);">選填</span></div>
-    <div class="card-desc">出發前置準備與隨身提醒。旅伴可在 App「清單」分頁隨時查看與勾選。</div>
+    <div class="card-desc">出發前的準備與旅途中的提醒。旅伴在 App 的「清單」分頁可以查看、勾選。</div>
 
     <div class="checklist-subtabs">
       <div class="checklist-subtab active" id="tab-btn-packing" onclick="switchChecklistSubtab('packing')">打包清單</div>
-      <div class="checklist-subtab" id="tab-btn-shopping" onclick="switchChecklistSubtab('shopping')">伴手禮 / 購物清單</div>
+      <div class="checklist-subtab" id="tab-btn-shopping" onclick="switchChecklistSubtab('shopping')">購物清單</div>
       <div class="checklist-subtab" id="tab-btn-notes" onclick="switchChecklistSubtab('notes')">注意事項</div>
     </div>
 
     <div class="checklist-panel active" id="pane-packing">
       <div class="checklist-intro">
-        出發前要打包或確認的項目，旅伴在 App 的「打包」分頁可獨立勾選。以下項目可自由增修或刪除。
+        出發前要打包或確認的項目，旅伴在 App「清單」裡的「打包」可以各自勾選。以下項目可自由增修或刪除。
         <div style="text-align:right;margin-top:6px;">
           <button class="btn btn-ghost btn-sm" onclick="clearChecklist()" style="font-size:var(--fs-fine);padding:3px 8px;">清除全部</button>
         </div>
@@ -1934,7 +1945,7 @@
     </div>
 
     <div class="checklist-panel" id="pane-shopping">
-      <div class="checklist-intro">旅伴可在 App「購物」分頁勾選、標記已買，還能為品項加照片（照片只存自己手機，不佔雲端空間）。</div>
+      <div class="checklist-intro">旅伴在 App「清單」裡的「購物」可以勾選、標記已買，還能為品項加照片（照片只存自己手機，不佔雲端空間）。</div>
       <div id="shopping-list"></div>
       <div class="shop-fields mt-12" id="shopping-add-row" onfocusout="handleShoppingAddBlur(event)">
         <input type="text" id="new-shopping-name" placeholder="品名，例如：萩之月"
@@ -1946,7 +1957,7 @@
     </div>
 
     <div class="checklist-panel" id="pane-notes">
-      <div class="checklist-intro">提醒事項或小知識，會列在 App「清單」分頁的「注意事項」子分頁。</div>
+      <div class="checklist-intro">提醒事項或小知識，會列在 App「清單」裡的「注意事項」。</div>
       <div id="notes-list"></div>
       <input type="text" id="new-note-text" class="mt-12" placeholder="飯店 check-in 從 15:00 開始"
         onkeydown="if(event.key==='Enter'&&!event.isComposing&&event.keyCode!==229)addNote()" onblur="if(this.value.trim())addNote()">
@@ -1959,12 +1970,12 @@
   <div class="panel-head">
     <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
     <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
-    <span class="panel-title">挑選這趟旅程的主題色</span>
-    <p class="panel-desc">挑個喜歡的顏色，下方預覽會即時套用你的旅程資料，所見即所得。</p>
+    <span class="panel-title">挑選顏色</span>
+    <p class="panel-desc">挑一個這趟旅程的主題色，下方預覽會用你的行程即時套用。</p>
   </div>
   <div class="card">
-    <div class="card-title">主題配色</div>
-    <div class="card-desc">七款精心調配的主題配色，漸層與對比都調好了，點了就套用。</div>
+    <div class="card-title">主題色</div>
+    <div class="card-desc">點一下就套用。</div>
     <div class="theme-cards" id="theme-cards" style="margin-top:16px;"></div>
     <input type="hidden" id="f-theme-color" value="#a8362f">
     <input type="hidden" id="f-theme-accent" value="#c45a4f">
@@ -1975,7 +1986,7 @@
 
   <div class="card">
     <div class="card-title">即時預覽</div>
-    <div class="card-desc">對著真實的旅程名稱、日期與成員挑色，所見即所得。</div>
+    <div class="card-desc">用你填的旅程名稱、日期和成員顯示。</div>
     <div class="theme-preview" style="margin-top:16px;">
       <div class="tp-header" id="tp-header">
         <div class="tp-title" id="tp-title">✈️ 我的旅程</div>
@@ -1993,7 +2004,7 @@
         <div class="tp-nav-btn">記帳</div>
       </div>
     </div>
-    <div class="preview-footer-note">※ 導覽分頁為手機版外觀示意。進階模式提供 4 分頁（含集合與記帳）；預設分享模式為行程與清單。</div>
+    <div class="preview-footer-note">※ 預覽裡的分頁是手機上的樣子。用分享連結只有「行程」「清單」兩頁；進階版另有「集合」「記帳」。</div>
   </div>
 </div>
 
@@ -2002,12 +2013,12 @@
   <div class="panel-head">
     <svg class="sprig left" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
     <svg class="sprig right" viewBox="0 0 40 60" width="28" height="42" aria-hidden="true"><path d="M20 58 Q20 30 22 8" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/><g fill="currentColor" opacity="0.85"><path d="M22 14 Q30 12 32 18 Q26 20 22 17 Z"/><path d="M21 22 Q12 20 11 26 Q18 28 21 25 Z"/><path d="M21 30 Q30 28 32 34 Q25 36 21 33 Z"/><path d="M20 38 Q11 36 10 42 Q17 44 20 41 Z"/><path d="M20 46 Q28 44 30 50 Q23 52 20 49 Z"/></g></svg>
-    <span class="panel-title">產出可以馬上用的 App</span>
-    <p class="panel-desc">先預覽確認，選好分享方式即可直接使用。</p>
+    <span class="panel-title">分享行程</span>
+    <p class="panel-desc">先預覽，再選一種分享方式傳給旅伴。</p>
   </div>
   <div class="card">
     <div class="card-title">設定總覽</div>
-    <div class="card-desc">出版前最後一次校稿——資料、共用、外觀一覽。</div>
+    <div class="card-desc">分享前最後確認一次。</div>
     <div class="summary-grid mt-16" id="summary-grid"></div>
     <div class="wx-summary mt-16" id="wx-summary" hidden></div>
   </div>
@@ -2017,43 +2028,43 @@
     <div class="seg-switcher">
       <div class="seg-tab active" id="mode-card-basic" onclick="selectDeliveryMode('basic')">
         <div class="seg-tab-head">
-          <span class="seg-tab-badge">推薦 · 零門檻</span>
+          <span class="seg-tab-badge">推薦 · 不用註冊</span>
           <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ok);font-weight:700;">
             <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--ok);"></span>最新版已就緒
           </span>
         </div>
-        <div class="seg-tab-title">一行分享連結</div>
-        <div class="seg-tab-sub">免註冊、免部署，複製連結即傳即看</div>
+        <div class="seg-tab-title">分享連結</div>
+        <div class="seg-tab-sub">複製連結傳給旅伴，點開就能看</div>
       </div>
       <div class="seg-tab" id="mode-card-advanced" onclick="selectDeliveryMode('advanced')">
         <div class="seg-tab-head">
-          <span class="seg-tab-badge seg-tab-badge-secondary">進階 · 多人協作</span>
+          <span class="seg-tab-badge seg-tab-badge-secondary">多人一起編輯</span>
         </div>
-        <div class="seg-tab-title">Netlify + Firebase</div>
-        <div class="seg-tab-sub">自訂獨立短網址，多人即時同步記帳</div>
+        <div class="seg-tab-title">進階版</div>
+        <div class="seg-tab-sub">用 Netlify＋Firebase 架自己的網址，多人即時同步記帳</div>
       </div>
     </div>
 
     <details class="specs-drawer">
       <summary>
-        <span>查看兩種分享模式的完整規格對照（MECE 五維度嚴格對稱）</span>
-        <span style="font-size:11px;color:var(--ink-3);">點此展開 / 收合 ▾</span>
+        <span>比較兩種分享方式</span>
+        <span style="font-size:11px;color:var(--ink-3);">展開 / 收合 ▾</span>
       </summary>
       <div class="specs-table-wrap">
         <table class="specs-table">
           <thead>
             <tr>
-              <th>比較維度</th>
-              <th class="highlight-col">方案 A：一行分享連結</th>
-              <th>方案 B：Netlify + Firebase</th>
+              <th>比較</th>
+              <th class="highlight-col">分享連結</th>
+              <th>進階版</th>
             </tr>
           </thead>
           <tbody>
-            <tr><td>上手門檻</td><td class="highlight-col"><strong>免註冊部署</strong>：複製專屬連結直接傳給旅伴，即開即用。</td><td><strong>需一次性設定</strong>：約 15 分鐘完成免費部署與資料庫串接。</td></tr>
-            <tr><td>多人協作</td><td class="highlight-col"><strong>單人主排分享</strong>：旅伴隨點隨看；修改僅存自己手機，不回傳同步。</td><td><strong>多人即時同步</strong>：全員可同時編輯，記帳分帳與集合時間即刻同步。</td></tr>
-            <tr><td>網址形式</td><td class="highlight-col"><strong>專屬分享長網址</strong>：傳 LINE / 通訊軟體點開即看，無需下載或安裝。</td><td><strong>自訂專屬短網址</strong>：可自訂好記網址，加到手機桌面像原生 App。</td></tr>
-            <tr><td>後續更新</td><td class="highlight-col"><strong>重傳連結覆蓋</strong>：行程改動後，把自動打包的新連結再傳一次。</td><td><strong>同網址覆蓋更新</strong>：重新下載並上傳檔案即可，網址永久維持不變。</td></tr>
-            <tr><td>功能範圍</td><td class="highlight-col"><strong>核心旅行必備</strong>：每日行程 · 注意事項 · 行前行李與購物清單。</td><td><strong>全功能完整解鎖</strong>：額外支援集合倒數提示與多人費用分帳。</td></tr>
+            <tr><td>上手門檻</td><td class="highlight-col"><strong>不用註冊</strong>：複製連結傳給旅伴，點開就能用。</td><td><strong>要先設定一次</strong>：約 15 分鐘，免費架網站與資料庫。</td></tr>
+            <tr><td>多人協作</td><td class="highlight-col"><strong>一個人排、大家看</strong>：旅伴的修改只存在自己手機，不會同步。</td><td><strong>多人即時同步</strong>：大家都能編輯，記帳和集合時間會即時同步。</td></tr>
+            <tr><td>網址形式</td><td class="highlight-col"><strong>長網址</strong>：傳 LINE 或其他通訊軟體，點開就能看，不用安裝。</td><td><strong>自訂短網址</strong>：好記，加到手機桌面像 App 一樣。</td></tr>
+            <tr><td>後續更新</td><td class="highlight-col"><strong>重傳新連結</strong>：行程改了之後，把新連結再傳一次。</td><td><strong>網址不變</strong>：重新下載、上傳檔案，網址維持不變。</td></tr>
+            <tr><td>功能範圍</td><td class="highlight-col"><strong>行程與清單</strong>：每日行程、注意事項、打包與購物清單。</td><td><strong>再加集合與記帳</strong>：集合倒數提醒、多人分帳。</td></tr>
           </tbody>
         </table>
       </div>
@@ -2061,7 +2072,7 @@
   </div>
 
   <div class="card" id="preview-card" style="display:none;">
-    <div class="card-title">預覽產出的 App</div>
+    <div class="card-title">預覽 App</div>
     <div class="card-desc" id="preview-card-desc"></div>
     <div class="row mt-16" style="gap:10px;flex-wrap:wrap;">
       <button class="btn btn-secondary btn-lg" onclick="previewApp('desktop')">
@@ -2078,8 +2089,8 @@
   <div id="section-basic" style="display:none">
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
-      <div style="font-family:var(--font-serif);font-size:var(--fs-h3);font-weight:700;color:var(--ink);">專屬分享網址</div>
-      <span style="font-size:var(--fs-fine);color:var(--ink-3);">不用註冊、不需上架，傳給旅伴隨點隨看。</span>
+      <div style="font-family:var(--font-serif);font-size:var(--fs-h3);font-weight:700;color:var(--ink);">分享連結</div>
+      <span style="font-size:var(--fs-fine);color:var(--ink-3);">不用註冊，傳給旅伴點開就能看。</span>
     </div>
     <div style="display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;">
       <div style="position:relative;flex:1;min-width:200px;">
@@ -2095,10 +2106,10 @@
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:8px;padding-top:12px;border-top:1px dashed var(--rule);">
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-secondary btn-sm" id="share-native-btn" onclick="shareNative()" style="display:none;">傳送給旅伴</button>
-        <button class="btn btn-secondary btn-sm" onclick="showQrCode()">旅伴現場掃碼</button>
+        <button class="btn btn-secondary btn-sm" onclick="showQrCode()">顯示 QR Code</button>
         <button class="btn btn-secondary btn-sm" onclick="openShareUrl()">↗ 另開分頁預覽</button>
       </div>
-      <div style="font-size:var(--fs-fine);color:var(--ink-3);">行程儲存在網址中，若有修改，把新連結重傳給旅伴即可覆蓋</div>
+      <div style="font-size:var(--fs-fine);color:var(--ink-3);">行程存在連結裡。改了行程，要把新連結再傳給旅伴一次。</div>
     </div>
   </div>
   </div><!-- #section-basic -->
@@ -2106,35 +2117,35 @@
   <!-- ── 面板 B：Netlify + Firebase 進階部署操作區 ─────────────── -->
   <div id="section-advanced" style="display:none">
   <div class="card mt-16">
-    <div style="font-family:var(--font-serif);font-size:var(--fs-h3);font-weight:700;color:var(--ink);">進階部署：自己的獨立網址 ＋ 多人即時同步</div>
-    <p class="card-desc" style="margin-top:4px;">把行程變成真正獨立運作的專屬網頁，可加到手機桌面像 App 開啟，還能串接免費資料庫多人即時記帳。</p>
+    <div style="font-family:var(--font-serif);font-size:var(--fs-h3);font-weight:700;color:var(--ink);">進階版：自己的網址＋多人即時同步</div>
+    <p class="card-desc" style="margin-top:4px;">把行程架成自己的網站，可以加到手機桌面像 App 一樣開啟，還能接免費資料庫，多人即時記帳。</p>
 
     <div class="card-section mt-16">
-      <div class="card-label">第一步：下載行程網頁包</div>
-      <p class="card-desc" style="margin-top:4px;">內含完整的獨立網頁程式碼（index.html、manifest.json、sw.js）</p>
-      <button class="btn btn-primary mt-12" onclick="downloadZip()">下載 .zip 部署包</button>
+      <div class="card-label">A. 下載行程網頁包</div>
+      <p class="card-desc" style="margin-top:4px;">一個壓縮檔，裡面是這份行程的網頁檔案。</p>
+      <button class="btn btn-primary mt-12" onclick="downloadZip()">下載 .zip 檔</button>
       <div id="download-status"></div>
     </div>
 
     <div class="card-section mt-16">
-      <div class="card-label">第二步：拖放上架到 Netlify（約 3 分鐘完成）</div>
+      <div class="card-label">B. 上傳到 Netlify（約 3 分鐘）</div>
       <div class="step-chip-row mt-12">
         <div class="step-chip"><div class="step-chip-num">01</div><div class="step-chip-title">解壓縮檔案</div><div class="step-chip-desc">解開下載的 zip 得到行程資料夾</div></div>
         <div class="step-chip"><div class="step-chip-num">02</div><div class="step-chip-title">前往 Netlify</div><div class="step-chip-desc"><a href="https://netlify.com" target="_blank" rel="noopener">netlify.com</a> 免費登入</div></div>
-        <div class="step-chip"><div class="step-chip-num">03</div><div class="step-chip-title">拖入上架</div><div class="step-chip-desc">在「Projects」將資料夾直接拖入</div></div>
-        <div class="step-chip"><div class="step-chip-num">04</div><div class="step-chip-title">自訂專屬網址</div><div class="step-chip-desc">改為短名，傳給旅伴加到主畫面</div></div>
+        <div class="step-chip"><div class="step-chip-num">03</div><div class="step-chip-title">拖進去上傳</div><div class="step-chip-desc">在「Projects」將資料夾直接拖入</div></div>
+        <div class="step-chip"><div class="step-chip-num">04</div><div class="step-chip-title">改網址</div><div class="step-chip-desc">改成好記的短名，傳給旅伴</div></div>
       </div>
       <div class="info-note mt-12">
-        ✓ <strong>專屬體驗自動生效</strong>：上架完成後，旅伴在手機瀏覽器點選「加入主畫面」即可像原生 App 開啟；有貼 Google 地圖連結的地點，出發前 16 天即時天氣會自動同步！
+        ✓ <strong>上傳完成後</strong>：旅伴用手機瀏覽器打開網址，選「加入主畫面」，就能像 App 一樣使用。
       </div>
     </div>
 
     <div class="card-section mt-16">
       <div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;">
-        <div class="card-label">第三步：串接 Firebase 即時同步</div>
-        <span style="font-size:var(--fs-fine);color:var(--ink-3);font-style:italic;">【選配 · 需要多人同步記帳再開啟】</span>
+        <div class="card-label">C. 接上 Firebase，多人即時同步</div>
+        <span style="font-size:var(--fs-fine);color:var(--ink-3);font-style:italic;">選填：需要多人同步記帳才要做</span>
       </div>
-      <p class="card-desc" style="margin-top:4px;">啟用後，旅程中旅伴記帳分攤、注意事項修改與集合時間將即時同步到所有人的手機。</p>
+      <p class="card-desc" style="margin-top:4px;">接上後，記帳、注意事項和集合時間會即時同步到每個人的手機。</p>
       <div class="mt-16">
         <div class="guide-step">
           <div class="guide-num">1</div>
@@ -2142,14 +2153,14 @@
         </div>
         <div class="guide-step">
           <div class="guide-num">2</div>
-          <div class="guide-text">套用安全規則：切換至「規則」分頁，貼入下方專屬規則並按「發布」：
+          <div class="guide-text">套用安全規則：切到「規則」分頁，貼上下方的規則，按「發布」：
             <pre class="guide-code" id="fb-rules-code"></pre>
             <button type="button" class="btn btn-secondary btn-sm mt-12" id="fb-rules-copy" onclick="copyFbRules()">複製規則</button>
           </div>
         </div>
         <div class="guide-step">
           <div class="guide-num">3</div>
-          <div class="guide-text">驗證連線設定：點專案設定 ⚙ ➔ 點網頁圖示 <code>&lt;/&gt;</code> ➔ 複製產出的 <code>firebaseConfig</code> 貼在下方即可。
+          <div class="guide-text">貼上連線設定：點專案設定 ⚙ ➔ 點網頁圖示 <code>&lt;/&gt;</code> ➔ 複製出現的 <code>firebaseConfig</code>，貼到下方。
             <div class="field mt-12">
               <label>貼上 firebaseConfig</label>
               <textarea id="f-firebase" rows="6" style="font-family:ui-monospace,monospace;font-size:var(--fs-fine);"
@@ -2164,11 +2175,11 @@
     </div>
 
     <details class="advanced-section mt-16">
-      <summary class="advanced-summary">▸ 旅程結束或日後想更動行程？如何更新網址？（點此查看維護 SOP）</summary>
+      <summary class="advanced-summary">▸ 之後要改行程，怎麼更新網站？</summary>
       <ol class="deploy-list mt-12">
-        <li><div class="dnum">1</div><div>行程修改後：回到本頁把行程改好，重新點擊「下載 .zip 部署包」。</div></li>
-        <li><div class="dnum">2</div><div>重新上傳更新：登入 Netlify 點進原本那個專案 ➔ 切到「Deploys」分頁 ➔ 滑到最下方，將新解壓縮的資料夾拖入即可完成更新（網址完全維持不變）。</div></li>
-        <li><div class="dnum">3</div><div>Firebase 設定不用重做：原本的旅程代碼與資料庫皆自動沿用，旅伴手機上的記帳與資料不受影響。</div></li>
+        <li><div class="dnum">1</div><div>改行程：回到這個頁面把行程改好，再按一次「下載 .zip 檔」。</div></li>
+        <li><div class="dnum">2</div><div>重新上傳：登入 Netlify 點進原本那個專案 ➔ 切到「Deploys」分頁 ➔ 滑到最下方，把新解壓縮的資料夾拖進去（網址不變）。</div></li>
+        <li><div class="dnum">3</div><div>Firebase 不用重設：沿用原本的旅程代碼與資料庫，旅伴的記帳不受影響。</div></li>
       </ol>
     </details>
   </div>
@@ -2197,9 +2208,9 @@
   </div>
 </div>
 
-<script src="group-trip.js?v=20261113a"></script>
-<script src="group-ui.js?v=20261113a"></script>
-<script src="generator-app.js?v=20261113a"></script>
+<script src="group-trip.js?v=20261115a"></script>
+<script src="group-ui.js?v=20261115a"></script>
+<script src="generator-app.js?v=20261115a"></script>
 
 <!-- Undo Toast -->
 <div id="undo-toast">

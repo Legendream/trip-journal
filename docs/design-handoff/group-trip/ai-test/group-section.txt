@@ -6,7 +6,7 @@
 - 草稿看不出有人分頭行動：groups 回空陣列 []
 
 分組規則：
-- 同一天兩組在不同地方：拆成兩筆 days，date、day 相同，各自填 with、theme、emoji、hotel、acts
+- 同一天兩組在不同地方：拆成兩筆 days，date、day 相同，各自填 with、theme、hotel、acts
 - 全員一起的日子：一筆 days，不填 with
 - 只有部分人在旅途中的日子（還沒出發、已經離開）：只建那些人的卡，with 填他們的組名
 - 會合日、分開日：一筆全員卡；只屬於某組的活動，在那筆活動填 with
@@ -23,9 +23,9 @@
   { "name": "B組", "members": ["阿德", "阿美"] }
 ],
 "days": [
-  { "day": 2, "date": "5/2", "wd": "六", "theme": "大阪", "emoji": "🏯", "with": ["A組"], "acts": [] },
-  { "day": 2, "date": "5/2", "wd": "六", "theme": "京都", "emoji": "⛩️", "with": ["B組", "小明"], "unsure": true, "acts": [] },
-  { "day": 3, "date": "5/3", "wd": "日", "theme": "奈良會合", "emoji": "🦌",
+  { "day": 2, "date": "5/2", "wd": "六", "theme": "大阪", "with": ["A組"], "acts": [] },
+  { "day": 2, "date": "5/2", "wd": "六", "theme": "京都", "with": ["B組", "小明"], "unsure": true, "acts": [] },
+  { "day": 3, "date": "5/3", "wd": "日", "theme": "奈良會合",
     "acts": [
       { "icon": "🚃", "name": "近鐵抵達奈良", "time": "10:00", "with": ["A組"] },
       { "icon": "🚃", "name": "JR 抵達奈良", "time": "11:30", "with": ["B組"] },
